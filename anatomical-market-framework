@@ -1,1 +1,67 @@
+ANATOMICAL MARKET FRAMEWORK (AMF) v1.0
+======================================
+Author: Sadisha
+Date:   March 2026
 
+
+OVERVIEW
+--------
+The Anatomical Market Framework (AMF) is an analytical structure for
+dissecting and understanding markets by mapping their core components to
+biological analogues. Just as anatomy reveals how a living system is
+organised and functions, AMF reveals how a market is structured,
+circulates value, and sustains itself.
+
+
+CORE COMPONENTS
+---------------
+
+1. SKELETON — Market Infrastructure
+   The underlying structures that give the market its shape and stability:
+   exchanges, clearing houses, regulatory bodies, and settlement systems.
+
+2. CIRCULATORY SYSTEM — Capital Flow
+   The mechanisms by which value moves through the market: credit channels,
+   liquidity facilities, payment rails, and investment pipelines.
+
+3. NERVOUS SYSTEM — Information & Signals
+   Price discovery, data feeds, analyst research, regulatory disclosures,
+   and any signal that coordinates participant behaviour.
+
+4. MUSCULATURE — Active Participants
+   The agents that drive market movement: market makers, institutional
+   investors, retail traders, arbitrageurs, and algorithmic systems.
+
+5. ORGANS — Functional Subsystems
+   Specialised market segments (e.g. primary vs secondary markets, spot vs
+   derivatives) that perform distinct but interdependent functions.
+
+6. IMMUNE SYSTEM — Risk Management & Regulation
+   Circuit breakers, margin requirements, stress-testing regimes, and
+   regulatory oversight that defend market integrity against systemic shocks.
+
+7. METABOLISM — Value Creation & Destruction
+   The rate at which capital is deployed, returned, written off, or
+   recycled — the market's throughput and efficiency.
+
+
+ANALYTICAL METHOD
+-----------------
+To apply AMF to a given market:
+
+  Step 1  Define the market boundary (asset class, geography, timeframe).
+  Step 2  Map each anatomical component to its concrete market counterpart.
+  Step 3  Identify dependencies and feedback loops between components.
+  Step 4  Diagnose structural weaknesses or dysfunction (analogous to
+          pathology in biological systems).
+  Step 5  Derive actionable insights or intervention points.
+
+
+VERSIONING
+----------
+v1.0  March 2026  Initial release (see AMF Framework v1.docx for full detail)
+
+
+LICENSE
+-------
+See LICENSE.txt. All rights reserved — Sadisha, 2026.
