@@ -18,6 +18,7 @@ The full methodology and applications are described in the document below.
 
 | File | Description |
 |------|-------------|
+| `anatomical-market-framework` | Plain-text overview of the AMF framework — seven core components and the analytical method |
 | `AMF Framework v1.docx` | The full AMF framework document (Microsoft Word format) |
 | `AMF Framework v1.docx.ots` | OpenTimestamps blockchain proof — cryptographically verifies this document existed on March 17, 2026 |
 | `LICENSE.txt` | Copyright notice — all rights reserved |
