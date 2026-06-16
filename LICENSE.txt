@@ -1,18 +1,22 @@
-LICENSE.txt
 Copyright (c) 2026 Sadisha. All Rights Reserved.
 
-The Anatomical Market Framework (AMF) and all associated 
-documents, frameworks, analytical structures, and written 
-works contained in this repository are the exclusive 
-intellectual property of Sadisha.
+The Anatomical Market Framework (AMF) — including this repository and all
+associated documents, frameworks, analytical structures, diagrams, and
+written works contained herein — is the exclusive intellectual property of
+the author, Sadisha.
 
-No part of this work may be reproduced, distributed, 
-modified, adapted, translated, or used in any form or 
-by any means — commercial or non-commercial — without 
-the explicit prior written permission of the author.
+No part of this work may be reproduced, distributed, published, displayed,
+modified, adapted, translated, transmitted, or used in any form or by any
+means — whether electronic, mechanical, commercial, or non-commercial —
+without the explicit prior written permission of the author.
 
-For permissions and licensing inquiries, contact the 
-author directly.
+Unauthorized use, reproduction, or distribution of this work, in whole or in
+part, may result in civil and criminal liability under applicable copyright
+and intellectual property law.
+
+All rights not expressly granted herein are reserved.
+
+For permissions and licensing inquiries, contact the author directly.
 
 Date of original creation: March 17, 2026
-Location: rathnapura, Sri Lanka
+Place of original creation: Rathnapura, Sri Lanka
