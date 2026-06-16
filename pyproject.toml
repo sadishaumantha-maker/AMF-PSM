@@ -30,7 +30,7 @@ amf = "amf.cli:main"
 dev = [
   "pytest==8.2.2",
   "pytest-cov==5.0.0",
-  "ruff==0.5.5",
+  "ruff==0.15.8",
   "mypy==1.11.1",
   "pre-commit==3.7.1",
   "yamllint==1.35.1",
@@ -48,12 +48,12 @@ target-version = "py311"
 src = ["src", "tests", "examples"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "TCH", "PTH", "RUF", "ANN", "D"]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "TC", "PTH", "RUF", "ANN", "D"]
 ignore = ["D203", "D213"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["ANN", "D", "S101", "TCH"]
-"examples/**" = ["D", "T201", "INP001", "TCH"]
+"tests/**" = ["ANN", "D", "S101", "TC"]
+"examples/**" = ["D", "T201", "INP001", "TC"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
