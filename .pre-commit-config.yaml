@@ -1,0 +1,46 @@
+# Pre-commit hooks for the amf package and repository hygiene.
+# Install with: pre-commit install
+minimum_pre_commit_version: "3.5.0"
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.5
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.1
+    hooks:
+      - id: mypy
+        files: ^src/
+
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: end-of-file-fixer
+        # Never rewrite the checksum-protected artifacts.
+        exclude: '^(AMF Framework v1\.docx|AMF Framework v1\.docx\.ots|anatomical-market-framework|LICENSE\.txt)$'
+      - id: trailing-whitespace
+        exclude: '^(AMF Framework v1\.docx|AMF Framework v1\.docx\.ots|anatomical-market-framework|LICENSE\.txt)$'
+      - id: check-yaml
+      - id: check-json
+      - id: check-added-large-files
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: protect-ip-artifacts
+        name: protect checksum-locked IP artifacts
+        entry: >-
+          Refusing to commit a change to a checksum-protected artifact. These
+          files back the OpenTimestamps proof and SHA256SUMS; editing them
+          invalidates the integrity guarantees.
+        language: fail
+        files: '^(AMF Framework v1\.docx|AMF Framework v1\.docx\.ots|anatomical-market-framework|LICENSE\.txt|SHA256SUMS)$'

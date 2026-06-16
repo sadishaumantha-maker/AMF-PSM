@@ -1,0 +1,13 @@
+# Configuration for yamllint, used locally and in the CI "validate" job.
+extends: default
+
+rules:
+  line-length:
+    max: 140
+  # GitHub Actions uses the `on:` key, which YAML 1.1 treats as a boolean.
+  # Allow it by not checking keys for truthy values.
+  truthy:
+    check-keys: false
+  document-start: disable
+  comments:
+    min-spaces-from-content: 1

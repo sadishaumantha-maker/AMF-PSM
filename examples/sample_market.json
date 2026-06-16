@@ -1,0 +1,76 @@
+{
+  "boundary": {
+    "asset_class": "equities",
+    "geography": "US",
+    "timeframe": "intraday",
+    "notes": "Illustrative sample market for the amf toolkit."
+  },
+  "systems": {
+    "skeleton": {
+      "name": "Exchanges, clearing & settlement",
+      "components": ["NYSE", "Nasdaq", "DTCC", "OCC"],
+      "integrity": 0.7,
+      "redundancy": 0.3,
+      "criticality": 0.9,
+      "load": 0.1
+    },
+    "circulatory": {
+      "name": "Liquidity & capital flow",
+      "components": ["repo market", "prime brokerage", "ETF creation/redemption"],
+      "integrity": 0.6,
+      "redundancy": 0.4,
+      "criticality": 0.85,
+      "load": 0.2
+    },
+    "nervous": {
+      "name": "Price discovery & data",
+      "components": ["consolidated tape", "research", "disclosures"],
+      "integrity": 0.8,
+      "redundancy": 0.5,
+      "criticality": 0.7,
+      "load": 0.1
+    },
+    "musculature": {
+      "name": "Participants",
+      "components": ["market makers", "institutions", "retail", "algos"],
+      "integrity": 0.9,
+      "redundancy": 0.7,
+      "criticality": 0.6,
+      "load": 0.1
+    },
+    "organs": {
+      "name": "Market segments",
+      "components": ["primary", "secondary", "derivatives"],
+      "integrity": 0.9,
+      "redundancy": 0.5,
+      "criticality": 0.65,
+      "load": 0.1
+    },
+    "immune": {
+      "name": "Risk controls & regulation",
+      "components": ["circuit breakers", "margin", "SEC/FINRA oversight"],
+      "integrity": 0.9,
+      "redundancy": 0.6,
+      "criticality": 0.75,
+      "load": 0.1
+    },
+    "metabolism": {
+      "name": "Value creation & destruction",
+      "components": ["capital deployment", "write-offs", "buyback/issuance"],
+      "integrity": 0.9,
+      "redundancy": 0.5,
+      "criticality": 0.6,
+      "load": 0.1
+    }
+  },
+  "dependencies": [
+    {"source": "circulatory", "target": "nervous", "kind": "informational", "weight": 0.5},
+    {"source": "nervous", "target": "musculature", "kind": "informational", "weight": 0.6},
+    {"source": "musculature", "target": "circulatory", "kind": "capital", "weight": 0.7},
+    {"source": "circulatory", "target": "skeleton", "kind": "structural", "weight": 0.8},
+    {"source": "nervous", "target": "skeleton", "kind": "structural", "weight": 0.5},
+    {"source": "organs", "target": "circulatory", "kind": "capital", "weight": 0.6},
+    {"source": "metabolism", "target": "organs", "kind": "structural", "weight": 0.4},
+    {"source": "immune", "target": "skeleton", "kind": "regulatory", "weight": 0.3}
+  ]
+}
