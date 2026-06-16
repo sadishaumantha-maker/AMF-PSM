@@ -49,6 +49,16 @@ simulations over that anatomy.
 > every quantity it produces is a dimensionless structural measure. This boundary
 > is enforced by a test (`tests/unit/test_non_trading_boundary.py`).
 
+### Disclaimer
+
+`amf` is an **illustrative, educational** structural-analysis tool. Its inputs,
+thresholds (including the severity bands), weights, and scores are **not
+empirically validated**. Its output is **not financial, investment, or trading
+advice**, and it does **not** constitute a diagnosis, forecast, or prediction of
+any real or live market. Every result describes only the user-supplied,
+hypothetical market model passed to it. The command-line tool prints this notice
+on `stderr` after each analytical command.
+
 ### Install
 
 ```sh

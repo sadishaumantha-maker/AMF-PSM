@@ -38,8 +38,24 @@ def test_diagnose_text(capsys: pytest.CaptureFixture[str]):
 
 def test_diagnose_json_is_valid(capsys: pytest.CaptureFixture[str]):
     assert main(["diagnose", str(SAMPLE), "--format", "json"]) == 0
-    payload = json.loads(capsys.readouterr().out)
+    captured = capsys.readouterr()
+    # stdout must remain pure JSON; the disclaimer goes to stderr.
+    payload = json.loads(captured.out)
     assert "overall_index" in payload
+    assert "illustrative" in captured.err.lower()
+
+
+def test_disclaimer_printed_to_stderr(capsys: pytest.CaptureFixture[str]):
+    for argv in (
+        ["diagnose", str(SAMPLE)],
+        ["simulate", str(SAMPLE), "--target", "circulatory"],
+        ["stress-test", str(SAMPLE)],
+        ["describe"],
+    ):
+        assert main(argv) == 0
+        err = capsys.readouterr().err.lower()
+        assert "not financial advice" in err
+        assert "not a diagnosis or forecast" in err
 
 
 def test_diagnose_markdown(capsys: pytest.CaptureFixture[str]):

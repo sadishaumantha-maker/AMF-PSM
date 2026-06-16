@@ -49,6 +49,19 @@ _METHOD_STEPS: tuple[str, ...] = (
     "Derive actionable insights or intervention points.",
 )
 
+# Shown after every analytical command. Printed to stderr so machine-readable
+# stdout (e.g. `--format json`) stays clean and parseable.
+_DISCLAIMER = (
+    "Note: illustrative/educational structural model only — inputs and thresholds "
+    "are not validated; not financial advice and not a diagnosis or forecast of any "
+    "real or live market. Results describe the supplied hypothetical model only."
+)
+
+
+def _print_disclaimer() -> None:
+    """Print the governance disclaimer to stderr."""
+    print(_DISCLAIMER, file=sys.stderr)
+
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the CLI and return a process exit code.
@@ -129,6 +142,7 @@ def _cmd_diagnose(args: argparse.Namespace) -> int:
     market = _load_market(args.market)
     report = DiagnosticEngine().diagnose(market)
     print(_format(report, args.format))
+    _print_disclaimer()
     return 0
 
 
@@ -138,6 +152,7 @@ def _cmd_simulate(args: argparse.Namespace) -> int:
     shock = Shock(target=SystemKind(args.target), magnitude=args.magnitude)
     trace = ShockSimulator(market).propagate(shock)
     print(_format(trace, args.format))
+    _print_disclaimer()
     return 0
 
 
@@ -146,6 +161,7 @@ def _cmd_stress_test(args: argparse.Namespace) -> int:
     market = _load_market(args.market)
     profile = ShockSimulator(market).stress_test(magnitude=args.magnitude)
     print(render_stress_test(profile))
+    _print_disclaimer()
     return 0
 
 
@@ -157,6 +173,7 @@ def _cmd_describe(_: argparse.Namespace) -> int:
     print("\nAnalytical method:")
     for i, step in enumerate(_METHOD_STEPS, start=1):
         print(f"  {i}. {step}")
+    _print_disclaimer()
     return 0
 
 

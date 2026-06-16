@@ -26,6 +26,11 @@ Two things live side by side:
   trading signals, or backtests. Every quantity is a dimensionless structural
   measure. `tests/unit/test_non_trading_boundary.py` enforces this on the public
   API; keep it passing.
+- **Illustrative, not validated.** Treat `amf` as an educational tool. Its
+  thresholds, weights, and scores are not empirically validated; its output is not
+  financial advice and not a diagnosis or forecast of any real market. Keep the
+  disclaimers (package docstring, README, and the CLI's `_DISCLAIMER`) in place,
+  and do not add language that claims predictive power or validated performance.
 
 ## Package architecture (`src/amf/`)
 

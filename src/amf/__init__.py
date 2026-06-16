@@ -8,6 +8,10 @@ diagnostics and shock-propagation simulations over that anatomy.
 It is **not** a trading system. There are no orders, brokers, prices, returns,
 P&L, signals, or backtests anywhere in this package; every quantity it produces
 describes market *structure and resilience*.
+
+This is an illustrative, educational tool. Its inputs, thresholds, and scores are
+not empirically validated, are not financial, investment, or trading advice, and
+do not constitute a diagnosis, forecast, or prediction of any real or live market.
 """
 
 from __future__ import annotations
