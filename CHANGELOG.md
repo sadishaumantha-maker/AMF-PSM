@@ -3,6 +3,25 @@
 All notable changes to the Anatomical Market Framework (AMF) are documented in
 this file. Versions correspond to framework releases.
 
+## [Unreleased]
+
+### Added
+- `amf` Python package (`src/amf/`) — a dependency-free, software implementation
+  of the AMF analytical method: the seven anatomical systems, a dependency and
+  feedback graph, a structural-weakness diagnostic engine, and a non-trading
+  shock-propagation simulation engine, with a command-line interface.
+- Runnable examples (`examples/`) and a test suite (`tests/`) with a 90% coverage
+  gate.
+- Tooling and quality gates: `pyproject.toml` (ruff, mypy strict, pytest,
+  coverage), `.pre-commit-config.yaml` (including a guard that blocks edits to
+  checksum-protected artifacts), and a `CI` GitHub Actions workflow running lint,
+  type-check, tests, and YAML/citation/Markdown-link validation.
+- `CLAUDE.md` contributor and design guide.
+
+### Notes
+- The software models market *structure and resilience* only; it is not a
+  trading system. The checksum-protected framework artifacts are unchanged.
+
 ## [1.0] — 2026-03-17
 
 ### Added

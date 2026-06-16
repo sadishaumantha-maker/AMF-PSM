@@ -1,0 +1,88 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "amf"
+version = "0.1.0"
+description = "Structural / diagnostic modelling toolkit for the Anatomical Market Framework (no trading system)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "LicenseRef-Proprietary-AllRightsReserved" }
+authors = [{ name = "Sadisha" }]
+keywords = ["market-structure", "anatomical-market-framework", "diagnostics", "resilience", "simulation"]
+classifiers = [
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/sadishaumantha-maker/AMF-PSM"
+Repository = "https://github.com/sadishaumantha-maker/AMF-PSM"
+
+[project.scripts]
+amf = "amf.cli:main"
+
+[project.optional-dependencies]
+dev = [
+  "pytest==8.2.2",
+  "pytest-cov==5.0.0",
+  "ruff==0.15.8",
+  "mypy==1.11.1",
+  "pre-commit==3.7.1",
+  "yamllint==1.35.1",
+]
+# NOTE: CITATION.cff is validated by `cffconvert` in CI (the `validate` job
+# installs it standalone). It is intentionally not in `dev` because one of its
+# transitive deps (docopt) fails to build under some patched local setuptools.
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/amf"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+src = ["src", "tests", "examples"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "TC", "PTH", "RUF", "ANN", "D"]
+ignore = ["D203", "D213"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "D", "S101", "TC"]
+"examples/**" = ["D", "T201", "INP001", "TC"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+# The shipped, typed package is the type-checking deliverable. Tests omit
+# annotations by design (ruff ignores ANN there) and examples use sibling-script
+# imports; both are covered by ruff and exercised by pytest instead.
+files = ["src"]
+warn_unreachable = true
+disallow_any_generics = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers --strict-config --cov=amf --cov-report=term-missing --cov-report=xml --cov-fail-under=90"
+testpaths = ["tests"]
+markers = ["integration: end-to-end tests across multiple modules"]
+
+[tool.coverage.run]
+branch = true
+source = ["amf"]
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+  "pragma: no cover",
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "\\.\\.\\.",
+]
