@@ -1,0 +1,18 @@
+# Microsoft Word temporary files (created while a document is open)
+~$*
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Windows system files
+Thumbs.db
+desktop.ini
+ehthumbs.db
+
+# Common editor backup files
+*.bak
+*.swp
+*.tmp
+*~
