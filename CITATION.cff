@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: "Anatomical Market Framework (AMF)"
+message: >-
+  This work is proprietary. If you reference it, please cite it as below and
+  obtain explicit prior written permission from the author before any use.
+type: dataset
+authors:
+  - given-names: "Sadisha"
+    alias: "sadishaumantha-maker"
+abstract: >-
+  The Anatomical Market Framework (AMF) is an original analytical framework
+  for understanding market dynamics through an anatomical lens. It maps a
+  market's infrastructure, capital flows, information signals, participants,
+  functional subsystems, risk controls, and value metabolism to biological
+  analogues, providing a structured method for diagnosing and interpreting
+  market structure and behaviour.
+version: "1.0"
+date-released: "2026-03-17"
+license: LicenseRef-Proprietary-AllRightsReserved
