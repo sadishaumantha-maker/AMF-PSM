@@ -1,0 +1,23 @@
+name: Integrity
+
+# Verifies that the canonical AMF artifacts match their recorded checksums.
+# This provides continuous, automated evidence that the protected intellectual
+# property has not been altered, on every push and pull request.
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-checksums:
+    name: Verify artifact checksums
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Verify SHA-256 checksums
+        run: sha256sum --check --strict SHA256SUMS

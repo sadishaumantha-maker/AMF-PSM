@@ -1,0 +1,18 @@
+# Treat the framework document and its OpenTimestamps proof as binary.
+# This prevents any end-of-line conversion, which would alter their bytes
+# and invalidate the cryptographic timestamp / checksum verification.
+*.docx binary
+*.ots  binary
+
+# Preserve the plain-text framework overview exactly as committed.
+# (No EOL normalization, so its checksum stays stable across platforms.)
+anatomical-market-framework -text
+
+# Normalize textual project files to LF on commit.
+*.md           text eol=lf
+*.txt          text eol=lf
+*.cff          text eol=lf
+*.yml          text eol=lf
+.gitignore     text eol=lf
+.gitattributes text eol=lf
+SHA256SUMS     text eol=lf
