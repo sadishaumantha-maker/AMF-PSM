@@ -97,6 +97,38 @@ def test_centrality_all_zero_without_edges():
     assert all(value == 0.0 for value in centrality.values())
 
 
+def test_centrality_normalises_when_iteration_budget_exhausted():
+    # With a one-step budget the influence series cannot converge below the
+    # tolerance, so the loop exits by exhausting ``iterations`` rather than by
+    # breaking early. The result must still be max-normalised to [0, 1].
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+            _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+        ]
+    )
+    centrality = graph.centrality(iterations=1)
+    assert centrality[SystemKind.SKELETON] == pytest.approx(1.0)
+    assert all(0.0 <= v <= 1.0 for v in centrality.values())
+
+
+def test_feedback_loops_finds_multiple_disjoint_cycles():
+    graph = DependencyGraph(
+        [
+            # cycle A: skeleton <-> circulatory
+            _dep(SystemKind.SKELETON, SystemKind.CIRCULATORY),
+            _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+            # cycle B: nervous <-> musculature
+            _dep(SystemKind.NERVOUS, SystemKind.MUSCULATURE),
+            _dep(SystemKind.MUSCULATURE, SystemKind.NERVOUS),
+        ]
+    )
+    loops = set(graph.feedback_loops())
+    assert (SystemKind.SKELETON, SystemKind.CIRCULATORY) in loops
+    assert (SystemKind.NERVOUS, SystemKind.MUSCULATURE) in loops
+    assert len(loops) == 2
+
+
 def test_articulation_points_identify_cut_vertices():
     # immune - skeleton - circulatory - organs - metabolism (a path); the
     # interior nodes are articulation points.
@@ -114,3 +146,20 @@ def test_articulation_points_identify_cut_vertices():
     assert SystemKind.ORGANS in points
     assert SystemKind.IMMUNE not in points
     assert SystemKind.METABOLISM not in points
+
+
+def test_articulation_points_empty_without_edges():
+    assert DependencyGraph().articulation_points() == set()
+
+
+def test_articulation_points_none_in_a_cycle():
+    # A cycle has no cut vertex: removing any single node keeps the rest
+    # connected. This also exercises the DFS back-edge (already-visited) path.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.SKELETON, SystemKind.CIRCULATORY),
+            _dep(SystemKind.CIRCULATORY, SystemKind.NERVOUS),
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+        ]
+    )
+    assert graph.articulation_points() == set()
