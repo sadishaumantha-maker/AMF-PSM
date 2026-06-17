@@ -61,6 +61,21 @@ def test_render_json_of_stress_test_profile(stressed_market: Market):
     assert set(payload) == {k.value for k in SystemKind}
 
 
+def test_render_stress_test_via_render_text(stressed_market: Market):
+    # render_text dispatches the stress-test profile to the text renderer.
+    profile = ShockSimulator(stressed_market).stress_test()
+    assert render_text(profile) == render_stress_test(profile)
+
+
+def test_render_stress_test_markdown(stressed_market: Market):
+    profile = ShockSimulator(stressed_market).stress_test()
+    md = render_markdown(profile)
+    assert md.startswith("# AMF Systemic Stress Test")
+    assert "| System | Resilience |" in md
+    for kind in SystemKind:
+        assert kind.value in md
+
+
 def test_render_healthy_market_omits_empty_sections(healthy_market: Market):
     report = DiagnosticEngine().diagnose(healthy_market)
     text = render_text(report)
