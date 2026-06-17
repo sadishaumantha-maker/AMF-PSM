@@ -73,6 +73,20 @@ def test_stress_test(capsys: pytest.CaptureFixture[str]):
     assert "stress test" in capsys.readouterr().out.lower()
 
 
+def test_stress_test_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["stress-test", str(SAMPLE), "--format", "json"]) == 0
+    captured = capsys.readouterr()
+    # stdout must remain pure JSON; the disclaimer goes to stderr.
+    payload = json.loads(captured.out)
+    assert payload  # one entry per shocked system
+    assert "illustrative" in captured.err.lower()
+
+
+def test_stress_test_markdown(capsys: pytest.CaptureFixture[str]):
+    assert main(["stress-test", str(SAMPLE), "--format", "md"]) == 0
+    assert capsys.readouterr().out.startswith("# AMF Systemic Stress Test")
+
+
 def test_missing_file_returns_error_code(capsys: pytest.CaptureFixture[str]):
     assert main(["diagnose", "does-not-exist.json"]) == 2
     assert "error:" in capsys.readouterr().err
