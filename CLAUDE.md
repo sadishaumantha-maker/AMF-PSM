@@ -36,17 +36,20 @@ Two things live side by side:
 
 | Module | Responsibility |
 |--------|----------------|
-| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `SimulationTrace`, `ResilienceScore`). |
-| `systems.py` | `AnatomicalSystem` and the seven factory functions. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `MarketParseError`). Has no internal dependencies. |
+| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `SimulationTrace`, `ResilienceScore`). |
+| `systems.py` | `AnatomicalSystem` and the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`). Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`. |
 | `graph.py` | `DependencyGraph`: feedback-loop (simple-cycle) enumeration, articulation points, Katz-style centrality, and the stress-transmission `CouplingMatrix`. Dependency-free. |
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, and the JSON `from_dict`/`to_dict` schema. |
-| `diagnostics.py` | `DiagnosticEngine`: deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
-| `simulation.py` | `ShockSimulator`: damped, capacity-gated shock-propagation dynamics → resilience metrics. |
+| `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
+| `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → resilience metrics. |
 | `report.py` | Pure renderers (text / JSON / Markdown). |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
-Dependencies flow one way: `models` ← `systems`/`graph` ← `market` ←
-`diagnostics`/`simulation` ← `report`/`cli`. Keep it acyclic.
+The public API is re-exported from `amf/__init__.py` (`__all__`); import from
+`amf`, not submodules. Dependencies flow one way: `errors`/`models` ←
+`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `report`/`cli`.
+Keep it acyclic.
 
 ## Market JSON schema (CLI input)
 
@@ -67,6 +70,22 @@ Dependencies flow one way: `models` ← `systems`/`graph` ← `market` ←
 All seven systems must be present. A dependency means `source` relies on
 `target`; `kind` is one of `structural | informational | capital | regulatory`;
 `weight` is in `(0, 1]`. See `examples/sample_market.json`.
+
+## Using the CLI
+
+The `amf` console script prints the `_DISCLAIMER` to stderr and offers five
+subcommands:
+
+```sh
+amf diagnose    examples/sample_market.json [--format text|json|md]
+amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.8] [--format ...]
+amf stress-test examples/sample_market.json [--magnitude 0.8]   # shocks each system in turn
+amf describe                                                    # explains the 7 systems & method
+amf version
+```
+
+`--target` accepts any `SystemKind` value; `--magnitude` is in `(0, 1]`.
+Runnable scripts live in `examples/` (`equity_market.py`, `liquidity_shock.py`).
 
 ## The maths, briefly
 
@@ -93,3 +112,10 @@ pre-commit install                      # optional: run hooks on commit
 Conventions: Python 3.11+, full type annotations, Google-style docstrings on
 public API (enforced by ruff `D`/`ANN`). Tests omit annotations by design. Add
 tests for any new behaviour and keep coverage at or above the gate.
+
+Tests are split into `tests/unit/` (one file per module) and
+`tests/integration/` (`test_cli.py`, `test_end_to_end.py`); shared fixtures live
+in `tests/conftest.py`. Two CI workflows gate every push: `.github/workflows/ci.yml`
+(ruff, mypy, pytest across Python versions) and `.github/workflows/integrity.yml`
+(verifies the `SHA256SUMS` artifacts are untouched). Project metadata lives in
+`CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
