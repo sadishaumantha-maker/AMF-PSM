@@ -25,8 +25,8 @@ from amf.models import Shock, SystemKind
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-from amf.report import render_json, render_markdown, render_text
-from amf.simulation import ShockSimulator
+from amf.report import render_distribution, render_json, render_markdown, render_text
+from amf.simulation import ShockSimulator, SimulationConfig
 
 # Paraphrased, general descriptions of the seven systems and the analytical
 # method. These are summaries written for this tool; the authoritative framework
@@ -99,6 +99,16 @@ def _build_parser() -> argparse.ArgumentParser:
     sim.add_argument("market", type=Path, help="Path to a market JSON file.")
     sim.add_argument("--target", required=True, choices=[k.value for k in SystemKind], help="System to shock.")
     sim.add_argument("--magnitude", type=float, default=0.8, help="Shock magnitude in (0, 1].")
+    sim.add_argument(
+        "--cascade-threshold",
+        type=float,
+        default=None,
+        help="Enable nonlinear cascade dynamics: systems above this stress in (0,1) become impaired.",
+    )
+    sim.add_argument("--cascade-gain", type=float, default=0.5, help="Extra transmission from an impaired system.")
+    sim.add_argument("--recovery", type=float, default=0.0, help="Per-step active recovery (healing) rate in [0,1).")
+    sim.add_argument("--seed", type=int, default=None, help="Seed enabling reproducible transmission jitter.")
+    sim.add_argument("--jitter", type=float, default=0.0, help="Std dev of transmission jitter (needs --seed).")
     _add_format(sim)
     sim.set_defaults(handler=_cmd_simulate)
 
@@ -107,6 +117,16 @@ def _build_parser() -> argparse.ArgumentParser:
     st.add_argument("--magnitude", type=float, default=0.8, help="Shock magnitude in (0, 1].")
     _add_format(st)
     st.set_defaults(handler=_cmd_stress_test)
+
+    ens = sub.add_parser("ensemble", help="Monte Carlo resilience distribution for a shock.")
+    ens.add_argument("market", type=Path, help="Path to a market JSON file.")
+    ens.add_argument("--target", required=True, choices=[k.value for k in SystemKind], help="System to shock.")
+    ens.add_argument("--magnitude", type=float, default=0.8, help="Shock magnitude in (0, 1].")
+    ens.add_argument("--runs", type=int, default=100, help="Number of stochastic replications (>= 1).")
+    ens.add_argument("--seed", type=int, default=0, help="Base seed; replication i uses seed + i.")
+    ens.add_argument("--jitter", type=float, default=0.05, help="Std dev of per-replication transmission jitter.")
+    ens.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
+    ens.set_defaults(handler=_cmd_ensemble)
 
     desc = sub.add_parser("describe", help="Describe the seven systems and the method.")
     desc.set_defaults(handler=_cmd_describe)
@@ -150,9 +170,26 @@ def _cmd_diagnose(args: argparse.Namespace) -> int:
 def _cmd_simulate(args: argparse.Namespace) -> int:
     """Handle the ``simulate`` subcommand."""
     market = _load_market(args.market)
+    config = SimulationConfig(
+        cascade_threshold=args.cascade_threshold,
+        cascade_gain=args.cascade_gain,
+        recovery_rate=args.recovery,
+        seed=args.seed,
+        jitter=args.jitter,
+    )
     shock = Shock(target=SystemKind(args.target), magnitude=args.magnitude)
-    trace = ShockSimulator(market).propagate(shock)
+    trace = ShockSimulator(market, config).propagate(shock)
     print(_format(trace, args.format))
+    _print_disclaimer()
+    return 0
+
+
+def _cmd_ensemble(args: argparse.Namespace) -> int:
+    """Handle the ``ensemble`` subcommand."""
+    market = _load_market(args.market)
+    shock = Shock(target=SystemKind(args.target), magnitude=args.magnitude)
+    dist = ShockSimulator(market).ensemble(shock, runs=args.runs, base_seed=args.seed, jitter=args.jitter)
+    print(render_json(dist) if args.format == "json" else render_distribution(dist))
     _print_disclaimer()
     return 0
 

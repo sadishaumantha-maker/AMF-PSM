@@ -8,12 +8,13 @@ from amf.diagnostics import DiagnosticEngine
 from amf.market import Market
 from amf.models import Shock, SimulationTrace, SystemKind
 from amf.report import (
+    render_distribution,
     render_json,
     render_markdown,
     render_stress_test,
     render_text,
 )
-from amf.simulation import ShockSimulator
+from amf.simulation import ShockSimulator, SimulationConfig
 
 
 def test_render_diagnostic_text_and_markdown(stressed_market: Market):
@@ -91,3 +92,20 @@ def test_render_trace_without_resilience():
     assert "Shock Propagation" in render_text(trace)
     assert "Resilience" not in render_text(trace)
     assert render_markdown(trace).startswith("# AMF Shock Propagation")
+
+
+def test_render_cascade_trace_shows_tipped_systems(stressed_market: Market):
+    config = SimulationConfig(cascade_threshold=0.2, cascade_gain=1.0)
+    trace = ShockSimulator(stressed_market, config).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    assert "Tipped (cascade)" in render_text(trace)
+    assert "Tipped (cascade)" in render_markdown(trace)
+
+
+def test_render_distribution_text_and_json(stressed_market: Market):
+    dist = ShockSimulator(stressed_market).ensemble(Shock(SystemKind.CIRCULATORY, 0.8), runs=20, base_seed=1)
+    text = render_distribution(dist)
+    assert "Resilience Ensemble" in text
+    assert "runs: 20" in text
+    payload = json.loads(render_json(dist))
+    assert payload["runs"] == 20
+    assert set(payload["value"]) == {"mean", "minimum", "maximum", "p10", "p50", "p90"}

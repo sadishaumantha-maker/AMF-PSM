@@ -6,6 +6,13 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- Extended the shock-propagation simulation with four opt-in, backward-compatible
+  capabilities (the default dynamics are unchanged): nonlinear **threshold /
+  cascade** dynamics with a `tipped_systems` signal; a seeded **Monte Carlo
+  ensemble** (`ShockSimulator.ensemble` → `ResilienceDistribution`);
+  **time-scheduled / multi-wave shocks** (`Shock.at_step`); and **recovery /
+  intervention** modeling (`SimulationConfig.recovery_rate`, `Intervention`). New
+  CLI: `amf ensemble` plus `simulate --cascade-threshold/--recovery/--seed/...`.
 - `amf` Python package (`src/amf/`) — a dependency-free, software implementation
   of the AMF analytical method: the seven anatomical systems, a dependency and
   feedback graph, a structural-weakness diagnostic engine, and a non-trading

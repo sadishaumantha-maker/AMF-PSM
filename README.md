@@ -71,10 +71,33 @@ python -m pip install -e ".[dev]"
 amf describe                                            # the 7 systems & method
 amf diagnose examples/sample_market.json                # structural weaknesses
 amf simulate examples/sample_market.json --target circulatory --magnitude 0.8
+amf simulate examples/sample_market.json --target circulatory --cascade-threshold 0.2
 amf stress-test examples/sample_market.json             # shock each system in turn
+amf ensemble examples/sample_market.json --target circulatory --runs 200
 ```
 
-`diagnose` and `simulate` also accept `--format json` or `--format md`.
+`diagnose`, `simulate`, and `stress-test` accept `--format json` or `--format md`;
+`ensemble` accepts `--format json`.
+
+### Extended simulation
+
+The shock-propagation simulation is a damped linear diffusion by default (it always
+converges and never amplifies). Four **opt-in** extensions add richer, still-bounded
+and reproducible behaviour:
+
+- **Threshold / cascade dynamics** (`SimulationConfig(cascade_threshold=…)`): systems
+  that cross the threshold become impaired — they amplify onward stress and absorb
+  less — producing tipping and self-reinforcing cascades, reported as `tipped_systems`.
+- **Monte Carlo ensemble** (`ShockSimulator.ensemble`): summarise resilience across
+  many seeded, jittered replications as a `ResilienceDistribution`.
+- **Time-scheduled / multi-wave shocks** (`Shock(at_step=…)`): inject a second wave at
+  a later timestep.
+- **Recovery / intervention** (`SimulationConfig(recovery_rate=…)`, `Intervention`):
+  active healing and time-gated containment that boosts a system's absorptive capacity.
+
+See `examples/cascade_scenario.py`. In the nonlinear cascade regime the trajectory may
+settle at a persistent non-zero state; convergence is only guaranteed in the default
+linear regime.
 
 ### Use it from Python
 

@@ -38,7 +38,10 @@ _PUBLIC_DATACLASSES = (
     models.WeaknessFinding,
     models.DiagnosticReport,
     models.Shock,
+    models.Intervention,
     models.ResilienceScore,
+    models.MetricStats,
+    models.ResilienceDistribution,
     models.SimulationTrace,
 )
 
