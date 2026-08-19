@@ -37,6 +37,10 @@ this file. Versions correspond to framework releases.
   `DependencyGraph` is now identified by `(source, target, kind)`, so a pair
   coupled by several kinds keeps every one of them; `edge_kinds()` remains
   available and reports them in declaration order.
+- The CLI now raises the typed `MarketParseError` (instead of a bare `AMFError`)
+  when a market JSON file is unreadable or contains invalid JSON, matching the
+  convention that every public-API failure uses a specific `AMFError` subclass.
+  Exit codes and error messages are unchanged.
 
 ### Changed
 - The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching

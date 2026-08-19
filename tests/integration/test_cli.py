@@ -9,8 +9,9 @@ from pathlib import Path
 import pytest
 
 from amf import __version__
-from amf.cli import _METHOD_STEPS, _SYSTEM_SUMMARY, main
+from amf.cli import _METHOD_STEPS, _SYSTEM_SUMMARY, _load_market, main
 from amf.diagnostics import DiagnosticEngine
+from amf.errors import MarketParseError
 from amf.market import Market
 from amf.models import DependencyKind, SystemKind
 
@@ -162,6 +163,19 @@ def test_non_numeric_metric_returns_error_code(tmp_path: Path, capsys: pytest.Ca
     bad.write_text(json.dumps(data), encoding="utf-8")
     assert main(["diagnose", str(bad)]) == 2
     assert "error:" in capsys.readouterr().err
+
+
+def test_missing_file_raises_typed_parse_error():
+    # _load_market wraps I/O failures in MarketParseError, not a bare AMFError.
+    with pytest.raises(MarketParseError):
+        _load_market(Path("does-not-exist.json"))
+
+
+def test_invalid_json_raises_typed_parse_error(tmp_path: Path):
+    bad = tmp_path / "bad.json"
+    bad.write_text("{ not json", encoding="utf-8")
+    with pytest.raises(MarketParseError):
+        _load_market(bad)
 
 
 def test_simulate_bad_magnitude_returns_error_code(capsys: pytest.CaptureFixture[str]):
