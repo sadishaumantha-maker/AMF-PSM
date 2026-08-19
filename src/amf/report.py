@@ -27,17 +27,21 @@ def _to_jsonable(obj: Any) -> Any:  # noqa: ANN401 - intentional dispatch over r
     return obj
 
 
-def render_text(report: DiagnosticReport | SimulationTrace) -> str:
-    """Render a diagnostic report or simulation trace as plain text."""
+def render_text(report: DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]) -> str:
+    """Render a diagnostic report, simulation trace, or stress-test profile as plain text."""
     if isinstance(report, DiagnosticReport):
         return _diagnostic_text(report)
+    if isinstance(report, dict):
+        return render_stress_test(report)
     return _simulation_text(report)
 
 
-def render_markdown(report: DiagnosticReport | SimulationTrace) -> str:
-    """Render a diagnostic report or simulation trace as Markdown."""
+def render_markdown(report: DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]) -> str:
+    """Render a diagnostic report, simulation trace, or stress-test profile as Markdown."""
     if isinstance(report, DiagnosticReport):
         return _diagnostic_markdown(report)
+    if isinstance(report, dict):
+        return _stress_test_markdown(report)
     return _simulation_markdown(report)
 
 
@@ -50,6 +54,25 @@ def render_stress_test(profile: dict[SystemKind, ResilienceScore]) -> str:
             f"  {kind.value:<12} resilience {score.value:.3f} [{score.severity.value:<8}] "
             f"peak {score.peak_stress:.3f}  absorbed {score.absorbed_fraction:.3f}  "
             f"amplification {score.amplification_factor:.3f}"
+        )
+    return "\n".join(lines)
+
+
+def _stress_test_markdown(profile: dict[SystemKind, ResilienceScore]) -> str:
+    """Render a stress-test profile (system -> resilience) as a Markdown table."""
+    lines = [
+        "# AMF Systemic Stress Test",
+        "",
+        "Shock each system in turn (weakest resilience first).",
+        "",
+        "| System | Resilience | Severity | Peak stress | Absorbed | Amplification |",
+        "|--------|------------|----------|-------------|----------|---------------|",
+    ]
+    for kind, score in sorted(profile.items(), key=lambda kv: kv[1].value):
+        lines.append(
+            f"| {kind.value} | {score.value:.3f} | {score.severity.value} "
+            f"| {score.peak_stress:.3f} | {score.absorbed_fraction:.3f} "
+            f"| {score.amplification_factor:.3f} |"
         )
     return "\n".join(lines)
 

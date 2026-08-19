@@ -25,7 +25,7 @@ from amf.models import Shock, SystemKind
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
-from amf.report import render_json, render_markdown, render_stress_test, render_text
+from amf.report import render_json, render_markdown, render_text
 from amf.simulation import ShockSimulator
 
 # Paraphrased, general descriptions of the seven systems and the analytical
@@ -105,6 +105,7 @@ def _build_parser() -> argparse.ArgumentParser:
     st = sub.add_parser("stress-test", help="Shock every system in turn.")
     st.add_argument("market", type=Path, help="Path to a market JSON file.")
     st.add_argument("--magnitude", type=float, default=0.8, help="Shock magnitude in (0, 1].")
+    _add_format(st)
     st.set_defaults(handler=_cmd_stress_test)
 
     desc = sub.add_parser("describe", help="Describe the seven systems and the method.")
@@ -160,7 +161,7 @@ def _cmd_stress_test(args: argparse.Namespace) -> int:
     """Handle the ``stress-test`` subcommand."""
     market = _load_market(args.market)
     profile = ShockSimulator(market).stress_test(magnitude=args.magnitude)
-    print(render_stress_test(profile))
+    print(_format(profile, args.format))
     _print_disclaimer()
     return 0
 

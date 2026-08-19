@@ -18,6 +18,12 @@ this file. Versions correspond to framework releases.
   type-check, tests, and YAML/citation/Markdown-link validation.
 - `CLAUDE.md` contributor and design guide.
 
+### Changed
+- The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching
+  `diagnose` and `simulate`. JSON output for the stress-test profile was already
+  supported by `render_json`; this adds a Markdown table renderer and routes the
+  command through the shared formatter.
+
 ### Notes
 - The software models market *structure and resilience* only; it is not a
   trading system. The checksum-protected framework artifacts are unchanged.
