@@ -6,6 +6,11 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `amf viz` subcommand and `amf.viz` module: dependency-free renderers that draw
+  the dependency graph as Graphviz DOT, Mermaid, or a self-contained SVG
+  (severity-coloured when diagnostics are available) and a shock-propagation
+  stress timeline as SVG. `DependencyGraph.edge_kinds` exposes the aggregated
+  dependency kinds of an edge for these renderers.
 - `amf` Python package (`src/amf/`) — a dependency-free, software implementation
   of the AMF analytical method: the seven anatomical systems, a dependency and
   feedback graph, a structural-weakness diagnostic engine, and a non-trading
