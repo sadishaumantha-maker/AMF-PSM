@@ -3,10 +3,20 @@
 from __future__ import annotations
 
 import json
+import re
 
 from amf.diagnostics import DiagnosticEngine
 from amf.market import Market
-from amf.models import Shock, SimulationTrace, SystemKind
+from amf.models import (
+    DiagnosticReport,
+    MarketBoundary,
+    ResilienceScore,
+    Severity,
+    Shock,
+    SimulationTrace,
+    SystemKind,
+    WeaknessFinding,
+)
 from amf.report import (
     render_json,
     render_markdown,
@@ -14,6 +24,42 @@ from amf.report import (
     render_text,
 )
 from amf.simulation import ShockSimulator
+
+
+def _score(target: SystemKind, value: float) -> ResilienceScore:
+    """A resilience score with hand-chosen, exactly-representable values."""
+    return ResilienceScore(
+        target=target,
+        value=value,
+        severity=Severity.from_score(1.0 - value),
+        peak_stress=0.25,
+        settling_time=4,
+        absorbed_fraction=0.125,
+        amplification_factor=1.5,
+    )
+
+
+def _finding(system: SystemKind, score: float, *, spof: bool = False) -> WeaknessFinding:
+    return WeaknessFinding(
+        system=system,
+        score=score,
+        severity=Severity.from_score(score),
+        fragility=0.25,
+        concentration=0.5,
+        feedback=0.125,
+        is_single_point_of_failure=spof,
+    )
+
+
+def _report(findings: tuple[WeaknessFinding, ...], **kwargs) -> DiagnosticReport:
+    return DiagnosticReport(
+        boundary=MarketBoundary("equities", "US", "intraday"),
+        overall_index=kwargs.get("overall_index", 0.5),
+        overall_severity=Severity.ELEVATED,
+        findings=findings,
+        single_points_of_failure=kwargs.get("spofs", ()),
+        feedback_loops=kwargs.get("loops", ()),
+    )
 
 
 def test_render_diagnostic_text_and_markdown(stressed_market: Market):
@@ -83,6 +129,95 @@ def test_render_healthy_market_omits_empty_sections(healthy_market: Market):
     # absent from the rendered text.
     assert "Single points of failure" not in text
     assert "Feedback loops" not in text
+
+
+def test_stress_test_orders_weakest_resilience_first():
+    # Values are assigned in an order that differs from SystemKind declaration
+    # order, so the test fails if the sort is dropped.
+    profile = {
+        SystemKind.SKELETON: _score(SystemKind.SKELETON, 0.9),
+        SystemKind.CIRCULATORY: _score(SystemKind.CIRCULATORY, 0.1),
+        SystemKind.NERVOUS: _score(SystemKind.NERVOUS, 0.5),
+    }
+    rendered = render_stress_test(profile)
+    order = [line.split()[0] for line in rendered.splitlines() if line.startswith("  ")]
+    assert order == ["circulatory", "nervous", "skeleton"]
+    assert order != [kind.value for kind in profile]
+
+
+def test_stress_test_line_format_is_exact():
+    # Pins column widths, field order, and 3-decimal formatting in one assertion.
+    # severity is from_score(1 - value), so value 0.5 renders as "elevated".
+    profile = {SystemKind.CIRCULATORY: _score(SystemKind.CIRCULATORY, 0.5)}
+    line = render_stress_test(profile).splitlines()[-1]
+    assert line == "  circulatory  resilience 0.500 [elevated] peak 0.250  absorbed 0.125  amplification 1.500"
+
+
+def test_stress_test_markdown_orders_weakest_first():
+    profile = {
+        SystemKind.SKELETON: _score(SystemKind.SKELETON, 0.9),
+        SystemKind.CIRCULATORY: _score(SystemKind.CIRCULATORY, 0.1),
+    }
+    rows = [line for line in render_markdown(profile).splitlines() if line.startswith("| ") and "---" not in line]
+    assert [row.split(" | ")[0].removeprefix("| ") for row in rows[1:]] == ["circulatory", "skeleton"]
+
+
+def test_spof_marker_appears_only_on_spof_rows():
+    report = _report(
+        (
+            _finding(SystemKind.SKELETON, 0.6, spof=True),
+            _finding(SystemKind.NERVOUS, 0.4),
+        ),
+        spofs=(SystemKind.SKELETON,),
+    )
+    text = render_text(report)
+    skeleton_line = next(line for line in text.splitlines() if "skeleton" in line and "score" in line)
+    nervous_line = next(line for line in text.splitlines() if "nervous" in line and "score" in line)
+    assert skeleton_line.endswith("*SPOF*")
+    assert "*SPOF*" not in nervous_line
+    assert text.count("*SPOF*") == 1
+
+
+def test_diagnostic_text_renders_one_row_per_system():
+    findings = tuple(_finding(kind, 0.5) for kind in SystemKind)
+    text = render_text(_report(findings))
+    rows = [line for line in text.splitlines() if "score" in line and "fragility" in line]
+    assert len(rows) == 7
+    assert [row.split()[0] for row in rows] == [kind.value for kind in SystemKind]
+    # Three-decimal score, two-decimal components.
+    assert "score 0.500" in rows[0]
+    assert "fragility 0.25" in rows[0]
+
+
+def test_diagnostic_markdown_row_order_matches_findings_order():
+    findings = (
+        _finding(SystemKind.NERVOUS, 0.9),
+        _finding(SystemKind.SKELETON, 0.5),
+        _finding(SystemKind.IMMUNE, 0.1),
+    )
+    # The separator row starts "|-", so filtering on "| " already drops it.
+    rows = [line for line in render_markdown(_report(findings)).splitlines() if line.startswith("| ")]
+    data_rows = rows[1:]  # skip the header
+    assert [row.split(" | ")[0].removeprefix("| ") for row in data_rows] == ["nervous", "skeleton", "immune"]
+    assert data_rows[0].split(" | ")[6] == "no |"
+
+
+def test_diagnostic_markdown_flags_spof_rows():
+    report = _report((_finding(SystemKind.SKELETON, 0.5, spof=True),))
+    row = next(line for line in render_markdown(report).splitlines() if line.startswith("| skeleton"))
+    assert row.endswith("| yes |")
+
+
+def test_render_json_is_indented_and_key_sorted():
+    payload = render_json(_report((_finding(SystemKind.SKELETON, 0.5),)))
+    top_level = re.findall(r'^  "(\w+)":', payload, re.MULTILINE)
+    assert top_level == sorted(top_level), "render_json promises sort_keys=True"
+    assert top_level  # indent=2 puts top-level keys at exactly two spaces
+
+
+def test_render_json_of_primitive_passes_it_through():
+    # _to_jsonable's fall-through branch for values that are not result objects.
+    assert json.loads(render_json({SystemKind.SKELETON: 0.5})) == {"skeleton": 0.5}
 
 
 def test_render_trace_without_resilience():

@@ -22,12 +22,14 @@ def _minimal_market_data(**system_bodies: dict[str, object]) -> dict[str, object
 
 
 def test_assemble_requires_all_seven_systems(boundary: MarketBoundary):
-    with pytest.raises(IncompleteMarketError):
+    with pytest.raises(IncompleteMarketError, match="missing systems"):
         Market.assemble(boundary, [skeleton()])
 
 
 def test_assemble_rejects_duplicate_kind(boundary: MarketBoundary):
-    with pytest.raises(IncompleteMarketError):
+    # Distinguishes the duplicate path from the missing-systems path, which
+    # raises the same exception type.
+    with pytest.raises(IncompleteMarketError, match="duplicate system"):
         Market.assemble(boundary, [skeleton(), skeleton()])
 
 
@@ -86,28 +88,28 @@ def test_to_dict_dependency_order_is_independent_of_construction_order(market_fa
 
 
 def test_from_dict_missing_key_raises():
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="malformed market description"):
         Market.from_dict({"systems": {}})
 
 
 def test_from_dict_unknown_system_kind_raises(stressed_market: Market):
     data = stressed_market.to_dict()
     data["systems"]["bones"] = data["systems"].pop("skeleton")
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="unknown system kind"):
         Market.from_dict(data)
 
 
 def test_from_dict_unknown_dependency_kind_raises(stressed_market: Market):
     data = stressed_market.to_dict()
     data["dependencies"][0]["kind"] = "telepathic"
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="unknown dependency kind"):
         Market.from_dict(data)
 
 
 def test_from_dict_incomplete_after_parse_raises(stressed_market: Market):
     data = stressed_market.to_dict()
     data["systems"].pop("metabolism")
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="missing systems"):
         Market.from_dict(data)
 
 
@@ -117,14 +119,14 @@ def test_from_dict_out_of_range_metric_raises_market_parse_error(stressed_market
     # MarketParseError, not leak the underlying InvalidSystemError.
     data = stressed_market.to_dict()
     data["systems"]["skeleton"][field] = 1.5
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match=r"must be in \[0, 1\]"):
         Market.from_dict(data)
 
 
 def test_from_dict_empty_system_name_raises_market_parse_error(stressed_market: Market):
     data = stressed_market.to_dict()
     data["systems"]["skeleton"]["name"] = "   "
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="name must not be empty"):
         Market.from_dict(data)
 
 
@@ -134,7 +136,7 @@ def test_from_dict_invalid_dependency_weight_raises_market_parse_error(stressed_
     # resulting InvalidDependencyError as a MarketParseError.
     data = stressed_market.to_dict()
     data["dependencies"][0]["weight"] = weight
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match=r"weight must be in \(0, 1\]"):
         Market.from_dict(data)
 
 
@@ -164,7 +166,7 @@ def test_from_dict_rejects_unknown_system_field():
     # Unknown metrics are rejected by the factories, and from_dict surfaces that
     # as a parse error rather than silently ignoring the field.
     data = _minimal_market_data(skeleton={"integritty": 0.5})
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="unknown field"):
         Market.from_dict(data)
 
 
@@ -189,5 +191,5 @@ def test_from_dict_self_loop_dependency_raises_market_parse_error(stressed_marke
     data = stressed_market.to_dict()
     dep = data["dependencies"][0]
     dep["target"] = dep["source"]
-    with pytest.raises(MarketParseError):
+    with pytest.raises(MarketParseError, match="cannot depend on itself"):
         Market.from_dict(data)

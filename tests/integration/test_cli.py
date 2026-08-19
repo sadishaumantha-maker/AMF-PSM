@@ -9,9 +9,10 @@ from pathlib import Path
 import pytest
 
 from amf import __version__
-from amf.cli import main
+from amf.cli import _METHOD_STEPS, _SYSTEM_SUMMARY, main
+from amf.diagnostics import DiagnosticEngine
 from amf.market import Market
-from amf.models import DependencyKind
+from amf.models import DependencyKind, SystemKind
 
 SAMPLE = Path(__file__).resolve().parents[2] / "examples" / "sample_market.json"
 
@@ -25,7 +26,14 @@ def test_describe_lists_seven_systems(capsys: pytest.CaptureFixture[str]):
     assert main(["describe"]) == 0
     out = capsys.readouterr().out
     assert "seven systems" in out
-    assert out.count("\n") >= 7
+    # Name every system and number every method step, rather than counting lines:
+    # `describe` prints ~15 of them, so a ">= 7" bound tolerated dropping several.
+    for kind in SystemKind:
+        assert kind.value in out, f"describe omits {kind.value}"
+    for summary in _SYSTEM_SUMMARY.values():
+        assert summary in out
+    for index, step in enumerate(_METHOD_STEPS, start=1):
+        assert f"{index}. {step}" in out
 
 
 def test_no_command_prints_help(capsys: pytest.CaptureFixture[str]):
@@ -68,6 +76,50 @@ def test_diagnose_markdown(capsys: pytest.CaptureFixture[str]):
 def test_simulate(capsys: pytest.CaptureFixture[str]):
     assert main(["simulate", str(SAMPLE), "--target", "circulatory", "--magnitude", "0.8"]) == 0
     assert "Shock Propagation" in capsys.readouterr().out
+
+
+def test_simulate_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["simulate", str(SAMPLE), "--target", "circulatory", "--format", "json"]) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["converged"] is True
+    assert payload["shocks"][0]["target"] == "circulatory"
+    assert "illustrative" in captured.err.lower()
+
+
+def test_simulate_markdown(capsys: pytest.CaptureFixture[str]):
+    assert main(["simulate", str(SAMPLE), "--target", "circulatory", "--format", "md"]) == 0
+    assert capsys.readouterr().out.startswith("# AMF Shock Propagation")
+
+
+def test_diagnose_json_matches_the_engine(capsys: pytest.CaptureFixture[str]):
+    # Ties the CLI's output to the engine, rather than only checking it parses.
+    assert main(["diagnose", str(SAMPLE), "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    market = Market.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
+    assert payload == DiagnosticEngine().diagnose(market).to_dict()
+
+
+def test_version_does_not_print_the_disclaimer(capsys: pytest.CaptureFixture[str]):
+    # The negative case for test_disclaimer_printed_to_stderr: `version` is not
+    # an analytical command, so it stays silent on stderr.
+    assert main(["version"]) == 0
+    assert capsys.readouterr().err == ""
+
+
+def test_invalid_target_exits_with_a_usage_error(capsys: pytest.CaptureFixture[str]):
+    # argparse raises SystemExit for a bad choice; main never sees it, so this
+    # path returns no exit code of its own.
+    with pytest.raises(SystemExit) as exc:
+        main(["simulate", str(SAMPLE), "--target", "bogus"])
+    assert exc.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+
+
+def test_missing_required_argument_exits_with_a_usage_error():
+    with pytest.raises(SystemExit) as exc:
+        main(["diagnose"])
+    assert exc.value.code == 2
 
 
 def test_stress_test(capsys: pytest.CaptureFixture[str]):

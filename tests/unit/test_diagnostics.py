@@ -99,7 +99,10 @@ def test_single_points_of_failure_ranked_by_criticality(stressed_market: Market)
 def test_diagnose_report_structure_and_ordering(stressed_market: Market):
     report = DiagnosticEngine().diagnose(stressed_market)
     assert 0.0 <= report.overall_index <= 1.0
-    assert isinstance(report.overall_severity, Severity)
+    assert report.overall_severity is Severity.from_score(report.overall_index)
+    # Seven findings covering seven distinct systems: a count alone would pass
+    # even if the same system were reported seven times.
+    assert {f.system for f in report.findings} == set(SystemKind)
     assert len(report.findings) == 7
     scores = [f.score for f in report.findings]
     assert scores == sorted(scores, reverse=True)
@@ -109,11 +112,20 @@ def test_diagnose_report_structure_and_ordering(stressed_market: Market):
     assert any(f.drivers for f in report.findings)
 
 
-def test_healthy_market_scores_low(healthy_market: Market):
+def test_healthy_market_scores_exactly_zero(healthy_market: Market):
+    # integrity 1.0 and load 0.0 make fragility exactly 0, and with no couplings
+    # concentration and feedback are 0 too -- so the index is 0, not merely small.
+    # A "< 0.1" bound would tolerate a tenfold error in the blend.
     report = DiagnosticEngine().diagnose(healthy_market)
-    assert report.overall_index < 0.1
+    assert report.overall_index == pytest.approx(0.0)
     assert report.overall_severity is Severity.LOW
     assert report.single_points_of_failure == ()
+    assert report.feedback_loops == ()
+    assert len(report.findings) == 7
+    for finding in report.findings:
+        assert finding.score == pytest.approx(0.0)
+        assert finding.severity is Severity.LOW
+        assert finding.drivers == ()
 
 
 def test_zero_weight_config_falls_back(stressed_market: Market):

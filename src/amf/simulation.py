@@ -48,7 +48,10 @@ class SimulationConfig:
         transmission: Global scaler on stress transmitted along couplings.
         convergence_eps: L-infinity change below which the trajectory is settled.
         seed: If set, enables small deterministic Gaussian jitter on transmission.
-        jitter: Standard deviation of the optional transmission jitter.
+        jitter: Standard deviation of the optional transmission jitter. Has no
+            effect unless ``seed`` is also set: a diagnostic tool stays
+            reproducible by default, so jitter is only applied when a seed makes
+            it deterministic.
     """
 
     max_steps: int = 50
