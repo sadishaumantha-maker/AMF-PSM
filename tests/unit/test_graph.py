@@ -6,7 +6,7 @@ import pytest
 
 from amf.errors import InvalidDependencyError
 from amf.graph import DependencyGraph
-from amf.models import Dependency, SystemKind
+from amf.models import Dependency, DependencyKind, SystemKind
 
 
 def _dep(source: SystemKind, target: SystemKind, weight: float = 0.5) -> Dependency:
@@ -33,6 +33,29 @@ def test_edge_weights_aggregate_and_cap():
     )
     # 0.7 + 0.6 capped at 1.0
     assert graph.edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON) == pytest.approx(1.0)
+
+
+def test_edge_kinds_returns_recorded_kind():
+    graph = DependencyGraph([Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.5)])
+    assert graph.edge_kinds(SystemKind.CIRCULATORY, SystemKind.SKELETON) == (DependencyKind.CAPITAL,)
+
+
+def test_edge_kinds_accumulate_across_aggregated_edges():
+    graph = DependencyGraph(
+        [
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.REGULATORY, 0.3),
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.INFORMATIONAL, 0.4),
+        ]
+    )
+    # Both kinds are recorded, in DependencyKind declaration order.
+    assert graph.edge_kinds(SystemKind.NERVOUS, SystemKind.SKELETON) == (
+        DependencyKind.INFORMATIONAL,
+        DependencyKind.REGULATORY,
+    )
+
+
+def test_edge_kinds_empty_for_absent_edge():
+    assert DependencyGraph().edge_kinds(SystemKind.NERVOUS, SystemKind.SKELETON) == ()
 
 
 def test_dependencies_and_dependents():

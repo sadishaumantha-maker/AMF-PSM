@@ -6,7 +6,7 @@ import pytest
 
 from amf.errors import IncompleteMarketError, MarketParseError
 from amf.market import Market
-from amf.models import MarketBoundary, SystemKind
+from amf.models import DependencyKind, MarketBoundary, SystemKind
 from amf.systems import skeleton
 
 
@@ -31,6 +31,22 @@ def test_round_trip_to_and_from_dict(stressed_market: Market):
     data = stressed_market.to_dict()
     restored = Market.from_dict(data)
     assert restored.to_dict() == data
+
+
+def test_to_dict_preserves_dependency_kind(stressed_market: Market):
+    # The fixture couples immune -> skeleton with a regulatory dependency; the
+    # serialised entry must carry that kind, not the structural default.
+    deps = {(d["source"], d["target"]): d["kind"] for d in stressed_market.to_dict()["dependencies"]}
+    assert deps[("immune", "skeleton")] == "regulatory"
+    assert deps[("circulatory", "nervous")] == "informational"
+    assert deps[("musculature", "circulatory")] == "capital"
+    assert deps[("circulatory", "skeleton")] == "structural"
+
+
+def test_round_trip_preserves_dependency_kinds(stressed_market: Market):
+    restored = Market.from_dict(stressed_market.to_dict())
+    assert restored.graph.edge_kinds(SystemKind.IMMUNE, SystemKind.SKELETON) == (DependencyKind.REGULATORY,)
+    assert restored.graph.edge_kinds(SystemKind.ORGANS, SystemKind.CIRCULATORY) == (DependencyKind.CAPITAL,)
 
 
 def test_from_dict_missing_key_raises():
