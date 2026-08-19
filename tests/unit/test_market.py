@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from collections import Counter
+
 import pytest
 
 from amf.errors import IncompleteMarketError, MarketParseError
 from amf.market import Market
-from amf.models import MarketBoundary, SystemKind
+from amf.models import Dependency, DependencyKind, MarketBoundary, SystemKind
 from amf.systems import SYSTEM_FACTORIES, skeleton
 
 
@@ -45,7 +47,42 @@ def test_system_lookup_and_missing(healthy_market: Market):
 def test_round_trip_to_and_from_dict(stressed_market: Market):
     data = stressed_market.to_dict()
     restored = Market.from_dict(data)
+    # Compare the restored graph against the ORIGINAL model, not against another
+    # to_dict() output: a loss shared by both sides of that comparison is
+    # invisible, which is exactly how the dropped dependency kind went unnoticed.
+    assert restored.graph.dependencies() == stressed_market.graph.dependencies()
     assert restored.to_dict() == data
+
+
+def test_to_dict_preserves_dependency_kinds(stressed_market: Market):
+    # The fixture carries informational x2, capital x2, regulatory x1 and
+    # structural x3; every edge used to be exported as "structural".
+    exported = Counter(d["kind"] for d in stressed_market.to_dict()["dependencies"])
+    assert exported == Counter({"structural": 3, "informational": 2, "capital": 2, "regulatory": 1})
+
+
+def test_round_trip_preserves_two_kinds_on_one_pair(market_factory):
+    deps = [
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.3),
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.2),
+    ]
+    market = market_factory(deps)
+    data = market.to_dict()
+    assert len(data["dependencies"]) == 2
+
+    restored = Market.from_dict(data)
+    assert restored.graph.dependencies() == market.graph.dependencies()
+    assert restored.graph.edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON) == pytest.approx(0.5)
+
+
+def test_to_dict_dependency_order_is_independent_of_construction_order(market_factory):
+    deps = [
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.2),
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.4),
+    ]
+    forward = market_factory(deps).to_dict()["dependencies"]
+    backward = market_factory(list(reversed(deps))).to_dict()["dependencies"]
+    assert forward == backward
 
 
 def test_from_dict_missing_key_raises():

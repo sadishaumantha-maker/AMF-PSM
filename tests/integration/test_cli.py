@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections import Counter
 from pathlib import Path
 
 import pytest
@@ -10,6 +11,7 @@ import pytest
 from amf import __version__
 from amf.cli import main
 from amf.market import Market
+from amf.models import DependencyKind
 
 SAMPLE = Path(__file__).resolve().parents[2] / "examples" / "sample_market.json"
 
@@ -115,6 +117,22 @@ def test_simulate_bad_magnitude_returns_error_code(capsys: pytest.CaptureFixture
     assert "magnitude" in capsys.readouterr().err
 
 
-def test_sample_market_is_loadable():
+def test_sample_market_round_trip_preserves_all_dependency_kinds():
     market = Market.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
     market.require_complete()
+    assert len(market.systems) == 7
+
+    expected = Counter(
+        {
+            DependencyKind.STRUCTURAL: 3,
+            DependencyKind.INFORMATIONAL: 2,
+            DependencyKind.CAPITAL: 2,
+            DependencyKind.REGULATORY: 1,
+        }
+    )
+    assert Counter(d.kind for d in market.graph.dependencies()) == expected
+
+    # The shipped sample survives a full export/import cycle unchanged.
+    restored = Market.from_dict(market.to_dict())
+    assert restored.graph.dependencies() == market.graph.dependencies()
+    assert Counter(d.kind for d in restored.graph.dependencies()) == expected

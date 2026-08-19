@@ -42,10 +42,22 @@ this file. Versions correspond to framework releases.
   every metric — including `examples/sample_market.json` — are unaffected.
 - `Market.from_dict` now rejects an unrecognised field inside a system entry
   rather than ignoring it, matching the factories' handling of unknown metrics.
+- `Market.to_dict` now preserves each dependency's `kind`. Every exported edge
+  was previously written as `structural`, silently downgrading informational,
+  capital, and regulatory couplings — five of the eight edges in
+  `examples/sample_market.json`. A dependency in `DependencyGraph` is now
+  identified by `(source, target, kind)`, and the new `DependencyGraph.dependencies()`
+  returns them in canonical order, so an exported market no longer depends on the
+  order its dependencies were added in.
 
 ### Notes
 - The software models market *structure and resilience* only; it is not a
   trading system. The checksum-protected framework artifacts are unchanged.
+- Making dependency `kind` part of edge identity is numerically neutral: every
+  pair-level query aggregates across kinds exactly as the previous single-bucket
+  aggregation did, so no existing market's diagnostic or simulation scores
+  change. Only the JSON `dependencies` list differs — correct `kind`, canonical
+  order. The diagnosis of `examples/sample_market.json` is byte-identical.
 
 ## [1.0] — 2026-03-17
 

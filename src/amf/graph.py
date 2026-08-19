@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from amf.errors import InvalidDependencyError
-from amf.models import Dependency, SystemKind
+from amf.models import Dependency, DependencyKind, SystemKind
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -22,6 +22,7 @@ if TYPE_CHECKING:
 # the coupling matrix deterministically.
 _ORDER: tuple[SystemKind, ...] = tuple(SystemKind)
 _INDEX: dict[SystemKind, int] = {k: i for i, k in enumerate(_ORDER)}
+_KIND_INDEX: dict[DependencyKind, int] = {k: i for i, k in enumerate(DependencyKind)}
 
 
 @dataclass(frozen=True, slots=True)
@@ -46,7 +47,19 @@ class CouplingMatrix:
 
 
 class DependencyGraph:
-    """A directed, weighted graph of dependencies between anatomical systems."""
+    """A directed, weighted graph of dependencies between anatomical systems.
+
+    An edge is identified by ``(source, target, kind)``: the same pair of systems
+    may be coupled by more than one :class:`~amf.models.DependencyKind`, and each
+    such coupling is retained separately so it survives serialisation. Adding the
+    same triple twice aggregates its weight, capped at ``1.0``.
+
+    Every *pair-level* query -- :meth:`edge_weight`, :meth:`dependencies_of`,
+    :meth:`dependents_of`, :meth:`coupling_matrix`, :meth:`centrality`,
+    :meth:`feedback_loops`, and :meth:`articulation_points` -- aggregates across
+    kinds, so structural analysis sees one coupling per pair regardless of how
+    many kinds describe it.
+    """
 
     def __init__(self, dependencies: Iterable[Dependency] = ()) -> None:
         """Build a graph from an iterable of dependencies.
@@ -54,14 +67,18 @@ class DependencyGraph:
         Args:
             dependencies: The directed couplings to add.
         """
-        # Aggregated edge weight per ordered (source, target) pair, capped at 1.0.
-        self._edges: dict[tuple[SystemKind, SystemKind], float] = {}
-        self._kinds: dict[tuple[SystemKind, SystemKind], set[str]] = {}
+        # Weight per (source, target, kind) triple, each capped at 1.0. This is
+        # the source of truth and the only place ``kind`` is retained.
+        self._edges: dict[tuple[SystemKind, SystemKind, DependencyKind], float] = {}
+        # Derived per-pair total, also capped at 1.0. Every structural algorithm
+        # reads this rather than ``_edges``, so a pair coupled by several kinds is
+        # never counted more than once.
+        self._pair_weights: dict[tuple[SystemKind, SystemKind], float] = {}
         for dep in dependencies:
             self.add(dep)
 
     def add(self, dependency: Dependency) -> None:
-        """Add a dependency, aggregating the weight if the edge already exists.
+        """Add a dependency, aggregating the weight if the same edge already exists.
 
         Args:
             dependency: The coupling to add.
@@ -76,26 +93,43 @@ class DependencyGraph:
         if not 0.0 < dependency.weight <= 1.0:
             msg = f"dependency weight must be in (0, 1], got {dependency.weight!r}"
             raise InvalidDependencyError(msg)
-        key = (dependency.source, dependency.target)
+        key = (dependency.source, dependency.target, dependency.kind)
         self._edges[key] = min(1.0, self._edges.get(key, 0.0) + dependency.weight)
-        self._kinds.setdefault(key, set()).add(dependency.kind.value)
+        pair = (dependency.source, dependency.target)
+        self._pair_weights[pair] = min(1.0, sum(w for (s, t, _k), w in self._edges.items() if (s, t) == pair))
+
+    def dependencies(self) -> list[Dependency]:
+        """Return every dependency, one per ``(source, target, kind)``, in canonical order.
+
+        Ordering follows system declaration order then dependency-kind declaration
+        order, so the result -- and anything derived from it, such as
+        :meth:`~amf.market.Market.to_dict` -- does not depend on the order the
+        dependencies were added in.
+        """
+        return [
+            Dependency(source=source, target=target, kind=kind, weight=weight)
+            for (source, target, kind), weight in sorted(
+                self._edges.items(),
+                key=lambda item: (_INDEX[item[0][0]], _INDEX[item[0][1]], _KIND_INDEX[item[0][2]]),
+            )
+        ]
 
     def edge_weight(self, source: SystemKind, target: SystemKind) -> float:
-        """Return the aggregated dependency weight of ``source`` on ``target``."""
-        return self._edges.get((source, target), 0.0)
+        """Return the total dependency weight of ``source`` on ``target``, across all kinds."""
+        return self._pair_weights.get((source, target), 0.0)
 
     def dependencies_of(self, system: SystemKind) -> list[SystemKind]:
-        """Return the systems that ``system`` depends on (its outgoing edges)."""
-        return [t for (s, t) in self._edges if s == system]
+        """Return the systems that ``system`` depends on (its outgoing edges), once each."""
+        return [t for (s, t) in self._pair_weights if s == system]
 
     def dependents_of(self, system: SystemKind) -> list[SystemKind]:
-        """Return the systems that depend on ``system`` (its incoming edges)."""
-        return [s for (s, t) in self._edges if t == system]
+        """Return the systems that depend on ``system`` (its incoming edges), once each."""
+        return [s for (s, t) in self._pair_weights if t == system]
 
     def _out_adjacency(self) -> dict[SystemKind, list[SystemKind]]:
-        """Return source -> sorted list of targets."""
+        """Return source -> sorted list of distinct targets."""
         adj: dict[SystemKind, list[SystemKind]] = {k: [] for k in _ORDER}
-        for s, t in self._edges:
+        for s, t in self._pair_weights:
             adj[s].append(t)
         for targets in adj.values():
             targets.sort(key=lambda k: _INDEX[k])
@@ -132,7 +166,7 @@ class DependencyGraph:
     def coupling_matrix(self) -> CouplingMatrix:
         """Return the 7x7 stress-transmission matrix derived from dependencies."""
         data: dict[SystemKind, dict[SystemKind, float]] = {k: {} for k in _ORDER}
-        for (source, target), weight in self._edges.items():
+        for (source, target), weight in self._pair_weights.items():
             # ``source`` depends on ``target`` => stress flows target -> source.
             data[target][source] = weight
         return CouplingMatrix(order=_ORDER, data=data)
@@ -162,7 +196,7 @@ class DependencyGraph:
         frontier: dict[SystemKind, float] = dict.fromkeys(_ORDER, 1.0)
         for _ in range(iterations):
             nxt: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
-            for (source, target), weight in self._edges.items():
+            for (source, target), weight in self._pair_weights.items():
                 # Influence flows from a dependent ``source`` to its ``target``.
                 nxt[target] += alpha * weight * frontier[source]
             added = sum(nxt.values())
@@ -182,7 +216,7 @@ class DependencyGraph:
         These are structural cut vertices: candidates for single points of failure.
         """
         neighbours: dict[SystemKind, set[SystemKind]] = {k: set() for k in _ORDER}
-        for s, t in self._edges:
+        for s, t in self._pair_weights:
             neighbours[s].add(t)
             neighbours[t].add(s)
 

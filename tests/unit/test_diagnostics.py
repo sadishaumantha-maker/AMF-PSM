@@ -152,3 +152,23 @@ def test_dependency_kinds_do_not_affect_scoring(market_factory):
     a = DiagnosticEngine().diagnose(structural).overall_index
     b = DiagnosticEngine().diagnose(capital).overall_index
     assert a == pytest.approx(b)
+
+
+def test_splitting_one_edge_across_kinds_does_not_affect_scoring(market_factory):
+    # Kind is part of edge identity, but every pair-level query aggregates across
+    # kinds -- so 0.3 structural + 0.2 capital must score exactly as 0.5 structural.
+    # Covers edge_weight, the concentration HHI, coupling and centrality at once.
+    single = market_factory([Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.5)])
+    split = market_factory(
+        [
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.3),
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.2),
+        ]
+    )
+    engine = DiagnosticEngine()
+    one, other = engine.diagnose(single), engine.diagnose(split)
+    assert one.overall_index == pytest.approx(other.overall_index)
+    assert [f.system for f in one.findings] == [f.system for f in other.findings]
+    for a, b in zip(one.findings, other.findings, strict=True):
+        assert a.score == pytest.approx(b.score)
+        assert a.concentration == pytest.approx(b.concentration)

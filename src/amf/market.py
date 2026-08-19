@@ -109,15 +109,7 @@ class Market:
                 }
                 for kind, system in self.systems.items()
             },
-            "dependencies": [
-                Dependency(
-                    source=source,
-                    target=target,
-                    weight=self.graph.edge_weight(source, target),
-                ).to_dict()
-                for source in SystemKind
-                for target in self.graph.dependencies_of(source)
-            ],
+            "dependencies": [dependency.to_dict() for dependency in self.graph.dependencies()],
         }
 
     @classmethod
