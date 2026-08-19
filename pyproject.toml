@@ -28,7 +28,7 @@ amf = "amf.cli:main"
 
 [project.optional-dependencies]
 dev = [
-  "pytest==8.2.2",
+  "pytest==9.0.3",
   "pytest-cov==5.0.0",
   "ruff==0.15.8",
   "mypy==1.11.1",
