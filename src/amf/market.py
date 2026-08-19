@@ -15,10 +15,16 @@ from typing import TYPE_CHECKING, Any
 from amf.errors import AMFError, IncompleteMarketError, MarketParseError
 from amf.graph import DependencyGraph
 from amf.models import Dependency, DependencyKind, MarketBoundary, SystemKind
-from amf.systems import AnatomicalSystem
+from amf.systems import SYSTEM_FACTORIES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from amf.systems import AnatomicalSystem
+
+# Metric fields a system entry may carry; everything else is a name, components,
+# or an error.
+_SYSTEM_METRICS = ("integrity", "redundancy", "criticality", "load")
 
 
 @dataclass(slots=True)
@@ -165,16 +171,24 @@ def _parse_kind(value: str) -> SystemKind:
 
 
 def _parse_system(name: str, body: dict[str, Any]) -> AnatomicalSystem:
-    """Parse one system entry into an :class:`AnatomicalSystem`."""
+    """Parse one system entry into an :class:`AnatomicalSystem`.
+
+    Delegates to the system factories so that a field omitted from the JSON gets
+    exactly the same default as the equivalent factory call.
+
+    Raises:
+        MarketParseError: If the body carries an unrecognised field.
+    """
     kind = _parse_kind(name)
-    return AnatomicalSystem(
-        kind=kind,
-        name=str(body.get("name", kind.value)),
+    unknown = set(body) - {"name", "components", *_SYSTEM_METRICS}
+    if unknown:
+        msg = f"unknown field(s) for system {kind.value!r}: {', '.join(sorted(unknown))}"
+        raise MarketParseError(msg)
+    metrics = {metric: float(body[metric]) for metric in _SYSTEM_METRICS if metric in body}
+    return SYSTEM_FACTORIES[kind](
+        name=str(body["name"]) if "name" in body else None,
         components=[str(c) for c in body.get("components", [])],
-        integrity=float(body.get("integrity", 1.0)),
-        redundancy=float(body.get("redundancy", 0.5)),
-        criticality=float(body.get("criticality", 0.5)),
-        load=float(body.get("load", 0.0)),
+        **metrics,
     )
 
 

@@ -7,7 +7,16 @@ import pytest
 from amf.errors import IncompleteMarketError, MarketParseError
 from amf.market import Market
 from amf.models import MarketBoundary, SystemKind
-from amf.systems import skeleton
+from amf.systems import SYSTEM_FACTORIES, skeleton
+
+
+def _minimal_market_data(**system_bodies: dict[str, object]) -> dict[str, object]:
+    """A schema-valid market whose systems carry only the given fields."""
+    return {
+        "boundary": {"asset_class": "equities", "geography": "US", "timeframe": "intraday"},
+        "systems": {kind.value: system_bodies.get(kind.value, {}) for kind in SystemKind},
+        "dependencies": [],
+    }
 
 
 def test_assemble_requires_all_seven_systems(boundary: MarketBoundary):
@@ -88,6 +97,36 @@ def test_from_dict_invalid_dependency_weight_raises_market_parse_error(stressed_
     # resulting InvalidDependencyError as a MarketParseError.
     data = stressed_market.to_dict()
     data["dependencies"][0]["weight"] = weight
+    with pytest.raises(MarketParseError):
+        Market.from_dict(data)
+
+
+@pytest.mark.parametrize("kind", list(SystemKind))
+def test_from_dict_omitted_metrics_match_the_factory_defaults(kind: SystemKind):
+    # A market built from JSON must not differ from the equivalent factory-built
+    # market just because the JSON left a field out.
+    parsed = Market.from_dict(_minimal_market_data()).system(kind)
+    expected = SYSTEM_FACTORIES[kind]()
+    assert parsed.criticality == pytest.approx(expected.criticality)
+    assert parsed.name == expected.name
+    assert parsed.integrity == pytest.approx(expected.integrity)
+    assert parsed.redundancy == pytest.approx(expected.redundancy)
+    assert parsed.load == pytest.approx(expected.load)
+
+
+def test_from_dict_explicit_values_override_the_factory_defaults():
+    # Negative control: the fix must not be "always use the factory default".
+    data = _minimal_market_data(skeleton={"name": "NYSE", "criticality": 0.1, "integrity": 0.2})
+    parsed = Market.from_dict(data).system(SystemKind.SKELETON)
+    assert parsed.name == "NYSE"
+    assert parsed.criticality == pytest.approx(0.1)
+    assert parsed.integrity == pytest.approx(0.2)
+
+
+def test_from_dict_rejects_unknown_system_field():
+    # Unknown metrics are rejected by the factories, and from_dict surfaces that
+    # as a parse error rather than silently ignoring the field.
+    data = _minimal_market_data(skeleton={"integritty": 0.5})
     with pytest.raises(MarketParseError):
         Market.from_dict(data)
 

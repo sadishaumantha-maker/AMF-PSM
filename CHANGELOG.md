@@ -34,6 +34,14 @@ this file. Versions correspond to framework releases.
 - `AnatomicalSystem` is now immutable (`frozen=True`). Its metrics are validated
   on construction, so freezing keeps the documented `[0, 1]` ranges true for the
   object's lifetime; assignment now raises `FrozenInstanceError`.
+- A market JSON that omits a system's `criticality` or `name` now inherits the
+  AMF-aligned per-system default (criticality 0.60–0.90, e.g. `skeleton` 0.90)
+  instead of a flat 0.5 and the bare kind string. Parsing is routed through the
+  new `SYSTEM_FACTORIES` registry, so a market built from JSON and the equivalent
+  market built from the factories now diagnose identically. Markets that state
+  every metric — including `examples/sample_market.json` — are unaffected.
+- `Market.from_dict` now rejects an unrecognised field inside a system entry
+  rather than ignoring it, matching the factories' handling of unknown metrics.
 
 ### Notes
 - The software models market *structure and resilience* only; it is not a

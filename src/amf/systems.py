@@ -13,9 +13,14 @@ market anatomy quickly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from amf.errors import InvalidSystemError
 from amf.models import SystemKind
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
 # Default load-bearing importance (criticality) per system, reflecting how much
 # the rest of the market structurally depends on it. Infrastructure and capital
@@ -177,3 +182,19 @@ def immune(name: str | None = None, components: list[str] | None = None, **metri
 def metabolism(name: str | None = None, components: list[str] | None = None, **metrics: float) -> AnatomicalSystem:
     """Build the metabolism (value creation & destruction) system."""
     return _make(SystemKind.METABOLISM, name, components, **metrics)
+
+
+# The factories keyed by kind, so callers that build systems from data (such as
+# ``Market.from_dict``) get exactly the same defaults as callers using the
+# factories directly.
+SYSTEM_FACTORIES: Mapping[SystemKind, Callable[..., AnatomicalSystem]] = MappingProxyType(
+    {
+        SystemKind.SKELETON: skeleton,
+        SystemKind.CIRCULATORY: circulatory,
+        SystemKind.NERVOUS: nervous,
+        SystemKind.MUSCULATURE: musculature,
+        SystemKind.ORGANS: organs,
+        SystemKind.IMMUNE: immune,
+        SystemKind.METABOLISM: metabolism,
+    }
+)

@@ -35,6 +35,24 @@ def test_full_workflow(stressed_market: Market):
 
 
 @pytest.mark.integration
+def test_construction_path_does_not_change_the_score(boundary, market_factory):
+    # The same market described two ways -- built from the factories, and parsed
+    # from JSON that omits every optional metric -- must diagnose identically.
+    from_factories = market_factory()
+    from_json = Market.from_dict(
+        {
+            "boundary": boundary.to_dict(),
+            "systems": {kind.value: {} for kind in SystemKind},
+            "dependencies": [],
+        }
+    )
+    engine = DiagnosticEngine()
+    assert engine.diagnose(from_json).overall_index == pytest.approx(engine.diagnose(from_factories).overall_index)
+    for kind in SystemKind:
+        assert from_json.system(kind).criticality == pytest.approx(from_factories.system(kind).criticality)
+
+
+@pytest.mark.integration
 def test_round_trip_then_analyse(stressed_market: Market):
     restored = Market.from_dict(stressed_market.to_dict())
     original_index = DiagnosticEngine().diagnose(stressed_market).overall_index
