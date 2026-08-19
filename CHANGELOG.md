@@ -18,6 +18,12 @@ this file. Versions correspond to framework releases.
   type-check, tests, and YAML/citation/Markdown-link validation.
 - `CLAUDE.md` contributor and design guide.
 
+### Fixed
+- `Market.to_dict()` now preserves each dependency's `kind` instead of
+  serialising every coupling as `structural`, so a market survives a
+  `to_dict`/`from_dict` round trip intact. `DependencyGraph` gained a public
+  `edge_kinds()` accessor exposing the kinds it already recorded per edge.
+
 ### Changed
 - The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching
   `diagnose` and `simulate`. JSON output for the stress-test profile was already

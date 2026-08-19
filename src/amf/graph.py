@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from amf.errors import InvalidDependencyError
-from amf.models import Dependency, SystemKind
+from amf.models import Dependency, DependencyKind, SystemKind
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -56,7 +56,7 @@ class DependencyGraph:
         """
         # Aggregated edge weight per ordered (source, target) pair, capped at 1.0.
         self._edges: dict[tuple[SystemKind, SystemKind], float] = {}
-        self._kinds: dict[tuple[SystemKind, SystemKind], set[str]] = {}
+        self._kinds: dict[tuple[SystemKind, SystemKind], set[DependencyKind]] = {}
         for dep in dependencies:
             self.add(dep)
 
@@ -78,11 +78,24 @@ class DependencyGraph:
             raise InvalidDependencyError(msg)
         key = (dependency.source, dependency.target)
         self._edges[key] = min(1.0, self._edges.get(key, 0.0) + dependency.weight)
-        self._kinds.setdefault(key, set()).add(dependency.kind.value)
+        self._kinds.setdefault(key, set()).add(dependency.kind)
 
     def edge_weight(self, source: SystemKind, target: SystemKind) -> float:
         """Return the aggregated dependency weight of ``source`` on ``target``."""
         return self._edges.get((source, target), 0.0)
+
+    def edge_kinds(self, source: SystemKind, target: SystemKind) -> tuple[DependencyKind, ...]:
+        """Return the coupling kinds recorded for the ``source`` -> ``target`` edge.
+
+        Kinds accumulate as edges aggregate: adding the same edge twice with
+        different kinds records both.
+
+        Returns:
+            The recorded kinds in :class:`~amf.models.DependencyKind` declaration
+            order, or an empty tuple if the edge does not exist.
+        """
+        kinds = self._kinds.get((source, target), set())
+        return tuple(kind for kind in DependencyKind if kind in kinds)
 
     def dependencies_of(self, system: SystemKind) -> list[SystemKind]:
         """Return the systems that ``system`` depends on (its outgoing edges)."""

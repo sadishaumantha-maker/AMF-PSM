@@ -104,9 +104,13 @@ class Market:
                 for kind, system in self.systems.items()
             },
             "dependencies": [
+                # The schema carries one kind per entry, so an edge aggregated
+                # from dependencies of several kinds serialises under the first
+                # recorded kind (in DependencyKind declaration order).
                 Dependency(
                     source=source,
                     target=target,
+                    kind=self.graph.edge_kinds(source, target)[0],
                     weight=self.graph.edge_weight(source, target),
                 ).to_dict()
                 for source in SystemKind
