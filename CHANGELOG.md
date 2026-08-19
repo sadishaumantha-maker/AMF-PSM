@@ -23,6 +23,10 @@ this file. Versions correspond to framework releases.
   serialising every coupling as `structural`, so a market survives a
   `to_dict`/`from_dict` round trip intact. `DependencyGraph` gained a public
   `edge_kinds()` accessor exposing the kinds it already recorded per edge.
+- The CLI now raises the typed `MarketParseError` (instead of a bare `AMFError`)
+  when a market JSON file is unreadable or contains invalid JSON, matching the
+  convention that every public-API failure uses a specific `AMFError` subclass.
+  Exit codes and error messages are unchanged.
 
 ### Changed
 - The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching
