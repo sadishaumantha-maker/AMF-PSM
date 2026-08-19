@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 from amf import __version__
 from amf.diagnostics import DiagnosticEngine
-from amf.errors import AMFError
+from amf.errors import AMFError, MarketParseError
 from amf.market import Market
 from amf.models import Shock, SystemKind
 
@@ -132,9 +132,9 @@ def _load_market(path: Path) -> Market:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise AMFError(f"cannot read {path}: {exc}") from exc
+        raise MarketParseError(f"cannot read {path}: {exc}") from exc
     except json.JSONDecodeError as exc:
-        raise AMFError(f"invalid JSON in {path}: {exc}") from exc
+        raise MarketParseError(f"invalid JSON in {path}: {exc}") from exc
     return Market.from_dict(data)
 
 
