@@ -13,6 +13,16 @@ def _dep(source: SystemKind, target: SystemKind, weight: float = 0.5) -> Depende
     return Dependency(source=source, target=target, weight=weight)
 
 
+def _two_kinds(structural: float = 0.3, capital: float = 0.2) -> DependencyGraph:
+    """One pair coupled by two kinds -- the shape that can double-count."""
+    return DependencyGraph(
+        [
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, structural),
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, capital),
+        ]
+    )
+
+
 def test_self_loop_rejected():
     with pytest.raises(InvalidDependencyError):
         DependencyGraph([_dep(SystemKind.SKELETON, SystemKind.SKELETON)])
@@ -146,10 +156,112 @@ def test_feedback_loops_finds_multiple_disjoint_cycles():
             _dep(SystemKind.MUSCULATURE, SystemKind.NERVOUS),
         ]
     )
-    loops = set(graph.feedback_loops())
-    assert (SystemKind.SKELETON, SystemKind.CIRCULATORY) in loops
-    assert (SystemKind.NERVOUS, SystemKind.MUSCULATURE) in loops
+    # Length is checked on the raw list, not a set: a set would silently collapse
+    # a cycle that was enumerated more than once.
+    loops = graph.feedback_loops()
     assert len(loops) == 2
+    assert (SystemKind.SKELETON, SystemKind.CIRCULATORY) in set(loops)
+    assert (SystemKind.NERVOUS, SystemKind.MUSCULATURE) in set(loops)
+
+
+def test_dependencies_of_is_in_canonical_order():
+    # Insertion order must not leak into the result: diagnostics sums over this
+    # list, and float addition is not associative.
+    deps = [
+        _dep(SystemKind.NERVOUS, SystemKind.ORGANS),
+        _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+        _dep(SystemKind.NERVOUS, SystemKind.CIRCULATORY),
+    ]
+    expected = [SystemKind.SKELETON, SystemKind.CIRCULATORY, SystemKind.ORGANS]
+    assert DependencyGraph(deps).dependencies_of(SystemKind.NERVOUS) == expected
+    assert DependencyGraph(reversed(deps)).dependencies_of(SystemKind.NERVOUS) == expected
+
+
+def test_dependents_of_is_in_canonical_order():
+    deps = [
+        _dep(SystemKind.ORGANS, SystemKind.SKELETON),
+        _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+    ]
+    expected = [SystemKind.CIRCULATORY, SystemKind.ORGANS]
+    assert DependencyGraph(deps).dependents_of(SystemKind.SKELETON) == expected
+    assert DependencyGraph(reversed(deps)).dependents_of(SystemKind.SKELETON) == expected
+
+
+def test_edge_weights_aggregate_below_the_cap():
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON, 0.2),
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON, 0.3),
+        ]
+    )
+    assert graph.edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON) == pytest.approx(0.5)
+
+
+def test_edge_weight_sums_across_kinds():
+    assert _two_kinds(0.3, 0.2).edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON) == pytest.approx(0.5)
+
+
+def test_edge_weight_caps_across_kinds():
+    assert _two_kinds(0.8, 0.6).edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON) == pytest.approx(1.0)
+
+
+def test_dependencies_of_deduplicates_across_kinds():
+    # List equality, not set: a set would hide the duplicate this guards against.
+    assert _two_kinds().dependencies_of(SystemKind.NERVOUS) == [SystemKind.SKELETON]
+
+
+def test_dependents_of_deduplicates_across_kinds():
+    assert _two_kinds().dependents_of(SystemKind.SKELETON) == [SystemKind.NERVOUS]
+
+
+def test_coupling_matrix_sums_kinds_for_one_pair():
+    # Last-write-wins would give 0.3 or 0.2; only summing gives 0.5.
+    matrix = _two_kinds(0.3, 0.2).coupling_matrix()
+    assert matrix.get(SystemKind.SKELETON, SystemKind.NERVOUS) == pytest.approx(0.5)
+
+
+def test_centrality_matches_the_single_equivalent_edge():
+    split = _two_kinds(0.3, 0.2).centrality()
+    single = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON, 0.5)]).centrality()
+    for kind in SystemKind:
+        assert split[kind] == pytest.approx(single[kind])
+
+
+def test_feedback_loops_counted_once_with_multi_kind_edges():
+    graph = DependencyGraph(
+        [
+            Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, DependencyKind.STRUCTURAL, 0.5),
+            Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.5),
+            Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.4),
+        ]
+    )
+    assert len(graph.feedback_loops()) == 1
+
+
+def test_dependencies_returns_each_kind_separately():
+    edges = _two_kinds(0.3, 0.2).dependencies()
+    assert [(d.source, d.target, d.kind, d.weight) for d in edges] == [
+        (SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.3),
+        (SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.2),
+    ]
+
+
+def test_dependencies_order_is_independent_of_insertion_order():
+    forward = [
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.2),
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.4),
+    ]
+    assert DependencyGraph(forward).dependencies() == DependencyGraph(reversed(forward)).dependencies()
+
+
+def test_dependencies_aggregates_repeats_of_the_same_triple():
+    graph = DependencyGraph(
+        [
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.2),
+            Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.CAPITAL, 0.3),
+        ]
+    )
+    assert [(d.kind, d.weight) for d in graph.dependencies()] == [(DependencyKind.CAPITAL, pytest.approx(0.5))]
 
 
 def test_articulation_points_identify_cut_vertices():

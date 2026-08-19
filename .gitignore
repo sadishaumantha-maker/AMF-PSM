@@ -28,6 +28,7 @@ venv/
 
 # Test, type-check, lint & coverage caches
 .pytest_cache/
+.hypothesis/
 .mypy_cache/
 .ruff_cache/
 .coverage

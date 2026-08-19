@@ -15,10 +15,16 @@ from typing import TYPE_CHECKING, Any
 from amf.errors import AMFError, IncompleteMarketError, MarketParseError
 from amf.graph import DependencyGraph
 from amf.models import Dependency, DependencyKind, MarketBoundary, SystemKind
-from amf.systems import AnatomicalSystem
+from amf.systems import SYSTEM_FACTORIES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from amf.systems import AnatomicalSystem
+
+# Metric fields a system entry may carry; everything else is a name, components,
+# or an error.
+_SYSTEM_METRICS = ("integrity", "redundancy", "criticality", "load")
 
 
 @dataclass(slots=True)
@@ -103,19 +109,7 @@ class Market:
                 }
                 for kind, system in self.systems.items()
             },
-            "dependencies": [
-                # The schema carries one kind per entry, so an edge aggregated
-                # from dependencies of several kinds serialises under the first
-                # recorded kind (in DependencyKind declaration order).
-                Dependency(
-                    source=source,
-                    target=target,
-                    kind=self.graph.edge_kinds(source, target)[0],
-                    weight=self.graph.edge_weight(source, target),
-                ).to_dict()
-                for source in SystemKind
-                for target in self.graph.dependencies_of(source)
-            ],
+            "dependencies": [dependency.to_dict() for dependency in self.graph.dependencies()],
         }
 
     @classmethod
@@ -138,7 +132,9 @@ class Market:
             return cls.assemble(boundary, systems, dependencies)
         except MarketParseError:
             raise
-        except (KeyError, TypeError, AttributeError) as exc:
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            # ValueError covers non-numeric metrics and weights (``float("abc")``),
+            # which would otherwise escape the documented MarketParseError contract.
             msg = f"malformed market description: {exc}"
             raise MarketParseError(msg) from exc
         except AMFError as exc:
@@ -167,16 +163,24 @@ def _parse_kind(value: str) -> SystemKind:
 
 
 def _parse_system(name: str, body: dict[str, Any]) -> AnatomicalSystem:
-    """Parse one system entry into an :class:`AnatomicalSystem`."""
+    """Parse one system entry into an :class:`AnatomicalSystem`.
+
+    Delegates to the system factories so that a field omitted from the JSON gets
+    exactly the same default as the equivalent factory call.
+
+    Raises:
+        MarketParseError: If the body carries an unrecognised field.
+    """
     kind = _parse_kind(name)
-    return AnatomicalSystem(
-        kind=kind,
-        name=str(body.get("name", kind.value)),
+    unknown = set(body) - {"name", "components", *_SYSTEM_METRICS}
+    if unknown:
+        msg = f"unknown field(s) for system {kind.value!r}: {', '.join(sorted(unknown))}"
+        raise MarketParseError(msg)
+    metrics = {metric: float(body[metric]) for metric in _SYSTEM_METRICS if metric in body}
+    return SYSTEM_FACTORIES[kind](
+        name=str(body["name"]) if "name" in body else None,
         components=[str(c) for c in body.get("components", [])],
-        integrity=float(body.get("integrity", 1.0)),
-        redundancy=float(body.get("redundancy", 0.5)),
-        criticality=float(body.get("criticality", 0.5)),
-        load=float(body.get("load", 0.0)),
+        **metrics,
     )
 
 
