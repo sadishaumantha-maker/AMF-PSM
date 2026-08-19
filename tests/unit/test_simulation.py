@@ -6,6 +6,7 @@ import random
 
 import pytest
 
+from amf.errors import InvalidShockError
 from amf.market import Market
 from amf.models import Shock, SystemKind
 from amf.simulation import ShockSimulator, SimulationConfig
@@ -14,12 +15,12 @@ from amf.simulation import ShockSimulator, SimulationConfig
 def test_invalid_shock_magnitude_raises(healthy_market: Market):
     sim = ShockSimulator(healthy_market)
     for magnitude in (0.0, -0.2, 1.5):
-        with pytest.raises(Exception, match="magnitude"):
+        with pytest.raises(InvalidShockError, match="magnitude"):
             sim.propagate(Shock(SystemKind.SKELETON, magnitude))
 
 
 def test_empty_shock_list_raises(healthy_market: Market):
-    with pytest.raises(Exception, match="at least one shock"):
+    with pytest.raises(InvalidShockError, match="at least one shock"):
         ShockSimulator(healthy_market).propagate([])
 
 

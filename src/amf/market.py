@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
-from amf.errors import IncompleteMarketError, MarketParseError
+from amf.errors import AMFError, IncompleteMarketError, MarketParseError
 from amf.graph import DependencyGraph
 from amf.models import Dependency, DependencyKind, MarketBoundary, SystemKind
 from amf.systems import AnatomicalSystem
@@ -131,12 +131,15 @@ class Market:
             boundary = _parse_boundary(data["boundary"])
             systems = [_parse_system(name, body) for name, body in data["systems"].items()]
             dependencies = [_parse_dependency(item) for item in data.get("dependencies", [])]
+            return cls.assemble(boundary, systems, dependencies)
+        except MarketParseError:
+            raise
         except (KeyError, TypeError, AttributeError) as exc:
             msg = f"malformed market description: {exc}"
             raise MarketParseError(msg) from exc
-        try:
-            return cls.assemble(boundary, systems, dependencies)
-        except IncompleteMarketError as exc:
+        except AMFError as exc:
+            # Domain validation failed: an out-of-range metric, a bad dependency, or
+            # a missing/duplicated system. Surface it as a parse error per the schema.
             raise MarketParseError(str(exc)) from exc
 
 
