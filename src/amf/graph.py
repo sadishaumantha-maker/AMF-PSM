@@ -22,7 +22,8 @@ if TYPE_CHECKING:
 # the coupling matrix deterministically.
 _ORDER: tuple[SystemKind, ...] = tuple(SystemKind)
 _INDEX: dict[SystemKind, int] = {k: i for i, k in enumerate(_ORDER)}
-_KIND_INDEX: dict[DependencyKind, int] = {k: i for i, k in enumerate(DependencyKind)}
+_KIND_ORDER: tuple[DependencyKind, ...] = tuple(DependencyKind)
+_KIND_INDEX: dict[DependencyKind, int] = {k: i for i, k in enumerate(_KIND_ORDER)}
 
 
 @dataclass(frozen=True, slots=True)
