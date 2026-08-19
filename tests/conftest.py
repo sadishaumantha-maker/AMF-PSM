@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterable
+
 import pytest
 
 from amf.market import Market
 from amf.models import Dependency, DependencyKind, MarketBoundary, SystemKind
 from amf.systems import (
+    AnatomicalSystem,
     circulatory,
     immune,
     metabolism,
@@ -16,6 +19,36 @@ from amf.systems import (
     skeleton,
 )
 
+# The seven factories keyed by their public name, so a test can override just the
+# systems it cares about and take the defaults for the rest.
+FACTORIES: dict[str, Callable[..., AnatomicalSystem]] = {
+    "skeleton": skeleton,
+    "circulatory": circulatory,
+    "nervous": nervous,
+    "musculature": musculature,
+    "organs": organs,
+    "immune": immune,
+    "metabolism": metabolism,
+}
+
+
+def build_market(
+    boundary: MarketBoundary,
+    dependencies: Iterable[Dependency] = (),
+    **system_overrides: dict[str, float],
+) -> Market:
+    """Assemble a market from the seven factories, overriding the named systems' metrics.
+
+    Importable as a plain function as well as via the ``market_factory`` fixture,
+    because hypothesis rejects function-scoped fixtures inside ``@given``.
+    """
+    unknown = set(system_overrides) - set(FACTORIES)
+    if unknown:
+        msg = f"unknown system name(s): {', '.join(sorted(unknown))}"
+        raise ValueError(msg)
+    systems = [factory(**system_overrides.get(name, {})) for name, factory in FACTORIES.items()]
+    return Market.assemble(boundary, systems, dependencies)
+
 
 @pytest.fixture
 def boundary() -> MarketBoundary:
@@ -24,8 +57,24 @@ def boundary() -> MarketBoundary:
 
 
 @pytest.fixture
+def market_factory(boundary: MarketBoundary) -> Callable[..., Market]:
+    """Return a builder for markets made of the seven default systems.
+
+    Usage: ``market_factory(deps, skeleton={"integrity": 0.5})``.
+    """
+
+    def build(dependencies: Iterable[Dependency] = (), **system_overrides: dict[str, float]) -> Market:
+        return build_market(boundary, dependencies, **system_overrides)
+
+    return build
+
+
+@pytest.fixture
 def healthy_market(boundary: MarketBoundary) -> Market:
-    """A complete market with strong, redundant systems and no couplings."""
+    """A complete market with strong, redundant systems and no couplings.
+
+    Must stay function-scoped: tests are free to mutate the returned market.
+    """
     systems = [
         skeleton(integrity=1.0, redundancy=0.8),
         circulatory(integrity=1.0, redundancy=0.8),

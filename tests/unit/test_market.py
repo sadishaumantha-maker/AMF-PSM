@@ -22,9 +22,15 @@ def test_assemble_rejects_duplicate_kind(boundary: MarketBoundary):
 
 def test_system_lookup_and_missing(healthy_market: Market):
     assert healthy_market.system(SystemKind.SKELETON).kind is SystemKind.SKELETON
-    del healthy_market.systems[SystemKind.SKELETON]
+    # Build a separate market to remove the system from, so the shared fixture is
+    # never mutated (which would corrupt it if it were ever scoped wider).
+    without_skeleton = Market(
+        boundary=healthy_market.boundary,
+        systems={k: v for k, v in healthy_market.systems.items() if k is not SystemKind.SKELETON},
+        graph=healthy_market.graph,
+    )
     with pytest.raises(IncompleteMarketError):
-        healthy_market.system(SystemKind.SKELETON)
+        without_skeleton.system(SystemKind.SKELETON)
 
 
 def test_round_trip_to_and_from_dict(stressed_market: Market):
