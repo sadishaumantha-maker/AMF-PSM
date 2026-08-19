@@ -92,6 +92,23 @@ def test_from_dict_invalid_dependency_weight_raises_market_parse_error(stressed_
         Market.from_dict(data)
 
 
+@pytest.mark.parametrize("field", ["integrity", "redundancy", "criticality", "load"])
+def test_from_dict_non_numeric_metric_raises_market_parse_error(stressed_market: Market, field: str):
+    # float("abc") raises ValueError, which was not in from_dict's caught tuple and
+    # escaped the documented MarketParseError contract.
+    data = stressed_market.to_dict()
+    data["systems"]["skeleton"][field] = "abc"
+    with pytest.raises(MarketParseError, match="malformed market description"):
+        Market.from_dict(data)
+
+
+def test_from_dict_non_numeric_dependency_weight_raises_market_parse_error(stressed_market: Market):
+    data = stressed_market.to_dict()
+    data["dependencies"][0]["weight"] = "heavy"
+    with pytest.raises(MarketParseError, match="malformed market description"):
+        Market.from_dict(data)
+
+
 def test_from_dict_self_loop_dependency_raises_market_parse_error(stressed_market: Market):
     data = stressed_market.to_dict()
     dep = data["dependencies"][0]

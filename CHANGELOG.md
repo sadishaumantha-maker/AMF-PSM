@@ -23,6 +23,17 @@ this file. Versions correspond to framework releases.
   `diagnose` and `simulate`. JSON output for the stress-test profile was already
   supported by `render_json`; this adds a Markdown table renderer and routes the
   command through the shared formatter.
+- `Market.from_dict` now reports a non-numeric metric or dependency weight as a
+  `MarketParseError` instead of letting a raw `ValueError` escape. The CLI
+  consequently exits with code 2 and an `error:` message where it previously
+  aborted with an unhandled traceback.
+- The system factories (`skeleton`, `circulatory`, ...) now raise
+  `InvalidSystemError` for an unrecognised metric keyword. Previously a
+  misspelling such as `skeleton(integritty=0.1)` was silently discarded and the
+  default used instead.
+- `AnatomicalSystem` is now immutable (`frozen=True`). Its metrics are validated
+  on construction, so freezing keeps the documented `[0, 1]` ranges true for the
+  object's lifetime; assignment now raises `FrozenInstanceError`.
 
 ### Notes
 - The software models market *structure and resilience* only; it is not a

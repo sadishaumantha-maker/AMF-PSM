@@ -99,6 +99,17 @@ def test_invalid_json_returns_error_code(tmp_path: Path, capsys: pytest.CaptureF
     assert "invalid JSON" in capsys.readouterr().err
 
 
+def test_non_numeric_metric_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # Schema-shaped but with a non-numeric metric: this must be a handled error with
+    # exit code 2, not an unhandled ValueError traceback out of the CLI.
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["systems"]["skeleton"]["integrity"] = "abc"
+    bad = tmp_path / "bad_metric.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["diagnose", str(bad)]) == 2
+    assert "error:" in capsys.readouterr().err
+
+
 def test_simulate_bad_magnitude_returns_error_code(capsys: pytest.CaptureFixture[str]):
     assert main(["simulate", str(SAMPLE), "--target", "skeleton", "--magnitude", "5"]) == 2
     assert "magnitude" in capsys.readouterr().err

@@ -134,7 +134,9 @@ class Market:
             return cls.assemble(boundary, systems, dependencies)
         except MarketParseError:
             raise
-        except (KeyError, TypeError, AttributeError) as exc:
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            # ValueError covers non-numeric metrics and weights (``float("abc")``),
+            # which would otherwise escape the documented MarketParseError contract.
             msg = f"malformed market description: {exc}"
             raise MarketParseError(msg) from exc
         except AMFError as exc:
