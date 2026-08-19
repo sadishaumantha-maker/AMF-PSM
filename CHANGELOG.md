@@ -12,6 +12,11 @@ this file. Versions correspond to framework releases.
   shock-propagation simulation engine, with a command-line interface.
 - Runnable examples (`examples/`) and a test suite (`tests/`) with a 90% coverage
   gate.
+- Property-based tests (`tests/unit/test_properties.py`, using a new `hypothesis`
+  dev dependency) covering the invariants the docstrings promise: stress stays in
+  `[0, 1]` at every step, diagnostic scores stay in `[0, 1]` for any blend of
+  config weights, `to_dict`/`from_dict` is a fixed point, and feedback-loop
+  enumeration matches a brute-force search of every simple cycle.
 - Tooling and quality gates: `pyproject.toml` (ruff, mypy strict, pytest,
   coverage), `.pre-commit-config.yaml` (including a guard that blocks edits to
   checksum-protected artifacts), and a `CI` GitHub Actions workflow running lint,
@@ -49,6 +54,20 @@ this file. Versions correspond to framework releases.
   identified by `(source, target, kind)`, and the new `DependencyGraph.dependencies()`
   returns them in canonical order, so an exported market no longer depends on the
   order its dependencies were added in.
+- `DependencyGraph.dependencies_of` and `dependents_of` now return their results
+  in system declaration order. The diagnostic HHI sums over that list and
+  floating-point addition is not associative, so the previous insertion-ordered
+  traversal made a market's diagnosis differ in the last bits depending on the
+  order its dependencies happened to be added — 48 such mismatches across 3000
+  random markets, now zero. `examples/sample_market.json` is unaffected: its
+  dependencies were already in canonical order.
+- Corrected the claim that the shock dynamics are a contraction "guaranteed to
+  converge", in the `simulation` docstrings and `CLAUDE.md`. With enough incoming
+  weight and little absorptive capacity the per-step gain exceeds one
+  (0.85 · (0.5 + 1.0 · 0.8) = 1.105) and stress grows until it saturates at the
+  `1.0` clip; and `converged` reports settling *within `max_steps`*, so a stable
+  but slowly-settling market can exhaust the budget and take the full settling
+  penalty. Behaviour is unchanged — only the documentation and the tests pinning it.
 
 ### Notes
 - The software models market *structure and resilience* only; it is not a

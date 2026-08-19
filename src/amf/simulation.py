@@ -4,7 +4,14 @@ The :class:`ShockSimulator` models how a *structural* stress injected into one
 system cascades through the dependency graph and whether the market's anatomy
 absorbs or amplifies it. The single state variable is **stress** -- a
 dimensionless load in ``[0, 1]`` -- not a price, return, or order. The dynamics
-are a damped, capacity-gated linear diffusion that is guaranteed to converge.
+are a damped, capacity-gated linear diffusion.
+
+Damping and absorptive capacity pull the trajectory down, but they do not make
+the step map a contraction for every market: where a system has enough incoming
+weight and little capacity to absorb it, the per-step gain exceeds one and stress
+grows until it saturates at the ``1.0`` clip. Settling is therefore reported
+against the step budget rather than promised in advance -- see
+:attr:`SimulationConfig.max_steps` and :attr:`~amf.models.SimulationTrace.converged`.
 
 For a stress vector ``x_t`` over the seven systems, coupling matrix ``W`` (entry
 ``W[i][j]`` is the stress transmitted from ``i`` to ``j``) and per-system
@@ -42,7 +49,10 @@ class SimulationConfig:
     """Parameters controlling the shock-propagation dynamics.
 
     Attributes:
-        max_steps: Maximum number of timesteps to simulate.
+        max_steps: Maximum number of timesteps to simulate. A trajectory that is
+            still decaying when the budget runs out is reported as not converged,
+            with a settling time of ``-1``; a market can be perfectly stable and
+            still exhaust the budget if it settles slowly.
         damping: Global per-step decay in ``(0, 1]``; lower means faster dissipation.
         retention: Fraction of a system's own stress carried to the next step.
         transmission: Global scaler on stress transmitted along couplings.

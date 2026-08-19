@@ -95,9 +95,14 @@ Runnable scripts live in `examples/` (`equity_market.py`, `liquidity_shock.py`).
   overall index is the criticality-weighted mean.
 - **Simulation**: a stress vector `x_t ∈ [0,1]^7` evolves by
   `x_{t+1}[j] = clip(damping·(x_t[j]·retention + Σ_i x_t[i]·W[i][j]·transmission·(1−a_j)), 0, 1)`,
-  where `W` is the coupling matrix and `a_j` is absorptive capacity. Damping makes
-  this a contraction, so it converges; metrics are peak stress, settling time,
-  absorbed fraction, and amplification factor.
+  where `W` is the coupling matrix and `a_j` is absorptive capacity. Metrics are
+  peak stress, settling time, absorbed fraction, and amplification factor.
+  Damping and absorptive capacity damp the trajectory, but the step map is *not* a
+  contraction for every market: with enough incoming weight and little absorptive
+  capacity the per-step gain exceeds one and stress grows until it saturates at the
+  `1.0` clip. `converged` therefore reports whether the trajectory settled within
+  `max_steps`, not whether it is stable — a slowly-settling market can exhaust the
+  budget, which yields a settling time of `-1` and the full settling penalty.
 
 ## Developing
 

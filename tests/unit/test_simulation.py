@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import random
-
 import pytest
 
 from amf.errors import InvalidShockError
@@ -108,14 +106,54 @@ def test_budget_exhausted_without_convergence(stressed_market: Market):
     assert trace.resilience.settling_time == -1
 
 
-@pytest.mark.parametrize("trial", range(20))
-def test_damped_dynamics_always_converge(stressed_market: Market, trial: int):
-    """Property test: a damped market always settles for random shocks."""
-    rng = random.Random(trial)
-    target = rng.choice(list(SystemKind))
-    magnitude = rng.uniform(0.1, 1.0)
-    trace = ShockSimulator(stressed_market).propagate(Shock(target, magnitude))
-    assert trace.converged is True
+def test_a_stable_market_can_still_exhaust_the_step_budget(market_factory):
+    # `converged` is reported against max_steps, not against stability. This
+    # market is decaying steadily but too slowly to settle within 50 steps, so it
+    # reports converged=False and a settling time of -1 -- and therefore takes the
+    # full settling penalty, exactly as a market that never settles would.
+    # Replaces 20 parametrised cases that asserted convergence always holds; it
+    # does not, and the property test now covers the invariants that do.
+    weak = {"integrity": 0.0, "redundancy": 0.0, "criticality": 0.0, "load": 0.0}
+    deps = [
+        Dependency(SystemKind.ORGANS, SystemKind.NERVOUS, DependencyKind.STRUCTURAL, 0.598),
+        Dependency(SystemKind.SKELETON, SystemKind.MUSCULATURE, DependencyKind.STRUCTURAL, 0.584),
+        Dependency(SystemKind.SKELETON, SystemKind.IMMUNE, DependencyKind.STRUCTURAL, 0.462),
+        Dependency(SystemKind.IMMUNE, SystemKind.METABOLISM, DependencyKind.STRUCTURAL, 0.842),
+        Dependency(SystemKind.METABOLISM, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.945),
+        Dependency(SystemKind.MUSCULATURE, SystemKind.NERVOUS, DependencyKind.STRUCTURAL, 0.479),
+        Dependency(SystemKind.MUSCULATURE, SystemKind.ORGANS, DependencyKind.STRUCTURAL, 0.668),
+        Dependency(SystemKind.MUSCULATURE, SystemKind.IMMUNE, DependencyKind.STRUCTURAL, 0.07),
+    ]
+    market = market_factory(deps, **{kind.value: weak for kind in SystemKind})
+    trace = ShockSimulator(market).propagate(Shock(SystemKind.IMMUNE, 1.0))
+
+    assert trace.converged is False
+    assert len(trace.steps) - 1 == SimulationConfig().max_steps
+    assert trace.resilience is not None
+    assert trace.resilience.settling_time == -1
+    # Still decaying when the budget ran out, not oscillating or diverging.
+    peaks = [max(step.values()) for step in trace.steps]
+    assert peaks[-1] < peaks[-2] < peaks[-3]
+    assert peaks[-1] < 0.05
+
+
+def test_the_step_map_is_not_always_a_contraction(market_factory):
+    # Full-weight coupling with almost no absorptive capacity gives a per-step
+    # gain of 0.85 * (0.5 + 1.0 * 0.8) = 1.105, so stress grows until it
+    # saturates at the clip rather than contracting.
+    weak = {"integrity": 0.0, "redundancy": 0.0, "criticality": 0.0, "load": 0.0}
+    deps = [
+        Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, DependencyKind.STRUCTURAL, 1.0),
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 1.0),
+    ]
+    market = market_factory(deps, **{kind.value: weak for kind in SystemKind})
+    steps = ShockSimulator(market).propagate(Shock(SystemKind.SKELETON, 1.0)).steps
+
+    # circulatory starts unstressed and is driven up to the clip, not damped down.
+    circulatory = [step[SystemKind.CIRCULATORY] for step in steps]
+    assert circulatory[0] == pytest.approx(0.0)
+    assert circulatory[-1] == pytest.approx(1.0)
+    assert max(step[SystemKind.SKELETON] for step in steps) == pytest.approx(1.0)
 
 
 def test_advance_matches_hand_computed_dynamics(market_factory):

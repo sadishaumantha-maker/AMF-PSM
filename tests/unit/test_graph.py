@@ -141,6 +141,29 @@ def test_feedback_loops_finds_multiple_disjoint_cycles():
     assert (SystemKind.NERVOUS, SystemKind.MUSCULATURE) in set(loops)
 
 
+def test_dependencies_of_is_in_canonical_order():
+    # Insertion order must not leak into the result: diagnostics sums over this
+    # list, and float addition is not associative.
+    deps = [
+        _dep(SystemKind.NERVOUS, SystemKind.ORGANS),
+        _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+        _dep(SystemKind.NERVOUS, SystemKind.CIRCULATORY),
+    ]
+    expected = [SystemKind.SKELETON, SystemKind.CIRCULATORY, SystemKind.ORGANS]
+    assert DependencyGraph(deps).dependencies_of(SystemKind.NERVOUS) == expected
+    assert DependencyGraph(reversed(deps)).dependencies_of(SystemKind.NERVOUS) == expected
+
+
+def test_dependents_of_is_in_canonical_order():
+    deps = [
+        _dep(SystemKind.ORGANS, SystemKind.SKELETON),
+        _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+    ]
+    expected = [SystemKind.CIRCULATORY, SystemKind.ORGANS]
+    assert DependencyGraph(deps).dependents_of(SystemKind.SKELETON) == expected
+    assert DependencyGraph(reversed(deps)).dependents_of(SystemKind.SKELETON) == expected
+
+
 def test_edge_weights_aggregate_below_the_cap():
     graph = DependencyGraph(
         [

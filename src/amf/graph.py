@@ -119,12 +119,22 @@ class DependencyGraph:
         return self._pair_weights.get((source, target), 0.0)
 
     def dependencies_of(self, system: SystemKind) -> list[SystemKind]:
-        """Return the systems that ``system`` depends on (its outgoing edges), once each."""
-        return [t for (s, t) in self._pair_weights if s == system]
+        """Return the systems that ``system`` depends on (its outgoing edges), once each.
+
+        Sorted by system declaration order. Callers such as
+        :meth:`~amf.diagnostics.DiagnosticEngine.concentration` sum over this list,
+        and floating-point addition is not associative, so a canonical order keeps
+        results identical no matter what order the dependencies were added in.
+        """
+        return sorted((t for (s, t) in self._pair_weights if s == system), key=lambda k: _INDEX[k])
 
     def dependents_of(self, system: SystemKind) -> list[SystemKind]:
-        """Return the systems that depend on ``system`` (its incoming edges), once each."""
-        return [s for (s, t) in self._pair_weights if t == system]
+        """Return the systems that depend on ``system`` (its incoming edges), once each.
+
+        Sorted by system declaration order, for the same reason as
+        :meth:`dependencies_of`.
+        """
+        return sorted((s for (s, t) in self._pair_weights if t == system), key=lambda k: _INDEX[k])
 
     def _out_adjacency(self) -> dict[SystemKind, list[SystemKind]]:
         """Return source -> sorted list of distinct targets."""
