@@ -18,6 +18,7 @@ from amf.models import (
     WeaknessFinding,
 )
 from amf.report import (
+    _to_jsonable,
     render_json,
     render_markdown,
     render_stress_test,
@@ -60,6 +61,14 @@ def _report(findings: tuple[WeaknessFinding, ...], **kwargs) -> DiagnosticReport
         single_points_of_failure=kwargs.get("spofs", ()),
         feedback_loops=kwargs.get("loops", ()),
     )
+
+
+def test_to_jsonable_passes_primitives_through():
+    # The serialiser dispatches result types and dicts; anything else (a JSON
+    # primitive) is returned unchanged, including as a nested dict value.
+    assert _to_jsonable(42) == 42
+    assert _to_jsonable("x") == "x"
+    assert _to_jsonable({SystemKind.SKELETON: 0.5}) == {"skeleton": 0.5}
 
 
 def test_render_diagnostic_text_and_markdown(stressed_market: Market):

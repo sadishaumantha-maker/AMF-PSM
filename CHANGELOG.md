@@ -29,6 +29,15 @@ this file. Versions correspond to framework releases.
   type-check, tests, and YAML/citation/Markdown-link validation.
 - `CLAUDE.md` contributor and design guide.
 
+### Fixed
+- `Market.to_dict()` now preserves each dependency's `kind` instead of
+  serialising every coupling as `structural`, so a market survives a
+  `to_dict`/`from_dict` round trip intact — five of the eight edges in
+  `examples/sample_market.json` were being downgraded. A dependency in
+  `DependencyGraph` is now identified by `(source, target, kind)`, so a pair
+  coupled by several kinds keeps every one of them; `edge_kinds()` remains
+  available and reports them in declaration order.
+
 ### Changed
 - The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching
   `diagnose` and `simulate`. JSON output for the stress-test profile was already
@@ -53,13 +62,9 @@ this file. Versions correspond to framework releases.
   every metric — including `examples/sample_market.json` — are unaffected.
 - `Market.from_dict` now rejects an unrecognised field inside a system entry
   rather than ignoring it, matching the factories' handling of unknown metrics.
-- `Market.to_dict` now preserves each dependency's `kind`. Every exported edge
-  was previously written as `structural`, silently downgrading informational,
-  capital, and regulatory couplings — five of the eight edges in
-  `examples/sample_market.json`. A dependency in `DependencyGraph` is now
-  identified by `(source, target, kind)`, and the new `DependencyGraph.dependencies()`
-  returns them in canonical order, so an exported market no longer depends on the
-  order its dependencies were added in.
+- `DependencyGraph.dependencies()` returns the graph's dependencies in canonical
+  `(source, target, kind)` order, and `Market.to_dict` uses it, so an exported
+  market no longer depends on the order its dependencies were added in.
 - `DependencyGraph.dependencies_of` and `dependents_of` now return their results
   in system declaration order. The diagnostic HHI sums over that list and
   floating-point addition is not associative, so the previous insertion-ordered
@@ -74,6 +79,12 @@ this file. Versions correspond to framework releases.
   `1.0` clip; and `converged` reports settling *within `max_steps`*, so a stable
   but slowly-settling market can exhaust the budget and take the full settling
   penalty. Behaviour is unchanged — only the documentation and the tests pinning it.
+
+### Security
+- Bumped the dev-dependency pin `pytest` from 8.2.2 to 9.0.3 to resolve
+  CVE-2025-71176 / GHSA-6w46-j5rx-g56g (predictable `/tmp/pytest-of-{user}`
+  temporary-directory handling on UNIX; moderate severity). Dev-only tooling —
+  the `amf` package itself has no runtime dependencies.
 
 ### Notes
 - The software models market *structure and resilience* only; it is not a

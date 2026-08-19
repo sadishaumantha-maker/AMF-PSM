@@ -119,6 +119,19 @@ class DependencyGraph:
         """Return the total dependency weight of ``source`` on ``target``, across all kinds."""
         return self._pair_weights.get((source, target), 0.0)
 
+    def edge_kinds(self, source: SystemKind, target: SystemKind) -> tuple[DependencyKind, ...]:
+        """Return the coupling kinds recorded for the ``source`` -> ``target`` edge.
+
+        Kinds accumulate as edges aggregate: coupling the same pair twice with
+        different kinds records both.
+
+        Returns:
+            The recorded kinds in :class:`~amf.models.DependencyKind` declaration
+            order, or an empty tuple if the edge does not exist.
+        """
+        recorded = {kind for (s, t, kind) in self._edges if (s, t) == (source, target)}
+        return tuple(kind for kind in _KIND_ORDER if kind in recorded)
+
     def dependencies_of(self, system: SystemKind) -> list[SystemKind]:
         """Return the systems that ``system`` depends on (its outgoing edges), once each.
 

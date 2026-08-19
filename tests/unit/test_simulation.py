@@ -293,3 +293,34 @@ def test_jitter_without_a_seed_is_ignored(stressed_market: Market):
     unseeded = ShockSimulator(stressed_market, SimulationConfig(jitter=0.5)).propagate(shock)
     plain = ShockSimulator(stressed_market, SimulationConfig(jitter=0.0)).propagate(shock)
     assert unseeded.steps == plain.steps
+
+
+def test_settling_time_is_first_settled_step(stressed_market: Market):
+    # settling_time must be the FIRST step whose change falls below the
+    # convergence epsilon: the step before it must still exceed the threshold.
+    config = SimulationConfig()
+    trace = ShockSimulator(stressed_market, config).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    st = trace.resilience.settling_time
+    assert st > 0
+
+    def delta(i: int) -> float:
+        return max(abs(trace.steps[i][k] - trace.steps[i - 1][k]) for k in SystemKind)
+
+    assert delta(st) < config.convergence_eps
+    assert delta(st - 1) >= config.convergence_eps
+
+
+def test_larger_shock_is_no_more_resilient(stressed_market: Market):
+    # Resilience is monotonically non-increasing in shock magnitude: a bigger
+    # shock takes longer to settle and never scores higher than a smaller one.
+    sim = ShockSimulator(stressed_market)
+    values = [sim.resilience(Shock(SystemKind.CIRCULATORY, m)).value for m in (0.2, 0.5, 0.9)]
+    assert values == sorted(values, reverse=True)
+
+
+@pytest.mark.parametrize("target", list(SystemKind))
+def test_amplification_factor_never_below_one(stressed_market: Market, target: SystemKind):
+    # Peak aggregate stress includes the injection step, so the damped model can
+    # never report a peak below what was injected: amplification is always >= 1.
+    score = ShockSimulator(stressed_market).resilience(Shock(target, 0.8))
+    assert score.amplification_factor >= 1.0
