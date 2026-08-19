@@ -236,6 +236,40 @@ def test_stress_test_labels_each_score_with_its_own_target(stressed_market: Mark
     assert all(score.target is kind for kind, score in profile.items())
 
 
+def test_high_resilience_scores_as_low_severity(market_factory):
+    # Severity is from_score(1 - value), so it must invert the resilience. The
+    # amplifying test only covers the CRITICAL end, where a sign error looks the
+    # same; this pins the other end.
+    score = ShockSimulator(market_factory()).resilience(Shock(SystemKind.SKELETON, 0.8))
+    assert score.value > 0.9
+    assert score.severity is Severity.LOW
+
+
+def test_absorbed_fraction_is_exact_when_partly_absorbed(market_factory):
+    # Absorbed fraction is only ever exactly 1.0 or exactly 0.0 elsewhere in the
+    # suite, which leaves `1 - final / injected` under-determined. Truncating the
+    # budget stops the decay part-way and pins the formula on a real fraction.
+    # Uncoupled defaults decay by damping * retention = 0.85 * 0.5 = 0.425 a step,
+    # so after three steps the residual is 0.425**3 of what was injected.
+    config = SimulationConfig(max_steps=3)
+    score = ShockSimulator(market_factory(), config).resilience(Shock(SystemKind.SKELETON, 0.8))
+    assert score.absorbed_fraction == pytest.approx(1.0 - 0.425**3)
+    assert 0.0 < score.absorbed_fraction < 1.0
+    assert score.amplification_factor == pytest.approx(1.0)
+
+
+def test_seeded_jitter_perturbs_the_trajectory_by_an_exact_amount(market_factory):
+    # The other jitter tests only assert that trajectories differ or repeat, which
+    # leaves the perturbation itself unpinned.
+    market = market_factory([Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.8)])
+    shock = Shock(SystemKind.SKELETON, 0.5)
+    jittered = ShockSimulator(market, SimulationConfig(seed=42, jitter=0.05)).propagate(shock)
+    assert jittered.steps[1][SystemKind.CIRCULATORY] == pytest.approx(0.08438761609929381)
+    # ... against 0.085 with no jitter, i.e. a real but small perturbation.
+    plain = ShockSimulator(market).propagate(shock)
+    assert plain.steps[1][SystemKind.CIRCULATORY] == pytest.approx(0.085)
+
+
 def test_jitter_changes_the_trajectory(stressed_market: Market):
     # Without this, test_seeded_jitter_is_reproducible would still pass if jitter
     # were removed from the dynamics entirely.

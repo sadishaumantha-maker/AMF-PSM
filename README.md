@@ -74,7 +74,8 @@ amf simulate examples/sample_market.json --target circulatory --magnitude 0.8
 amf stress-test examples/sample_market.json             # shock each system in turn
 ```
 
-`diagnose` and `simulate` also accept `--format json` or `--format md`.
+`diagnose`, `simulate`, and `stress-test` all accept `--format json` or
+`--format md`.
 
 ### Use it from Python
 

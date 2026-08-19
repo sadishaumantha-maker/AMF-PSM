@@ -71,6 +71,22 @@ All seven systems must be present. A dependency means `source` relies on
 `target`; `kind` is one of `structural | informational | capital | regulatory`;
 `weight` is in `(0, 1]`. See `examples/sample_market.json`.
 
+Within a system entry every field is optional, and an omitted one takes the same
+default as the corresponding factory in `systems.py` — parsing goes through
+`SYSTEM_FACTORIES`, so a market built from JSON and one built from the factories
+are identical. Defaults are `integrity` 1.0, `redundancy` 0.5, `load` 0.0,
+`components` empty, and a per-system `name` and `criticality` (0.60–0.90; e.g.
+`skeleton` is "Market infrastructure" at 0.90). Because `criticality` weights the
+overall diagnostic index, omitting it is a meaningful choice rather than a
+neutral one. Any unrecognised field in a system entry is a `MarketParseError`,
+so a typo such as `integritty` fails loudly instead of being ignored.
+
+A `(source, target)` pair may appear more than once with different `kind`s. Each
+is kept as its own edge and survives a `to_dict`/`from_dict` round trip, while
+every structural query (`edge_weight`, feedback loops, centrality, articulation
+points) aggregates across kinds, capped at 1.0 — so splitting one coupling across
+kinds never changes a score.
+
 ## Using the CLI
 
 The `amf` console script prints the `_DISCLAIMER` to stderr and offers five

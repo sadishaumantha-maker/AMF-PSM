@@ -17,6 +17,12 @@ this file. Versions correspond to framework releases.
   `[0, 1]` at every step, diagnostic scores stay in `[0, 1]` for any blend of
   config weights, `to_dict`/`from_dict` is a fixed point, and feedback-loop
   enumeration matches a brute-force search of every simple cycle.
+- Tests closing gaps found by a one-off mutation-testing pass over `report.py`,
+  `simulation.py`, and `diagnostics.py`: resilience severity is now asserted at
+  the high-resilience end as well as the critical end, `absorbed_fraction` is
+  pinned on a genuinely partial absorption rather than only at exactly 0.0 or
+  1.0, and the seeded transmission jitter is pinned to an exact perturbation
+  rather than only "differs" and "repeats".
 - Tooling and quality gates: `pyproject.toml` (ruff, mypy strict, pytest,
   coverage), `.pre-commit-config.yaml` (including a guard that blocks edits to
   checksum-protected artifacts), and a `CI` GitHub Actions workflow running lint,
