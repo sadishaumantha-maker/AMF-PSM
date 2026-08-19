@@ -104,6 +104,34 @@ def test_simulate_bad_magnitude_returns_error_code(capsys: pytest.CaptureFixture
     assert "magnitude" in capsys.readouterr().err
 
 
+def test_simulate_requires_target():
+    # --target is required; argparse rejects its absence with exit code 2.
+    with pytest.raises(SystemExit) as exc:
+        main(["simulate", str(SAMPLE)])
+    assert exc.value.code == 2
+
+
+def test_simulate_rejects_unknown_target():
+    # --target is constrained to the seven system kinds.
+    with pytest.raises(SystemExit) as exc:
+        main(["simulate", str(SAMPLE), "--target", "bogus"])
+    assert exc.value.code == 2
+
+
+def test_rejects_unknown_format():
+    # --format is constrained to text/json/md.
+    with pytest.raises(SystemExit) as exc:
+        main(["diagnose", str(SAMPLE), "--format", "xml"])
+    assert exc.value.code == 2
+
+
+def test_diagnose_requires_market_path():
+    # The positional market path is required.
+    with pytest.raises(SystemExit) as exc:
+        main(["diagnose"])
+    assert exc.value.code == 2
+
+
 def test_sample_market_is_loadable():
     market = Market.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
     market.require_complete()
