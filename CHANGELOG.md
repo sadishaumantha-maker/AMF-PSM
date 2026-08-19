@@ -30,6 +30,12 @@ this file. Versions correspond to framework releases.
   supported by `render_json`; this adds a Markdown table renderer and routes the
   command through the shared formatter.
 
+### Security
+- Bumped the dev-dependency pin `pytest` from 8.2.2 to 9.0.3 to resolve
+  CVE-2025-71176 / GHSA-6w46-j5rx-g56g (predictable `/tmp/pytest-of-{user}`
+  temporary-directory handling on UNIX; moderate severity). Dev-only tooling —
+  the `amf` package itself has no runtime dependencies.
+
 ### Notes
 - The software models market *structure and resilience* only; it is not a
   trading system. The checksum-protected framework artifacts are unchanged.
