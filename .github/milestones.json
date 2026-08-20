@@ -1,0 +1,130 @@
+{
+  "$comment": "Delivery milestones for the AMF-PSM robustness programme, as code. tools/sync_milestones.py reconciles this manifest with the repository's Milestones section; it creates and updates, and never deletes. Edit here, never in the GitHub UI, or the next sync will overwrite the drift.",
+  "window": {
+    "day_one": "2026-08-20",
+    "day_twenty": "2026-09-16",
+    "schedule": "working days"
+  },
+  "milestones": [
+    {
+      "title": "D01 - Numerical determinism core",
+      "state": "open",
+      "due_on": "2026-08-20T12:00:00Z",
+      "description": "**Phase A - Numerical determinism & invariants** | Day 1 of 20 | due Thu 20 Aug 2026\n\n> **Status:** Delivered - see CHANGELOG [Unreleased].\n\n**Tasks**\n\n- [ ] Add `amf.numeric` with `stable_sum` (exactly rounded), `square` (correctly rounded), `clip_unit`.\n- [ ] Replace `(w / total) ** 2` in `diagnostics.concentration` - `**` routes to libm `pow`, which is not required to be correctly rounded.\n- [ ] Route pair-weight aggregation, the diagnostic roll-up, and the simulation reductions through `stable_sum`.\n- [ ] Test the primitives against exact rational arithmetic, not against a second float expression.\n\n**Acceptance criteria**\n\n- `ruff`, `ruff format --check`, and `mypy --strict` all silent; coverage still 100%.\n- Every per-system concentration score on `examples/sample_market.json` is unchanged.\n- Any last-place movement in a published score is recorded in CHANGELOG with before/after values.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D02 - Invariant guard at the engine boundary",
+      "state": "open",
+      "due_on": "2026-08-21T12:00:00Z",
+      "description": "**Phase A - Numerical determinism & invariants** | Day 2 of 20 | due Fri 21 Aug 2026\n\n> **Status:** Delivered - see CHANGELOG [Unreleased].\n\n**Tasks**\n\n- [ ] Add `InvariantError` to the `AMFError` hierarchy in `errors.py`.\n- [ ] Add `amf.invariants`: `require_unit` / `require_non_negative` / `require_finite` plus `check_*` for each result type.\n- [ ] Wire the guards into `DiagnosticEngine.diagnose`, `ShockSimulator.propagate`, `SensitivityAnalyzer.analyse`, `DependencyGraph.centrality`.\n- [ ] Use raised exceptions, never `assert` - assertions are stripped under `python -O`.\n\n**Acceptance criteria**\n\n- Each guard has both a rejecting and an accepting test, built from deliberately broken result objects.\n- The guards are always on: no `strict` flag anyone can forget to set.\n- Coverage remains 100% including every raise branch.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D03 - Fix the two live determinism defects",
+      "state": "open",
+      "due_on": "2026-08-24T12:00:00Z",
+      "description": "**Phase A - Numerical determinism & invariants** | Day 3 of 20 | due Mon 24 Aug 2026\n\n> **Status:** Delivered - see CHANGELOG [Unreleased].\n\n**Tasks**\n\n- [ ] `DependencyGraph.centrality` - iterate incoming influence in system declaration order instead of dict insertion order.\n- [ ] `ShockSimulator._score` - measure the settling penalty against the horizon actually run, not against `max_steps`.\n- [ ] Add an exhaustive 720-permutation regression in `test_graph.py` and a hypothesis permutation property in `test_properties.py`.\n- [ ] Add a multi-wave regression pinning the corrected settling term.\n\n**Acceptance criteria**\n\n- 0 of 1,000 dependency permutations change the centrality vector (was 265 of 400).\n- The settling penalty stays inside [0, 1] for a shock scheduled past `max_steps`.\n- Single-shock resilience scores are provably unchanged, since their horizon equals `max_steps`.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D04 - Cross-version determinism harness",
+      "state": "open",
+      "due_on": "2026-08-25T12:00:00Z",
+      "description": "**Phase A - Numerical determinism & invariants** | Day 4 of 20 | due Tue 25 Aug 2026\n\n**Tasks**\n\n- [ ] Commit a golden JSON render of diagnose / simulate / sensitivity for `examples/sample_market.json`.\n- [ ] Assert byte-identical output against it, on the 3.11 / 3.12 / 3.13 CI matrix.\n- [ ] Document precisely what bit-identity covers - and that it does not extend to jittered ensembles, because `random.gauss` calls libm `log` and `cos`.\n\n**Acceptance criteria**\n\n- The golden test passes on all three Python versions in CI.\n- The ensemble caveat is written down rather than silently assumed away.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D05 - Numerical policy documented; Phase A review",
+      "state": "open",
+      "due_on": "2026-08-26T12:00:00Z",
+      "description": "**Phase A - Numerical determinism & invariants** | Day 5 of 20 | due Wed 26 Aug 2026\n\n**Tasks**\n\n- [ ] Write the numerical-determinism policy: what is guaranteed, by which mechanism, and where the boundary is.\n- [ ] Add `numeric` and `invariants` to the CLAUDE.md module table and the dependency-order statement.\n- [ ] Correct the stale test count in CLAUDE.md.\n\n**Acceptance criteria**\n\n- A contributor can read one section and know which operations are safe to write by hand.\n- CLAUDE.md matches the tree; no stale counts.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D06 - Stress-scenario foundation",
+      "state": "open",
+      "due_on": "2026-08-27T12:00:00Z",
+      "description": "**Phase B - Stress corpus & structural resilience** | Day 6 of 20 | due Thu 27 Aug 2026\n\n**Tasks**\n\n- [ ] Add `amf.scenarios` with a frozen, slotted `StressScenario` carrying tuples (not lists) and a `to_dict`.\n- [ ] First four pathologies: fully isolated graph, single-coupling reliance, complete bipartite (no dominant mode), tight seven-cycle.\n- [ ] Each scenario states its expected structural behaviour in plain language.\n\n**Acceptance criteria**\n\n- Every scenario builds a complete, valid market and is reachable from a registry.\n- The bipartite case asserts `InvalidDependencyError` rather than a coin-flip ranking.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D07 - Six more pathologies",
+      "state": "open",
+      "due_on": "2026-08-28T12:00:00Z",
+      "description": "**Phase B - Stress corpus & structural resilience** | Day 7 of 20 | due Fri 28 Aug 2026\n\n**Tasks**\n\n- [ ] Saturating cascade, sub-normal weights, low-redundancy articulation SPOF, all-max coupling, recovery-dominant, multi-wave with intervention.\n\n**Acceptance criteria**\n\n- Ten scenarios total, each named, documented, and exercised.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D08 - Golden regression corpus",
+      "state": "open",
+      "due_on": "2026-08-31T12:00:00Z",
+      "description": "**Phase B - Stress corpus & structural resilience** | Day 8 of 20 | due Mon 31 Aug 2026\n\n**Tasks**\n\n- [ ] Commit expected JSON output per scenario and assert exact equality.\n- [ ] Add a regeneration script so an intended change is a reviewable diff rather than a hand edit.\n\n**Acceptance criteria**\n\n- An unintended numeric change fails CI with a readable diff.\n- Regenerating requires an explicit command, never an automatic overwrite.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D09 - Invariant sweep and extended properties",
+      "state": "open",
+      "due_on": "2026-09-01T12:00:00Z",
+      "description": "**Phase B - Stress corpus & structural resilience** | Day 9 of 20 | due Tue 01 Sep 2026\n\n**Tasks**\n\n- [ ] Run every invariant check across the whole corpus.\n- [ ] Extend the hypothesis properties to the cascade, multi-wave, and intervention paths.\n\n**Acceptance criteria**\n\n- No scenario violates an invariant.\n- The property suite covers the opt-in dynamics, not only the linear default.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D10 - `amf scenarios` CLI; Phase B review",
+      "state": "open",
+      "due_on": "2026-09-02T12:00:00Z",
+      "description": "**Phase B - Stress corpus & structural resilience** | Day 10 of 20 | due Wed 02 Sep 2026\n\n**Tasks**\n\n- [ ] Add a `scenarios` subcommand: list the corpus, run one by name.\n- [ ] Integration tests through `main()` and through the installed console script.\n\n**Acceptance criteria**\n\n- `amf scenarios --help` documents the corpus; the disclaimer still goes to stderr.\n- CLI coverage stays at 100%.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D11 - Deterministic provenance record",
+      "state": "open",
+      "due_on": "2026-09-03T12:00:00Z",
+      "description": "**Phase C - Provenance & operator surface** | Day 11 of 20 | due Thu 03 Sep 2026\n\n**Tasks**\n\n- [ ] Add a frozen `Provenance`: content hash of the market, the engine configuration, `__version__`, and the algorithm identifier.\n- [ ] No wall clock, no counters, no randomness - a timestamp would break byte-identical rendering outright.\n\n**Acceptance criteria**\n\n- The same market and config produce the same provenance hash on every run and every platform.\n- Existing byte-identity tests for `viz` and `render_json` still pass.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D12 - Attach provenance without breaking the API",
+      "state": "open",
+      "due_on": "2026-09-04T12:00:00Z",
+      "description": "**Phase C - Provenance & operator surface** | Day 12 of 20 | due Fri 04 Sep 2026\n\n**Tasks**\n\n- [ ] Add it as an optional field with a default, so no existing constructor call breaks.\n- [ ] Extend `report._to_jsonable` and the text / Markdown renderers.\n\n**Acceptance criteria**\n\n- Every result type still round-trips through `to_dict`.\n- No positional-argument breakage for existing callers.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D13 - Sound centrality cross-check",
+      "state": "open",
+      "due_on": "2026-09-07T12:00:00Z",
+      "description": "**Phase C - Provenance & operator surface** | Day 13 of 20 | due Mon 07 Sep 2026\n\n**Tasks**\n\n- [ ] Cross-check Katz-by-iteration against Katz-by-linear-solve - the same measure computed two independent ways.\n- [ ] Explicitly reject the Katz-versus-eigenvector comparison: they are different measures, and eigenvector centrality collapses to zero on an acyclic graph.\n\n**Acceptance criteria**\n\n- The two Katz routes agree to a stated, tested tolerance.\n- The rationale is documented so the unsound comparison is not reintroduced.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D14 - Configuration presets that describe, not retune",
+      "state": "open",
+      "due_on": "2026-09-08T12:00:00Z",
+      "description": "**Phase C - Provenance & operator surface** | Day 14 of 20 | due Tue 08 Sep 2026\n\n**Tasks**\n\n- [ ] Offer named presets that report what they change and why.\n- [ ] No preset silently alters a default; opting in is explicit.\n\n**Acceptance criteria**\n\n- Default output is byte-identical to today's.\n- Each preset documents which published score it moves.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D15 - `--explain` output; Phase C review",
+      "state": "open",
+      "due_on": "2026-09-09T12:00:00Z",
+      "description": "**Phase C - Provenance & operator surface** | Day 15 of 20 | due Wed 09 Sep 2026\n\n**Tasks**\n\n- [ ] Add `--explain` to `diagnose` and `simulate`, surfacing provenance and the drivers behind each score.\n\n**Acceptance criteria**\n\n- `--format json` stdout stays machine-parseable; explanation does not pollute it.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D16 - Supply-chain hardening",
+      "state": "open",
+      "due_on": "2026-09-10T12:00:00Z",
+      "description": "**Phase D - Institutional controls** | Day 16 of 20 | due Thu 10 Sep 2026\n\n**Tasks**\n\n- [ ] Add Dependabot for `pip` and `github-actions`.\n- [ ] Pin every GitHub Action to a full commit SHA.\n- [ ] Add an OpenSSF Scorecard workflow.\n\n**Acceptance criteria**\n\n- `yamllint .` passes - it runs first in the validate job, and a YAML error silently disables the steps behind it.\n- No action is referenced by a mutable tag.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D17 - Release engineering",
+      "state": "open",
+      "due_on": "2026-09-11T12:00:00Z",
+      "description": "**Phase D - Institutional controls** | Day 17 of 20 | due Fri 11 Sep 2026\n\n**Tasks**\n\n- [ ] Add a reproducible-wheel check.\n- [ ] Extend the private-distribution guard test.\n- [ ] Document the signed-tag procedure in RELEASING.md.\n\n**Acceptance criteria**\n\n- Two builds of the same commit produce identical wheel contents.\n- No publish workflow is added; the `Private :: Do Not Upload` classifier is still enforced.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D18 - Performance budget",
+      "state": "open",
+      "due_on": "2026-09-14T12:00:00Z",
+      "description": "**Phase D - Institutional controls** | Day 18 of 20 | due Mon 14 Sep 2026\n\n**Tasks**\n\n- [ ] Benchmark simple-cycle enumeration, centrality, and the Monte Carlo ensemble.\n- [ ] Add regression thresholds so an algorithmic regression fails rather than merely slows.\n\n**Acceptance criteria**\n\n- Benchmarks run in CI within a stated time budget.\n- A threshold breach fails the build with the measured numbers.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D19 - Model card",
+      "state": "open",
+      "due_on": "2026-09-15T12:00:00Z",
+      "description": "**Phase E - Validation & review** | Day 19 of 20 | due Tue 15 Sep 2026\n\n**Tasks**\n\n- [ ] Document every threshold, weight, and severity band: its value, where it came from, and what it is not.\n- [ ] State plainly that none of it is empirically validated.\n\n**Acceptance criteria**\n\n- Every magic number in the package is accounted for.\n- No wording implies predictive power or validated performance.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    },
+    {
+      "title": "D20 - Day-20 review",
+      "state": "open",
+      "due_on": "2026-09-16T12:00:00Z",
+      "description": "**Phase E - Validation & review** | Day 20 of 20 | due Wed 16 Sep 2026\n\n**Tasks**\n\n- [ ] Measure against the Day-0 baseline: 520 tests, 100% coverage, 3 known defects, 0 milestones.\n- [ ] Consolidate the CHANGELOG and propose the next window.\n\n**Acceptance criteria**\n\n- The review states what shipped, what slipped, and why - with numbers.\n\nGuardrails inherited from CLAUDE.md: structural vocabulary only (no trading terms) - illustrative, not validated - the four checksum-protected artifacts stay frozen - the seven-system anatomy is closed - private distribution only - the 100% coverage gate is a floor - identical inputs must give byte-identical output."
+    }
+  ]
+}
