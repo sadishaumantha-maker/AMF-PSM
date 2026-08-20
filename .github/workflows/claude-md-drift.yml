@@ -1,0 +1,77 @@
+name: CLAUDE.md drift
+
+# The criteria-triggered half of CLAUDE.md maintenance. It fires exactly when a fact the
+# guide documents can have changed -- the package, the packaging config, the workflows, the
+# examples, the tests, the prose docs, or the guide itself -- rather than on a timer.
+#
+# The scan is offline and deterministic, so this job is fast and its result is reproducible
+# from the commit alone. It also catches dead relative Markdown links without needing Node
+# or the network, which is the defect class that silently failed `Validate metadata` on
+# every push until it was found.
+
+on:
+  push:
+    paths:
+      - "CLAUDE.md"
+      - "src/**"
+      - "tests/**"
+      - "tools/**"
+      - "examples/**"
+      - "docs/**"
+      - "pyproject.toml"
+      - ".github/workflows/**"
+  pull_request:
+    paths:
+      - "CLAUDE.md"
+      - "src/**"
+      - "tests/**"
+      - "tools/**"
+      - "examples/**"
+      - "docs/**"
+      - "pyproject.toml"
+      - ".github/workflows/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  drift:
+    name: Detect CLAUDE.md drift
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+
+      # The tooling gates CLAUDE.md, so it is held to the same bar as the package.
+      #
+      # Scoped to the two packages this job actually exercises. `tools/sync_milestones.py`
+      # lives in the same directory but belongs to the milestones change, is exercised by
+      # `tests/unit/test_milestones_manifest.py`, and sits at ~36% line coverage; folding it
+      # in would mean this gate reported a number that describes neither thing well.
+      - name: Test the tooling
+        run: >-
+          pytest tests/tools --override-ini=addopts=
+          --cov=tools.docsync --cov=tools.chronos
+          --cov-branch --cov-report=term-missing --cov-fail-under=95
+
+      - name: Scan for drift
+        run: python -m tools.docsync scan --format md --out drift-report.md
+
+      - name: Publish the report
+        if: always()
+        run: cat drift-report.md >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-md-drift-report
+          path: drift-report.md
+          if-no-files-found: warn
