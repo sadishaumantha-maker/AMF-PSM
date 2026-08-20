@@ -14,6 +14,7 @@ import argparse
 import json
 from pathlib import Path
 
+from tools.docsync import facts as facts_module
 from tools.docsync.drift import render_markdown, scan
 from tools.docsync.model import DriftReport, Severity
 
@@ -32,6 +33,13 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="docsync",
         description="Detect drift between CLAUDE.md and the repository it documents.",
+    )
+    parser.add_argument(
+        "command",
+        nargs="?",
+        choices=["scan", "facts"],
+        default="scan",
+        help="scan: report drift (default); facts: dump the extracted ground truth as JSON.",
     )
     parser.add_argument("--root", type=Path, default=Path(), help="Repository root (default: cwd).")
     parser.add_argument(
@@ -95,6 +103,15 @@ def main(argv: list[str] | None = None) -> int:
     if not (root / "CLAUDE.md").is_file():
         print(f"docsync: no CLAUDE.md under {root}")
         return EXIT_ERROR
+
+    if args.command == "facts":
+        collected = facts_module.collect(root, with_test_count=not args.no_test_count)
+        rendered = json.dumps(collected.to_dict(), indent=2, sort_keys=True, default=str) + "\n"
+        print(rendered, end="")
+        if args.out is not None:
+            args.out.parent.mkdir(parents=True, exist_ok=True)
+            args.out.write_text(rendered, encoding="utf-8")
+        return EXIT_OK
 
     report = scan(root, with_test_count=not args.no_test_count)
     rendered = _render(args.format, report)

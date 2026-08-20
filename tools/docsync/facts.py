@@ -114,6 +114,53 @@ class RepoFacts:
         """Return the subcommand called ``name``, or ``None``."""
         return next((s for s in self.subcommands if s.name == name), None)
 
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-ready mapping of every extracted fact.
+
+        This is what an agent should read when regenerating the mechanical sections of the
+        guide, rather than counting anything by hand.
+        """
+        return {
+            "modules": {
+                name: {
+                    "classes": list(m.classes),
+                    "functions": list(m.functions),
+                    "assignments": list(m.assignments),
+                    "imports": sorted(m.imports),
+                }
+                for name, m in sorted(self.modules.items())
+            },
+            "exports": list(self.exports),
+            "exceptions": dict(sorted(self.exceptions.items())),
+            "dataclasses": dict(sorted(self.dataclasses.items())),
+            "subcommands": [
+                {
+                    "name": s.name,
+                    "flags": [
+                        {
+                            "names": list(a.names),
+                            "default": a.default,
+                            "has_default": a.has_default,
+                            "choices": list(a.choices),
+                            "required": a.required,
+                        }
+                        for a in s.arguments
+                    ],
+                }
+                for s in self.subcommands
+            ],
+            "cli_docstring_commands": list(self.cli_docstring_commands),
+            "constants": dict(sorted(self.constants.items())),
+            "package_version": self.package_version,
+            "pyproject_version": self.pyproject_version,
+            "examples": list(self.examples),
+            "doc_files": list(self.doc_files),
+            "top_level": list(self.top_level),
+            "workflows": list(self.workflows),
+            "codeql_disable_directives": self.codeql_disable_directives,
+            "test_count": self.test_count,
+        }
+
 
 def _literal(node: ast.expr) -> tuple[Any, bool]:
     """Evaluate ``node`` as a literal.

@@ -80,11 +80,12 @@ examples/           sample_market.json + four runnable scripts
 tools/              repository operations tooling: docsync (CLAUDE.md drift
                     detection) and chronos (verified-time attestation). Not part
                     of the shipped wheel and not measured by the coverage gate
+.claude/            agents, hooks and slash commands for the maintenance run
 docs/               prose only — planning and research notes, no code and no
                     authority over the package (see *Prose docs* below)
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
-                    codeql.yml
+                    codeql.yml, claude-md-drift.yml, claude-md-sync.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
 .github/pull_request_template.md   PR checklist rendered on every new PR
 .github/RULESET-POLICY.md          branch-protection rules and rationale
@@ -366,7 +367,7 @@ pre-commit install                      # optional: run hooks on commit
 This block is the authoritative dev setup — there is no `requirements.txt`, and
 the project does not use `black`, `flake8`, or `pylint` despite what
 `CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
-the whole suite is currently 627 tests passing with `ruff` and `mypy` both
+the whole suite is currently 744 tests passing with `ruff` and `mypy` both
 silent; that is the bar a change has to clear. Coverage is 100% statement and
 branch *of `src/amf`* — the gate is scoped to the package (`--cov=amf`), so the
 `tools/` tests contribute to the test total but not to that percentage.
@@ -490,6 +491,118 @@ npx markdown-link-check --config .github/mlc-config.json <file>.md
 opentimestamps.org) and the accepted status codes.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
+
+## Time and locale (hard-gated)
+
+This repository is operated from **Ratnapura, Sri Lanka** — `Asia/Colombo`, **UTC+05:30**,
+no daylight saving. Those constants are frozen in `tools/chronos/locale_gate.py` and
+validated against the system time zone database on import. The gate *raises* rather than
+warns: a record stamped with the wrong offset is worse than one that was never written,
+because it looks usable. It also checks Sri Lanka's historical transitions (+05:30 →
++06:30 in 1996 → +06:00 → +05:30 on 2006-04-15) as a fingerprint, which catches a stub
+tzdata that would otherwise report a plausible-looking constant offset.
+
+**Do not edit those constants to make a machine pass.** If the gate fails, the machine's tz
+database is wrong, not the gate.
+
+### What accuracy is actually achievable
+
+This matters because the honest ceiling is set by physics, not by effort:
+
+| Source | Realistic uncertainty |
+|--------|-----------------------|
+| NTP over the public internet | ~1–10 ms, bounded by path asymmetry |
+| NTP on a quiet LAN | ~0.1–1 ms |
+| A disciplined local clock (`chronyc tracking`) | tens of microseconds |
+| PTP with hardware timestamping | sub-microsecond |
+| GNSS with a PPS signal | tens of nanoseconds |
+
+Microsecond accuracy from an internet round trip is **not attainable at any sampling
+rate**: the one-way delays are unmeasurable and unequal, and that asymmetry lands directly
+in the offset. Anything printing microseconds from an HTTP fetch is printing noise, so
+`tools/chronos` never formats more digits than its measured bound supports.
+
+### The attestation contract
+
+`tools/chronos` does not try to be accurate. It measures how accurate it is, and refuses to
+certify a run whose uncertainty it cannot prove.
+
+- Each source returns an offset **and an explicit error bound**. A source that cannot bound
+  its own error raises `SourceUnavailableError` rather than guessing.
+- `consensus.py` uses **Marzullo interval intersection**, not averaging. A mean is dragged
+  by one misconfigured server and says nothing about how wrong it might be; an intersection
+  yields an interval every surviving source vouches for, so its half-width is a bound you
+  can compare against a budget. Sources outside it are *falsetickers* and are discarded.
+  Three agreeing sources is the floor — the smallest number that lets one liar be outvoted
+  rather than merely noticed.
+- An attestation is **always written**, even when nothing could be measured; silence is
+  indistinguishable from success after the fact. Only `VERIFIED` authorises downstream work.
+- Exit codes: `0` VERIFIED, `3` UNVERIFIED, `4` FAILED (usually the locale gate), `2` usage.
+  `3` and `4` are deliberately not `1`, so a caller can tell an untrustworthy clock from a
+  broken tool.
+
+```sh
+python -m tools.chronos attest [--budget-ms 50] [--min-sources 3] [--format text|json] [--out FILE]
+python -m tools.chronos check     # exit code only
+python -m tools.chronos now       # one line: attested local time and bound
+```
+
+`PpsSource` and `PtpSource` define the hardware interface so that adding a GNSS receiver or
+a PTP grandmaster later is configuration rather than redesign. Until hardware exists they
+report themselves unavailable, which is a truthful answer rather than a silent fallback to
+something worse.
+
+**A Claude Code sandbox has no reachable time source** — UDP/123 is blocked, egress is
+filtered to an allowlist, and the proxy strips the `Date` response header. Such a session
+correctly attests `UNVERIFIED`; it is a writer, not a timekeeper, and consumes the
+attestation the scheduled GitHub Actions run produces.
+
+## Automated CLAUDE.md maintenance
+
+This file is checked mechanically against the repository it describes, because it has
+drifted before: a stale test count, a miscounted directive, an undocumented flag, two
+unmentioned docs files, and — in the other direction — `cli.py`'s own docstring omitting a
+subcommand the guide listed correctly.
+
+`tools/docsync` extracts the repository's real facts with `ast` (never importing or
+executing `amf`), extracts this file's claims, and reports every disagreement:
+
+```sh
+python -m tools.docsync scan  [--format text|json|md] [--fail-on low|medium|high] [--baseline FILE]
+python -m tools.docsync facts [--format json]   # the extracted ground truth
+```
+
+Three properties are deliberate and worth preserving:
+
+- **Offline.** No check touches the network, so a scan reproduces anywhere and is fast
+  enough for a pre-commit hook. That includes the dead-relative-link scan, which does not
+  need Node or `npx`.
+- **Deterministic.** Findings are emitted in canonical order as canonical JSON, so the same
+  commit always yields byte-identical output — which is what lets a checked-in baseline act
+  as a regression gate.
+- **Bidirectional.** Most checks also ask "is everything real named here?", not only "is
+  everything named here real?". Roughly half the drift found in this repository consisted of
+  omissions, on which forward-only checking passes silently.
+
+Two workflows drive it. `.github/workflows/claude-md-drift.yml` fires on push and pull
+request, filtered to the paths whose facts this guide states. `.github/workflows/claude-md-sync.yml`
+runs daily against the 06:00 Asia/Colombo target (00:30 UTC), attests the clock first and
+hard-fails if it cannot, and records its own schedule slip — GitHub's cron is best-effort
+and can be minutes to tens of minutes late, so the inaccuracy is measured rather than hidden.
+
+`.claude/agents/` holds the agents that turn findings into prose: `chronos-warden` (gates
+the run on verified time), `claude-md-auditor` (verifies each finding against the source),
+`repo-cartographer` (regenerates the mechanical sections from extracted facts),
+`ci-forensics`, `changelog-scribe`, `doc-guard-verifier` (adversarial — tries to *refute*
+each changed sentence and vetoes what it cannot support), and `hard-rules-sentinel` (blocks
+any diff that erodes a hard rule). `.claude/hooks/` is POSIX shell rather than Python on
+purpose: `ruff check .` covers `.claude/**/*.py` with the full `ANN`+`D` rule set and CodeQL
+scans it too.
+
+**Never fix a finding by loosening a check.** If a check is genuinely wrong, that is a change
+to `tools/docsync/checks.py` with a case added to the mutation corpus in
+`tests/tools/test_docsync_corpus.py`, which asserts that a correct synthetic repository
+produces *zero* findings and that each single-defect mutation is caught by exactly one check.
 
 ## Prose docs, governance, and what is authoritative
 
