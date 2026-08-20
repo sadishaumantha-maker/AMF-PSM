@@ -416,6 +416,33 @@ def collect_test_count(root: Path) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def _tracked_top_level(root: Path) -> tuple[str, ...]:
+    """Return the repository's tracked top-level entries.
+
+    Asks git rather than reading the directory, because the layout block documents the
+    *repository*, not whatever happens to be lying in the working tree. Without this a
+    generated ``coverage.xml`` or a stray ``.venv`` would be reported as undocumented drift.
+
+    Falls back to a directory listing when git is unavailable, so the tool still works on an
+    exported source tree.
+    """
+    try:
+        completed = subprocess.run(
+            ["git", "ls-files", "-z"],
+            check=False,
+            capture_output=True,
+            text=True,
+            cwd=root,
+            timeout=60,
+        )
+    except (OSError, subprocess.SubprocessError):
+        completed = None
+    if completed is not None and completed.returncode == 0 and completed.stdout:
+        entries = {line.split("/", 1)[0] for line in completed.stdout.split("\0") if line}
+        return tuple(sorted(entries))
+    return tuple(sorted(p.name for p in root.iterdir() if not p.name.startswith(".git")))
+
+
 def _read(path: Path) -> str:
     """Read a UTF-8 text file, returning an empty string when it is absent."""
     try:
@@ -475,7 +502,7 @@ def collect(root: Path, *, with_test_count: bool = True) -> RepoFacts:
     examples_dir = root / "examples"
     examples = tuple(sorted(p.name for p in examples_dir.glob("*.py"))) if examples_dir.is_dir() else ()
 
-    top_level = tuple(sorted(p.name for p in root.iterdir() if not p.name.startswith(".git")))
+    top_level = _tracked_top_level(root)
     workflows = tuple(sorted(p.name for p in workflow_dir.glob("*.yml"))) if workflow_dir.is_dir() else ()
 
     return RepoFacts(

@@ -80,3 +80,12 @@ def test_unreadable_file_is_skipped_rather_than_crashing(tmp_path):
     write(tmp_path, "a.md", "[gone](gone.md)\n")
     (tmp_path / "b.md").mkdir()  # a directory named like a Markdown file
     assert len(find_dead_links(tmp_path)) == 1
+
+
+def test_mentions_path_requires_a_boundary(tmp_path):
+    from tools.docsync.claims import Claims
+
+    claims = Claims(text="see tests/tools/ and also those tools everywhere")
+    assert claims.mentions_path("tests/tools/")
+    assert not claims.mentions_path("tools/")
+    assert claims.mentions("tools/")  # the loose test is satisfied -- which is the bug

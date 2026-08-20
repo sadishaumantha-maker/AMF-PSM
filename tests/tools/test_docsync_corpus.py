@@ -158,3 +158,33 @@ def test_config_default_mismatch_is_caught(mini_repo, guide_editor, stated):
     findings = scan(mini_repo, with_test_count=False).findings
     assert [f.check for f in findings] == ["config.defaults"]
     assert "0.25" in findings[0].message
+
+
+def test_undocumented_top_level_directory_is_caught(mini_repo):
+    (mini_repo / "newdir").mkdir()
+    (mini_repo / "newdir" / "thing.py").write_text("x = 1\n", encoding="utf-8")
+    assert checks_fired(mini_repo) == ["layout.top-level-mentioned"]
+
+
+def test_a_different_directorys_name_does_not_satisfy_the_mention(mini_repo, guide_editor):
+    """Regression: `tests/tools/` must not count as documenting a top-level `tools/`."""
+    (mini_repo / "tools").mkdir()
+    (mini_repo / "tools" / "thing.py").write_text("x = 1\n", encoding="utf-8")
+    guide_editor("docs/               prose", "docs/               prose\ndeeply/tools/       unrelated")
+    fired = checks_fired(mini_repo)
+    assert "layout.top-level-mentioned" in fired
+
+
+def test_prose_containing_the_bare_word_does_not_satisfy_the_mention(mini_repo, guide_editor):
+    """Regression: prose like "do not add those tools" must not document a `tools/` directory."""
+    (mini_repo / "tools").mkdir()
+    (mini_repo / "tools" / "thing.py").write_text("x = 1\n", encoding="utf-8")
+    guide_editor("## Docs", "Do not add those tools or files.\n\n## Docs")
+    assert "layout.top-level-mentioned" in checks_fired(mini_repo)
+
+
+def test_properly_documented_directory_passes(mini_repo, guide_editor):
+    (mini_repo / "tools").mkdir()
+    (mini_repo / "tools" / "thing.py").write_text("x = 1\n", encoding="utf-8")
+    guide_editor("docs/               prose", "docs/               prose\ntools/              helpers")
+    assert checks_fired(mini_repo) == []

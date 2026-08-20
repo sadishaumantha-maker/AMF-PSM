@@ -325,9 +325,15 @@ def check_layout(facts: RepoFacts, claims: Claims) -> list[Finding]:
                 location=GUIDE,
             )
         )
-    unmentioned = [
-        name for name in facts.top_level if not name.startswith(".") and name != GUIDE and not claims.mentions(name)
-    ]
+    unmentioned = []
+    for name in facts.top_level:
+        if name.startswith(".") or name == GUIDE:
+            continue
+        # A directory is referenced as a path (`tools/`); matching the bare word would let
+        # ordinary prose such as "those tools" mask a genuinely undocumented directory.
+        needle = f"{name}/" if (facts.root / name).is_dir() else name
+        if not claims.mentions_path(needle):
+            unmentioned.append(name)
     if unmentioned:
         findings.append(
             Finding(

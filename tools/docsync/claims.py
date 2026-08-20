@@ -107,6 +107,17 @@ class Claims:
         """Report whether ``needle`` appears anywhere in the document."""
         return needle in self.text
 
+    def mentions_path(self, needle: str) -> bool:
+        """Report whether ``needle`` appears as a path, not merely as a substring.
+
+        A plain substring test is wrong in both directions here. Matching the bare word
+        ``tools`` is satisfied by prose like "those tools", and matching ``tools/`` is
+        satisfied by an unrelated ``tests/tools/`` -- so an undocumented top-level directory
+        would slip through on the strength of a different directory's name. Requiring a
+        boundary before the match fixes both.
+        """
+        return re.search(rf"(?<![\w/.-]){re.escape(needle)}", self.text) is not None
+
 
 def _fenced_blocks(text: str) -> list[tuple[str, str]]:
     """Return ``(info_string, body)`` for every fenced code block."""

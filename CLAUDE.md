@@ -66,13 +66,20 @@ src/amf/            the Python package (see table below); ships py.typed
 tests/conftest.py   fixtures: boundary, market_factory, healthy_market,
                     stressed_market; plus the importable build_market() helper
                     (hypothesis rejects function-scoped fixtures under @given)
-tests/unit/         one file per module, plus test_non_trading_boundary.py
-                    (the naming guard), test_properties.py (hypothesis), and
-                    test_packaging.py (packaging / metadata invariants)
+tests/unit/         one file per module for the nine modules with direct unit
+                    tests (errors.py is covered via test_packaging.py, and the
+                    CLI is covered by tests/integration/test_cli.py), plus
+                    test_non_trading_boundary.py (the naming guard),
+                    test_properties.py (hypothesis), and test_packaging.py
+                    (packaging / metadata invariants)
+tests/tools/        the docsync + chronos harness, including the mutation corpus
 tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
 examples/           sample_market.json + four runnable scripts
+tools/              repository operations tooling: docsync (CLAUDE.md drift
+                    detection) and chronos (verified-time attestation). Not part
+                    of the shipped wheel and not measured by the coverage gate
 docs/               prose only — planning and research notes, no code and no
                     authority over the package (see *Prose docs* below)
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
@@ -98,7 +105,7 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 | `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
-| `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Dependency-free. |
+| `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Depends only on `errors` and `models` — nothing above it in the layering. |
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, `with_system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable, validated `DiagnosticConfig`): deterministic structural-weakness scoring (`fragility`, `concentration`, `feedback_amplification`, `single_points_of_failure`) → `DiagnosticReport`. Both the findings ranking and the SPOF ranking break ties by `SystemKind` declaration order. |
 | `sensitivity.py` | `SensitivityAnalyzer` (+ tunable, validated `SensitivityConfig`): perturbs each `SystemMetric` of each system and re-diagnoses → `SensitivityReport` (gradients + ranked `LeveragePoint`s). Builds on `diagnostics`. |
@@ -194,7 +201,7 @@ kinds never changes a score.
 
 Every parse failure — malformed structure, a non-numeric metric, an unknown kind,
 an out-of-range value — surfaces as `MarketParseError`. `Market.from_dict` wraps
-`KeyError`/`TypeError`/`ValueError` and re-raises domain `AMFError`s as parse
+`KeyError`/`TypeError`/`AttributeError`/`ValueError` and re-raises domain `AMFError`s as parse
 errors, and the CLI's `_load_market` additionally maps `OSError`,
 `UnicodeDecodeError` (a `ValueError`, so it does not fall under `OSError`), and
 `json.JSONDecodeError` onto it — so no raw exception escapes the schema
@@ -212,7 +219,8 @@ amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.
                 [--cascade-threshold 0.2] [--cascade-gain 0.5] [--recovery 0.0] \
                 [--seed N] [--jitter 0.0] [--format ...]
 amf stress-test examples/sample_market.json [--magnitude 0.8] [--format ...]  # shocks each system in turn
-amf ensemble    examples/sample_market.json --target circulatory [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
+amf ensemble    examples/sample_market.json --target circulatory [--magnitude 0.8] \
+                [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
 amf sensitivity examples/sample_market.json [--step 0.05] [--top N] [--format ...]
 amf viz         examples/sample_market.json [--format svg|dot|mermaid] [--output FILE] \
                 [--timeline SYSTEM [--magnitude 0.8]]
@@ -358,9 +366,10 @@ pre-commit install                      # optional: run hooks on commit
 This block is the authoritative dev setup — there is no `requirements.txt`, and
 the project does not use `black`, `flake8`, or `pylint` despite what
 `CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
-the whole suite is currently 513 tests passing at 100% statement and branch
-coverage, with `ruff` and `mypy` both silent; that is the bar a change has to
-clear.
+the whole suite is currently 627 tests passing with `ruff` and `mypy` both
+silent; that is the bar a change has to clear. Coverage is 100% statement and
+branch *of `src/amf`* — the gate is scoped to the package (`--cov=amf`), so the
+`tools/` tests contribute to the test total but not to that percentage.
 
 Conventions: Python 3.11+ (CI tests 3.11/3.12/3.13), full type annotations,
 Google-style docstrings on public API. Ruff selects
@@ -393,8 +402,12 @@ tests exist precisely because full coverage was hiding real gaps.
 
 1. Put new behaviour in the module that owns it; respect the one-way dependency
    order and do not import `report`/`viz`/`cli` from lower layers.
-2. Export new public types from `amf/__init__.py` and add them to `__all__`
-   (kept sorted). Check the name against the non-trading `FORBIDDEN` list.
+2. Export new public types from `amf/__init__.py` and add them to `__all__`, whose
+   order is enforced by ruff's `RUF022` — an isort-style natural sort, *not*
+   `sorted()`. `tests/unit/test_packaging.py` deliberately declines to assert the
+   ordering rather than duplicate the linter and encode the wrong convention, so do
+   not add a `== sorted(__all__)` assertion. Check the name against the non-trading
+   `FORBIDDEN` list.
 3. New result types are frozen, slotted dataclasses with a `to_dict()`; if they
    are serialised, extend `report._to_jsonable` and the text/Markdown renderers.
 4. Raise a typed `AMFError` subclass, never a bare `ValueError`, across the
@@ -445,7 +458,7 @@ behind it to start reporting problems of their own that were never visible befor
 
 Two consequences are baked into the tree, and undoing either re-breaks the job:
 
-- **`codeql.yml` carries two `# yamllint disable-line rule:line-length`
+- **`codeql.yml` carries three `# yamllint disable-line rule:line-length`
   directives.** They sit above comments that are a single GitHub documentation
   URL, too long for the 140-character limit at any indentation and not shortenable
   without breaking the link. Keep the directives if you touch that file, and keep
@@ -509,6 +522,16 @@ the document is the thing that is out of date.
 - **`docs/ANALYSIS_AND_ROADMAP.md`** — a governance and delivery-pipeline audit
   with a 90-day plan. A snapshot of one moment's issue and PR backlog; its counts
   go stale immediately.
+- **`docs/90_DAY_PLAN_INDEX.md`** — an index mapping that 90-day plan onto
+  individual issues. Like the audit it annotates, its counts and issue numbers are
+  a snapshot rather than live state.
+- **`docs/discussions/README.md`** — the index for a set of eleven planned research
+  discussion modules derived from `docs/QUANTUM_NEURAL_RESEARCH.md`. **None of the
+  eleven module files has been written**; the index names their future filenames as
+  plain text rather than links, because a link to a file that does not exist fails
+  the Markdown link check. It was committed with those links live, which failed the
+  `validate` job on every push until it was corrected. If you write a module, add
+  the file and turn its name into a link in the same pull request.
 - **`docs/RESEARCH_DISCUSSIONS.md`** and **`docs/QUANTUM_NEURAL_RESEARCH.md`** —
   open-ended research prompts for a hypothetical v1.1 (regulatory architecture,
   quantum and neural formulations of market state, information-theoretic
