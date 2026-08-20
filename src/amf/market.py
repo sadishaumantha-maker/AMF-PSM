@@ -203,9 +203,15 @@ def _parse_system(name: str, body: dict[str, Any]) -> AnatomicalSystem:
         msg = f"unknown field(s) for system {kind.value!r}: {', '.join(sorted(unknown))}"
         raise MarketParseError(msg)
     metrics = {metric: float(body[metric]) for metric in _SYSTEM_METRICS if metric in body}
+    components = body.get("components", [])
+    if not isinstance(components, list):
+        # A bare string is iterable, so accepting one would split "abc" into three
+        # single-character components instead of reporting malformed input.
+        msg = f"components for system {kind.value!r} must be a list, got {type(components).__name__}"
+        raise MarketParseError(msg)
     return SYSTEM_FACTORIES[kind](
         name=str(body["name"]) if "name" in body else None,
-        components=[str(c) for c in body.get("components", [])],
+        components=[str(c) for c in components],
         **metrics,
     )
 

@@ -47,6 +47,9 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `Market.from_dict()` now rejects a `components` value that is not a list. A
+  bare string is iterable, so it was previously split into single-character
+  components rather than reported as malformed.
 - Diagnostic output no longer depends on the order a market was assembled in.
   Both the per-system findings ranking and the single-point-of-failure ranking
   fell back on `dict` insertion order whenever two systems tied, so two markets
@@ -90,6 +93,8 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- The coverage gate rose from 90% to 100% branch coverage. A suite already at
+  100% cannot fail a 90% gate, so the gate was rejecting nothing.
 - `amf.report` now exports a `Renderable` type alias for the result types the
   renderers accept, and `cli._format` is annotated with it instead of `object`.
   This removes three `# type: ignore[arg-type]` comments that were suppressing

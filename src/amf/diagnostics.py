@@ -65,7 +65,10 @@ class DiagnosticConfig:
         """Validate the blend weights on construction.
 
         Raises:
-            InvalidConfigError: If any weight is negative or not finite.
+            InvalidConfigError: If any weight is negative or not finite. A negative
+                weight would push per-system scores outside ``[0, 1]``, which every
+                consumer of a score -- :meth:`~amf.models.Severity.from_score` above
+                all -- assumes it can rely on.
         """
         for name in ("fragility_weight", "concentration_weight", "feedback_weight"):
             value: float = getattr(self, name)

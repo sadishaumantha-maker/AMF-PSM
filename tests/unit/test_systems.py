@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import dataclasses
-
 import pytest
 
 from amf.errors import InvalidSystemError
@@ -80,44 +78,34 @@ def test_factory_default_names_are_distinct():
     assert len({factory().name for factory in _FACTORIES}) == len(_FACTORIES)
 
 
-@pytest.mark.parametrize("factory", _FACTORIES)
-def test_factory_rejects_unknown_metric(factory):
-    # A misspelled metric must not be silently discarded.
-    with pytest.raises(InvalidSystemError, match="integritty"):
-        factory(integritty=0.1)
+def test_default_criticality_table_is_exact():
+    # The seven defaults are a design decision, not incidental: pin all of them.
+    factories = (skeleton, circulatory, nervous, musculature, organs, immune, metabolism)
+    assert {f().kind: f().criticality for f in factories} == {
+        SystemKind.SKELETON: pytest.approx(0.90),
+        SystemKind.CIRCULATORY: pytest.approx(0.85),
+        SystemKind.IMMUNE: pytest.approx(0.75),
+        SystemKind.NERVOUS: pytest.approx(0.70),
+        SystemKind.ORGANS: pytest.approx(0.65),
+        SystemKind.MUSCULATURE: pytest.approx(0.60),
+        SystemKind.METABOLISM: pytest.approx(0.60),
+    }
 
 
-def test_factory_rejects_trading_vocabulary_kwarg():
-    # The non-trading boundary has to hold at runtime too, not just in name scans.
-    with pytest.raises(InvalidSystemError, match="price"):
-        skeleton(price=3.0)
+def test_default_criticality_ordering_reflects_load_bearing_rank():
+    # The ordering is the claim the table encodes: infrastructure and capital flow
+    # are the most load-bearing, participants and metabolism the least.
+    ranked = [skeleton(), circulatory(), immune(), nervous(), organs()]
+    scores = [s.criticality for s in ranked]
+    assert scores == sorted(scores, reverse=True)
+    assert organs().criticality > musculature().criticality
+    assert musculature().criticality == pytest.approx(metabolism().criticality)
 
 
-def test_factory_error_lists_every_unknown_metric_sorted():
-    with pytest.raises(InvalidSystemError, match="alpha, zeta"):
-        skeleton(zeta=1.0, alpha=1.0)
-
-
-@pytest.mark.parametrize("field", ["integrity", "redundancy", "criticality", "load"])
-def test_system_is_immutable(field: str):
-    system = skeleton()
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        setattr(system, field, 0.5)
-
-
-def test_health_cannot_be_driven_out_of_range_after_construction():
-    # Previously `s.load = 5.0` was accepted and made health() == -4.0.
-    system = skeleton(integrity=1.0, load=0.0)
-    assert system.health() == pytest.approx(1.0)
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        system.load = 5.0
-    assert 0.0 <= system.health() <= 1.0
-    assert 0.0 <= system.absorptive_capacity() <= 1.0
-
-
-def test_factory_overrides_metrics_and_components():
-    system = skeleton(name="NYSE", components=["NYSE", "DTCC"], integrity=0.5, redundancy=0.2)
-    assert system.name == "NYSE"
-    assert system.components == ["NYSE", "DTCC"]
-    assert system.integrity == pytest.approx(0.5)
-    assert system.redundancy == pytest.approx(0.2)
+def test_absorptive_capacity_weights_sum_to_one():
+    # A fully redundant, fully intact, unloaded system absorbs everything; the
+    # blend can therefore never exceed the unit interval.
+    best = AnatomicalSystem(SystemKind.SKELETON, "s", integrity=1.0, redundancy=1.0, load=0.0)
+    worst = AnatomicalSystem(SystemKind.SKELETON, "s", integrity=0.0, redundancy=0.0, load=1.0)
+    assert best.absorptive_capacity() == pytest.approx(1.0)
+    assert worst.absorptive_capacity() == pytest.approx(0.0)

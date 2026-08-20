@@ -151,6 +151,10 @@ builder and runs a shock + stress test).
 - **Per-system derived metrics**: `health = integrity·(1 − load)`;
   `absorptive_capacity = 0.5·redundancy + 0.3·integrity + 0.2·(1 − load)` (weights
   sum to 1, so the result stays in `[0, 1]`).
+- **Config validation**: `DiagnosticConfig` rejects negative weights and
+  `SimulationConfig` rejects `max_steps < 1`, `damping` outside `(0, 1]`, and
+  negative `retention`/`transmission`/`jitter`, all as `InvalidConfigError`. These
+  keep every score inside `[0, 1]` and keep the dynamics a contraction.
 - **Diagnostics** (deterministic): per-system
   `fragility = criticality·(1 − health)·(1 − redundancy)`; `concentration` is an
   HHI over a system's outgoing dependency weights; `feedback` sums the edge-weight
@@ -190,7 +194,9 @@ builder and runs a shock + stress test).
   numpy). Amplification/absorption use total injected load as a timing-independent
   denominator.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
-  `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical.
+  `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. The mapping is
+  total and saturating: input below `0` reports low, above `1` reports critical, and
+  `NaN` falls through to critical.
 
 ## Determinism and parameter validation
 
@@ -221,7 +227,7 @@ Two cross-cutting invariants that any change must preserve:
 python -m pip install -e ".[dev]"
 ruff check . && ruff format --check .   # lint & format (line length 120)
 mypy                                    # strict type-check of src/ only
-pytest                                  # tests + branch coverage gate (>= 90%)
+pytest                                  # tests + branch coverage gate (100%)
 pre-commit install                      # optional: run hooks on commit
 ```
 
