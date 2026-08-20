@@ -11,6 +11,9 @@ from amf.market import Market
 from amf.models import (
     DiagnosticReport,
     MarketBoundary,
+    PolicyLayer,
+    PolicyProfile,
+    PolicyTier,
     ResilienceScore,
     SensitivityReport,
     Severity,
@@ -20,6 +23,7 @@ from amf.models import (
     SystemMetric,
     WeaknessFinding,
 )
+from amf.policy import PolicyStack
 from amf.report import (
     Renderable,
     _to_jsonable,
@@ -274,16 +278,18 @@ def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
     trace = simulator.propagate(Shock(target=SystemKind.CIRCULATORY, magnitude=0.6))
     profile = simulator.stress_test(magnitude=0.6)
     sensitivity = SensitivityAnalyzer().analyse(healthy_market)
+    policy = PolicyStack([PolicyLayer(tier=PolicyTier.STATUTORY, name="primary act", coverage=0.6)]).profile()
 
     members = get_args(Renderable)
     assert set(members) == {
         DiagnosticReport,
         SimulationTrace,
         SensitivityReport,
+        PolicyProfile,
         dict[SystemKind, ResilienceScore],
     }
 
-    for result in (engine_report, trace, profile, sensitivity):
+    for result in (engine_report, trace, profile, sensitivity, policy):
         assert render_text(result)
         assert render_markdown(result)
         assert json.loads(render_json(result))

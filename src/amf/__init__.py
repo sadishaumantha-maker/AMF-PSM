@@ -29,6 +29,7 @@ from amf.errors import (
 from amf.graph import CouplingMatrix, DependencyGraph
 from amf.market import Market
 from amf.models import (
+    ChangeMode,
     Dependency,
     DependencyKind,
     DiagnosticReport,
@@ -36,6 +37,9 @@ from amf.models import (
     LeveragePoint,
     MarketBoundary,
     MetricStats,
+    PolicyLayer,
+    PolicyProfile,
+    PolicyTier,
     ResilienceDistribution,
     ResilienceScore,
     Sensitivity,
@@ -47,6 +51,7 @@ from amf.models import (
     SystemMetric,
     WeaknessFinding,
 )
+from amf.policy import PolicyStack
 from amf.sensitivity import SensitivityAnalyzer, SensitivityConfig
 from amf.simulation import ShockSimulator, SimulationConfig
 from amf.systems import (
@@ -67,6 +72,7 @@ __all__ = [
     "SYSTEM_FACTORIES",
     "AMFError",
     "AnatomicalSystem",
+    "ChangeMode",
     "CouplingMatrix",
     "Dependency",
     "DependencyGraph",
@@ -85,6 +91,10 @@ __all__ = [
     "MarketBoundary",
     "MarketParseError",
     "MetricStats",
+    "PolicyLayer",
+    "PolicyProfile",
+    "PolicyStack",
+    "PolicyTier",
     "ResilienceDistribution",
     "ResilienceScore",
     "Sensitivity",
