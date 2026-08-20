@@ -6,6 +6,16 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `DiagnosticConfig.scale_concentration_by_reliance` (default `False`), which
+  multiplies the concentration index by `min(1, total outgoing weight)`. The
+  index is share-based, so it measures how unevenly a system's reliance is spread
+  and not how much of it there is: a system leaning on a single `0.01` coupling
+  scores the same maximum `1.0` as one wholly dependent on a `1.0` coupling, and
+  four of the seven systems in `examples/sample_market.json` score `1.00` on that
+  basis. It also makes the measure discontinuous at zero — an isolated system
+  scores `0.00`, and giving it one trivial coupling scores `1.00`. Enabling the
+  flag fixes both. It is opt-in because it moves every concentration score the
+  engine reports; the default output is unchanged.
 - `InvalidConfigError`, a new `AMFError` subclass raised when an engine or
   algorithm parameter is outside its documented range — `DiagnosticConfig`,
   `SimulationConfig`, and `DependencyGraph.centrality()` all validate on
@@ -90,6 +100,31 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- **Breaking:** `DependencyGraph.centrality()` now rejects an `alpha` that is too
+  large for the graph it is called on, instead of returning numbers derived from a
+  diverging series. The Katz series converges only while `alpha` stays below the
+  inverse of the graph's spectral radius; the default `0.4` satisfies that on a
+  sparse market (`examples/sample_market.json` bounds it at `1/1.3`) but not on a
+  densely coupled one, where the influence series grew to ~1e76 before being
+  max-normalised into plausible-looking output. `alpha` is now checked against the
+  max-row-sum bound for that graph and an out-of-range value raises
+  `InvalidConfigError` naming a usable value. *Migration:* pass a smaller `alpha`
+  — the error message states the bound. Results are unchanged wherever the
+  previous call was mathematically valid, and nothing in the diagnostic or
+  simulation pipeline consumes `centrality`, so no score moves.
+- `DependencyGraph.centrality()` now tests convergence relative to the influence
+  accumulated so far rather than against an absolute threshold. The absolute test
+  was unreachable within the default iteration budget on densely coupled graphs,
+  so the method silently returned an under-converged result.
+- The diagnostic concentration driver now reports the coupling count and total
+  reliance alongside the index (`reliance concentrated in 1 coupling(s) (HHI 1.00,
+  total reliance 0.30)`). The index alone cannot distinguish a genuine
+  concentration risk from a single trivial coupling, both of which score `1.00`.
+  Scores are unchanged; only the explanatory text differs.
+- CI now pins the third-party `markdown-link-check` action to a full commit SHA
+  rather than the mutable `v1` tag, and moves the GitHub-owned actions to
+  `checkout@v5`, `setup-python@v6`, and `upload-artifact@v6`, which clears the
+  Node 20 deprecation warning the runner emitted for the previous majors.
 - `amf.report` now exports a `Renderable` type alias for the result types the
   renderers accept, and `cli._format` is annotated with it instead of `object`.
   This removes three `# type: ignore[arg-type]` comments that were suppressing

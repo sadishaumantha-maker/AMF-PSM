@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from amf import (
+    DiagnosticConfig,
     DiagnosticEngine,
     Market,
     Shock,
@@ -12,6 +16,8 @@ from amf import (
     SystemKind,
 )
 from amf.report import render_json, render_text
+
+SAMPLE = Path(__file__).resolve().parents[2] / "examples" / "sample_market.json"
 
 
 @pytest.mark.integration
@@ -58,3 +64,40 @@ def test_round_trip_then_analyse(stressed_market: Market):
     original_index = DiagnosticEngine().diagnose(stressed_market).overall_index
     restored_index = DiagnosticEngine().diagnose(restored).overall_index
     assert restored_index == pytest.approx(original_index)
+
+
+def test_shipped_sample_market_scores_are_pinned():
+    """Guard the published numbers for `examples/sample_market.json`.
+
+    These are the scores the framework's own example reports. They are not
+    arbitrary fixtures: any change to the diagnostic maths moves them, so this
+    test is what makes such a change a deliberate decision rather than a silent
+    side effect. Four of the seven systems have exactly one outgoing coupling and
+    so score the maximum concentration of 1.00 whatever that coupling weighs --
+    see `DiagnosticEngine.concentration` and the opt-in that rescales it.
+    """
+    market = Market.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
+    report = DiagnosticEngine().diagnose(market)
+
+    assert report.overall_index == pytest.approx(0.27964, abs=5e-5)
+    concentration = {f.system: f.concentration for f in report.findings}
+    assert concentration == {
+        SystemKind.SKELETON: pytest.approx(0.00),
+        SystemKind.CIRCULATORY: pytest.approx(0.52663, abs=5e-5),
+        SystemKind.NERVOUS: pytest.approx(0.50413, abs=5e-5),
+        SystemKind.MUSCULATURE: pytest.approx(1.00),
+        SystemKind.ORGANS: pytest.approx(1.00),
+        SystemKind.IMMUNE: pytest.approx(1.00),
+        SystemKind.METABOLISM: pytest.approx(1.00),
+    }
+
+
+def test_reliance_scaling_separates_the_systems_the_index_ties():
+    """The opt-in ranks the four tied systems by how much reliance they carry."""
+    market = Market.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
+    engine = DiagnosticEngine(DiagnosticConfig(scale_concentration_by_reliance=True))
+    scaled = engine.concentration(market)
+    assert scaled[SystemKind.MUSCULATURE] == pytest.approx(0.70)
+    assert scaled[SystemKind.ORGANS] == pytest.approx(0.60)
+    assert scaled[SystemKind.METABOLISM] == pytest.approx(0.40)
+    assert scaled[SystemKind.IMMUNE] == pytest.approx(0.30)

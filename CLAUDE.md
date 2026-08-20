@@ -153,7 +153,12 @@ builder and runs a shock + stress test).
   sum to 1, so the result stays in `[0, 1]`).
 - **Diagnostics** (deterministic): per-system
   `fragility = criticality·(1 − health)·(1 − redundancy)`; `concentration` is an
-  HHI over a system's outgoing dependency weights; `feedback` sums the edge-weight
+  HHI over a system's outgoing dependency weights (share-based, so it measures how
+  *unevenly* reliance is spread and not how much of it there is — a system with a
+  single coupling scores 1.0 at any weight, while one with none scores 0;
+  `DiagnosticConfig.scale_concentration_by_reliance` opts into multiplying by
+  `min(1, total outgoing weight)`, which is off by default because it moves every
+  published concentration score); `feedback` sums the edge-weight
   products of the loops a system is in. These combine under `DiagnosticConfig`
   weights (`0.4 / 0.3 / 0.3`, normalised by their sum) into a per-system score;
   findings are sorted by score descending, and the report's overall index is the
@@ -161,7 +166,13 @@ builder and runs a shock + stress test).
   articulation point with redundancy below `_LOW_REDUNDANCY` (0.5).
 - **Centrality**: Katz-style "being depended upon" influence, max-normalised to
   `[0, 1]`, attenuated by `alpha` (default 0.4) per hop. Chosen over eigenvector
-  centrality because it is well defined on acyclic graphs.
+  centrality because it is well defined on acyclic graphs. The series only
+  converges while `alpha` stays below the inverse of the graph's spectral radius,
+  so `centrality` checks `alpha` against the max-row-sum bound for *that* graph
+  and raises `InvalidConfigError` rather than max-normalising a diverging series
+  into plausible-looking numbers — the default `alpha` is therefore valid on a
+  sparse market and rejected on a densely coupled one. Nothing in the scoring
+  pipeline consumes `centrality`; it is a standalone query.
 - **Simulation**: a stress vector `x_t ∈ [0,1]^7` evolves by
   `x_{t+1}[j] = clip(damping·(x_t[j]·retention + Σ_i x_t[i]·W[i][j]·transmission·(1−a_j)), 0, 1)`,
   where `W` is the coupling matrix (stress flows target → source, the reverse of

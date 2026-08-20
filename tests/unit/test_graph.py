@@ -322,3 +322,47 @@ def test_centrality_rejects_an_invalid_tolerance(tolerance: float):
     graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
     with pytest.raises(InvalidConfigError, match="tolerance must be"):
         graph.centrality(tolerance=tolerance)
+
+
+def _dense_graph() -> DependencyGraph:
+    """Every ordered pair coupled at full weight: max row sum 6."""
+    return DependencyGraph(
+        [_dep(source, target, 1.0) for source in SystemKind for target in SystemKind if source is not target]
+    )
+
+
+def test_centrality_rejects_an_alpha_that_diverges_on_this_graph():
+    # alpha=0.4 is inside (0, 1) and fine on a sparse market, but on a densely
+    # coupled one it sits far above 1/rho: the influence series then grows without
+    # bound and used to be max-normalised into plausible-looking numbers.
+    with pytest.raises(InvalidConfigError, match=r"alpha must be below 1/6"):
+        _dense_graph().centrality(alpha=0.4)
+
+
+def test_centrality_error_names_a_usable_alpha():
+    with pytest.raises(InvalidConfigError) as excinfo:
+        _dense_graph().centrality(alpha=0.4)
+    assert "0.1667" in str(excinfo.value)
+    # And that suggested bound is genuinely usable.
+    centrality = _dense_graph().centrality(alpha=0.15)
+    assert all(0.0 <= v <= 1.0 for v in centrality.values())
+
+
+def test_centrality_still_accepts_alpha_on_a_sparse_graph():
+    # The guard is per-graph, so the default keeps working wherever it was valid.
+    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON, 0.5)])
+    assert graph.centrality()[SystemKind.SKELETON] == pytest.approx(1.0)
+
+
+def test_centrality_converges_where_an_absolute_tolerance_could_not():
+    # Just under the divergence bound the residual decays slowly; an absolute
+    # threshold on the influence added per step was unreachable within the default
+    # budget, so the result was silently under-converged. The relative test settles.
+    centrality = _dense_graph().centrality(alpha=0.16)
+    assert all(0.0 <= v <= 1.0 for v in centrality.values())
+    assert max(centrality.values()) == pytest.approx(1.0)
+
+
+def test_spectral_radius_bound_is_zero_without_edges():
+    # An empty graph constrains nothing, so every alpha in (0, 1) stays legal.
+    assert DependencyGraph().centrality(alpha=0.99) == dict.fromkeys(SystemKind, 0.0)
