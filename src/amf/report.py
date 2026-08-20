@@ -10,7 +10,13 @@ from __future__ import annotations
 import json
 from typing import Any, TypeAlias
 
-from amf.models import DiagnosticReport, ResilienceScore, SimulationTrace, SystemKind
+from amf.models import (
+    DiagnosticReport,
+    ResilienceDistribution,
+    ResilienceScore,
+    SimulationTrace,
+    SystemKind,
+)
 
 Renderable: TypeAlias = DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]
 """Any result object the renderers accept.
@@ -18,17 +24,21 @@ Renderable: TypeAlias = DiagnosticReport | SimulationTrace | dict[SystemKind, Re
 A :class:`~amf.models.DiagnosticReport` from the diagnostic engine, a
 :class:`~amf.models.SimulationTrace` from a single shock, or the
 system-to-:class:`~amf.models.ResilienceScore` mapping a stress test returns.
+
+A :class:`~amf.models.ResilienceDistribution` is deliberately excluded: only
+:func:`render_json` serialises one, while the text and Markdown renderers use
+the dedicated :func:`render_distribution`.
 """
 
 
-def render_json(obj: Renderable) -> str:
+def render_json(obj: Renderable | ResilienceDistribution) -> str:
     """Render any result object as pretty-printed JSON."""
     return json.dumps(_to_jsonable(obj), indent=2, sort_keys=True)
 
 
 def _to_jsonable(obj: Any) -> Any:  # noqa: ANN401 - intentional dispatch over result types
     """Convert a result object into JSON-serialisable primitives."""
-    if isinstance(obj, (DiagnosticReport, SimulationTrace, ResilienceScore)):
+    if isinstance(obj, (DiagnosticReport, SimulationTrace, ResilienceScore, ResilienceDistribution)):
         return obj.to_dict()
     if isinstance(obj, dict):
         return {(k.value if isinstance(k, SystemKind) else str(k)): _to_jsonable(v) for k, v in obj.items()}
@@ -130,6 +140,30 @@ def _simulation_text(trace: SimulationTrace) -> str:
             f"  Amplification factor: {r.amplification_factor:.3f}",
             f"  Settling time:        {r.settling_time} steps",
         ]
+        if r.tipped_systems:
+            tipped = ", ".join(s.value for s in r.tipped_systems)
+            lines.append(f"  Tipped (cascade):     {tipped}")
+    return "\n".join(lines)
+
+
+def render_distribution(dist: ResilienceDistribution) -> str:
+    """Render a Monte Carlo resilience distribution as plain text."""
+    lines = [
+        "Anatomical Market Framework - Resilience Ensemble",
+        f"  Shocked system: {dist.target.value}   runs: {dist.runs}",
+        "",
+        "  metric                mean    p10    p50    p90    min    max",
+    ]
+    rows = (
+        ("resilience", dist.value),
+        ("amplification", dist.amplification_factor),
+        ("peak stress", dist.peak_stress),
+        ("absorbed", dist.absorbed_fraction),
+    )
+    for name, s in rows:
+        lines.append(
+            f"  {name:<18} {s.mean:6.3f} {s.p10:6.3f} {s.p50:6.3f} {s.p90:6.3f} {s.minimum:6.3f} {s.maximum:6.3f}"
+        )
     return "\n".join(lines)
 
 
@@ -168,4 +202,7 @@ def _simulation_markdown(trace: SimulationTrace) -> str:
             f"| Amplification factor | {r.amplification_factor:.3f} |",
             f"| Settling time | {r.settling_time} steps |",
         ]
+        if r.tipped_systems:
+            tipped = ", ".join(s.value for s in r.tipped_systems)
+            lines.append(f"| Tipped (cascade) | {tipped} |")
     return "\n".join(lines)

@@ -36,5 +36,16 @@ class InvalidShockError(AMFError):
     """Raised when a simulation shock has an out-of-range magnitude or bad target."""
 
 
+class InvalidConfigError(AMFError):
+    """Raised when an engine or algorithm parameter is outside its documented range.
+
+    Covers :class:`~amf.diagnostics.DiagnosticConfig`,
+    :class:`~amf.simulation.SimulationConfig`, and the tuning arguments of
+    :meth:`~amf.graph.DependencyGraph.centrality`. Validating these up front keeps
+    an out-of-range knob from silently producing scores outside their documented
+    interval instead of failing.
+    """
+
+
 class MarketParseError(AMFError):
     """Raised when a market description (e.g. JSON) cannot be parsed into a model."""

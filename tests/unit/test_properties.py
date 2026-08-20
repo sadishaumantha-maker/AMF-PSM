@@ -10,10 +10,12 @@ from __future__ import annotations
 
 import itertools
 
+import pytest
 from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from amf.diagnostics import DiagnosticConfig, DiagnosticEngine
+from amf.errors import InvalidConfigError
 from amf.graph import DependencyGraph
 from amf.market import Market
 from amf.models import Dependency, DependencyKind, MarketBoundary, Shock, SystemKind
@@ -173,3 +175,34 @@ def test_feedback_loops_match_a_brute_force_enumeration(dependencies: list[Depen
     assert len(loops) == len(set(loops))
     for loop in loops:
         assert loop[0] == min(loop, key=_ORDER.index)
+
+
+@given(market=_markets(), permutation=st.permutations(_ORDER))
+@_SETTINGS
+def test_diagnosis_is_independent_of_assembly_order(market: Market, permutation: list[SystemKind]):
+    # Two markets that compare equal must diagnose identically. Before the
+    # canonical tie-break the findings ranking and the SPOF ranking both fell
+    # back on dict insertion order, so the same market assembled in a different
+    # order produced a different report whenever two systems tied.
+    shuffled = Market.assemble(
+        market.boundary,
+        [market.system(kind) for kind in permutation],
+        market.graph.dependencies(),
+    )
+    engine = DiagnosticEngine()
+    assert engine.diagnose(shuffled).to_dict() == engine.diagnose(market).to_dict()
+    assert shuffled.to_dict() == market.to_dict()
+
+
+@given(
+    fragility=st.floats(min_value=-5.0, max_value=-1e-9),
+    concentration=st.floats(min_value=0.0, max_value=5.0),
+    feedback=st.floats(min_value=0.0, max_value=5.0),
+)
+@_SETTINGS
+def test_negative_blend_weights_are_rejected(fragility: float, concentration: float, feedback: float):
+    # The unit-interval property above only ever drew non-negative weights, which
+    # is exactly why the negative case slipped through: normalising a negative
+    # weight pushes scores outside [0, 1] rather than raising.
+    with pytest.raises(InvalidConfigError):
+        DiagnosticConfig(fragility, concentration, feedback)

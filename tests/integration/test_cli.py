@@ -79,6 +79,29 @@ def test_simulate(capsys: pytest.CaptureFixture[str]):
     assert "Shock Propagation" in capsys.readouterr().out
 
 
+def test_simulate_cascade_and_recovery(capsys: pytest.CaptureFixture[str]):
+    code = main(
+        ["simulate", str(SAMPLE), "--target", "circulatory", "--cascade-threshold", "0.2", "--recovery", "0.05"]
+    )
+    assert code == 0
+    assert "Shock Propagation" in capsys.readouterr().out
+
+
+def test_ensemble_text(capsys: pytest.CaptureFixture[str]):
+    assert main(["ensemble", str(SAMPLE), "--target", "circulatory", "--runs", "10"]) == 0
+    captured = capsys.readouterr()
+    assert "Resilience Ensemble" in captured.out
+    assert "illustrative" in captured.err.lower()
+
+
+def test_ensemble_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["ensemble", str(SAMPLE), "--target", "skeleton", "--runs", "10", "--format", "json"]) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["runs"] == 10
+    assert "illustrative" in captured.err.lower()
+
+
 def test_simulate_json_is_valid(capsys: pytest.CaptureFixture[str]):
     assert main(["simulate", str(SAMPLE), "--target", "circulatory", "--format", "json"]) == 0
     captured = capsys.readouterr()
@@ -140,6 +163,45 @@ def test_stress_test_json_is_valid(capsys: pytest.CaptureFixture[str]):
 def test_stress_test_markdown(capsys: pytest.CaptureFixture[str]):
     assert main(["stress-test", str(SAMPLE), "--format", "md"]) == 0
     assert capsys.readouterr().out.startswith("# AMF Systemic Stress Test")
+
+
+def test_viz_svg_to_stdout(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE)]) == 0
+    captured = capsys.readouterr()
+    assert captured.out.startswith("<svg")
+    assert "illustrative" in captured.err.lower()
+
+
+def test_viz_dot(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE), "--format", "dot"]) == 0
+    assert capsys.readouterr().out.startswith("digraph")
+
+
+def test_viz_mermaid(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE), "--format", "mermaid"]) == 0
+    assert capsys.readouterr().out.startswith("graph LR")
+
+
+def test_viz_writes_output_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    out = tmp_path / "market.svg"
+    assert main(["viz", str(SAMPLE), "--output", str(out)]) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "wrote" in captured.err
+    assert out.read_text(encoding="utf-8").startswith("<svg")
+
+
+def test_viz_timeline(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE), "--timeline", "circulatory", "--magnitude", "0.6"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("<svg")
+    assert "Stress propagation" in out
+
+
+def test_viz_unwritable_output_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    missing_dir = tmp_path / "no-such-dir" / "market.svg"
+    assert main(["viz", str(SAMPLE), "--output", str(missing_dir)]) == 2
+    assert "cannot write" in capsys.readouterr().err
 
 
 def test_missing_file_returns_error_code(capsys: pytest.CaptureFixture[str]):
@@ -230,3 +292,20 @@ def test_sample_market_round_trip_preserves_all_dependency_kinds():
     restored = Market.from_dict(market.to_dict())
     assert restored.graph.dependencies() == market.graph.dependencies()
     assert Counter(d.kind for d in restored.graph.dependencies()) == expected
+
+
+def test_non_utf8_market_file_is_a_handled_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # `Path.read_text` raises UnicodeDecodeError, which is a ValueError and not
+    # an OSError, so pointing the CLI at a binary file escaped the AMFError
+    # contract in `main` and printed a raw traceback instead of exiting 2.
+    binary = tmp_path / "market.json"
+    binary.write_bytes(b"\xff\xfe{}")
+    assert main(["diagnose", str(binary)]) == 2
+    assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_load_market_wraps_a_decoding_failure(tmp_path: Path):
+    binary = tmp_path / "market.json"
+    binary.write_bytes(b"\x80\x81")
+    with pytest.raises(MarketParseError, match="not valid UTF-8"):
+        _load_market(binary)

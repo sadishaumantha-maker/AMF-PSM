@@ -21,12 +21,13 @@ from amf.models import (
 from amf.report import (
     Renderable,
     _to_jsonable,
+    render_distribution,
     render_json,
     render_markdown,
     render_stress_test,
     render_text,
 )
-from amf.simulation import ShockSimulator
+from amf.simulation import ShockSimulator, SimulationConfig
 
 
 def _score(target: SystemKind, value: float) -> ResilienceScore:
@@ -256,3 +257,20 @@ def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
         assert render_text(result)
         assert render_markdown(result)
         assert json.loads(render_json(result))
+
+
+def test_render_cascade_trace_shows_tipped_systems(stressed_market: Market):
+    config = SimulationConfig(cascade_threshold=0.2, cascade_gain=1.0)
+    trace = ShockSimulator(stressed_market, config).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    assert "Tipped (cascade)" in render_text(trace)
+    assert "Tipped (cascade)" in render_markdown(trace)
+
+
+def test_render_distribution_text_and_json(stressed_market: Market):
+    dist = ShockSimulator(stressed_market).ensemble(Shock(SystemKind.CIRCULATORY, 0.8), runs=20, base_seed=1)
+    text = render_distribution(dist)
+    assert "Resilience Ensemble" in text
+    assert "runs: 20" in text
+    payload = json.loads(render_json(dist))
+    assert payload["runs"] == 20
+    assert set(payload["value"]) == {"mean", "minimum", "maximum", "p10", "p50", "p90"}

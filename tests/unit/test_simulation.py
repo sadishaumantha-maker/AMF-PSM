@@ -4,10 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from amf.errors import InvalidShockError
+from amf.errors import InvalidConfigError, InvalidShockError
 from amf.market import Market
-from amf.models import Dependency, DependencyKind, Severity, Shock, SystemKind
+from amf.models import Dependency, DependencyKind, Intervention, Severity, Shock, SystemKind
 from amf.simulation import ShockSimulator, SimulationConfig
+
+
+def _total_stress(trace) -> float:
+    """Sum of stress across every system and timestep of a trace."""
+    return sum(v for step in trace.steps for v in step.values())
+
+
+_CASCADE = SimulationConfig(cascade_threshold=0.2, cascade_gain=1.0)
 
 
 def _fragile_dense_market(market_factory) -> Market:
@@ -104,6 +112,125 @@ def test_budget_exhausted_without_convergence(stressed_market: Market):
     assert trace.converged is False
     assert trace.resilience is not None
     assert trace.resilience.settling_time == -1
+
+
+# --- Extension 1: threshold / cascade dynamics -----------------------------
+
+
+def test_cascade_tips_systems_and_default_does_not(stressed_market: Market):
+    baseline = ShockSimulator(stressed_market).resilience(Shock(SystemKind.CIRCULATORY, 0.9))
+    cascade = ShockSimulator(stressed_market, _CASCADE).resilience(Shock(SystemKind.CIRCULATORY, 0.9))
+    # Linear default reports no tipping; cascade mode tips at least the shocked hub.
+    assert baseline.tipped_systems == ()
+    assert SystemKind.CIRCULATORY in cascade.tipped_systems
+    # Impairment can only add stress, so cascade peak >= baseline peak.
+    assert cascade.peak_stress >= baseline.peak_stress - 1e-9
+
+
+def test_cascade_can_amplify_beyond_baseline(stressed_market: Market):
+    # Total accumulated stress under cascade is at least the linear baseline.
+    base = ShockSimulator(stressed_market).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    casc = ShockSimulator(stressed_market, _CASCADE).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    assert _total_stress(casc) >= _total_stress(base) - 1e-9
+
+
+# --- Extension 2: Monte Carlo ensemble -------------------------------------
+
+
+def test_ensemble_is_deterministic_and_ordered(stressed_market: Market):
+    sim = ShockSimulator(stressed_market)
+    a = sim.ensemble(Shock(SystemKind.CIRCULATORY, 0.8), runs=30, base_seed=7, jitter=0.05)
+    b = sim.ensemble(Shock(SystemKind.CIRCULATORY, 0.8), runs=30, base_seed=7, jitter=0.05)
+    assert a.to_dict() == b.to_dict()
+    assert a.runs == 30
+    assert a.target is SystemKind.CIRCULATORY
+    for stats in (a.value, a.amplification_factor, a.peak_stress, a.absorbed_fraction):
+        assert stats.minimum <= stats.p10 <= stats.p50 <= stats.p90 <= stats.maximum
+    assert 0.0 <= a.value.mean <= 1.0
+
+
+def test_ensemble_rejects_nonpositive_runs(stressed_market: Market):
+    with pytest.raises(InvalidShockError, match="runs must be"):
+        ShockSimulator(stressed_market).ensemble(Shock(SystemKind.SKELETON, 0.8), runs=0)
+
+
+def test_ensemble_single_run_collapses_to_a_point(stressed_market: Market):
+    dist = ShockSimulator(stressed_market).ensemble(Shock(SystemKind.SKELETON, 0.8), runs=1)
+    # A single sample makes every percentile equal to that sample.
+    assert dist.value.minimum == dist.value.p10 == dist.value.p50 == dist.value.p90 == dist.value.maximum
+
+
+def test_ensemble_percentile_lands_exactly_on_a_sample(stressed_market: Market):
+    # With three runs the p50 rank is exactly 1.0, so it falls on a sample index
+    # rather than between two and is taken straight from the sorted values
+    # instead of being interpolated.
+    dist = ShockSimulator(stressed_market).ensemble(Shock(SystemKind.SKELETON, 0.8), runs=3, base_seed=3)
+    assert dist.runs == 3
+    assert dist.value.minimum <= dist.value.p50 <= dist.value.maximum
+
+
+def test_intervention_to_dict_round_trips():
+    payload = Intervention(SystemKind.CIRCULATORY, 0.4, at_step=3).to_dict()
+    assert payload == {"target": "circulatory", "absorptive_boost": 0.4, "at_step": 3}
+
+
+# --- Extension 3: time-scheduled / multi-wave shocks -----------------------
+
+
+def test_scheduled_shock_injects_at_its_step(healthy_market: Market):
+    # With no couplings the first shock decays toward zero, then a second wave at
+    # step 5 makes circulatory jump.
+    trace = ShockSimulator(healthy_market).propagate(
+        [Shock(SystemKind.SKELETON, 0.5, at_step=0), Shock(SystemKind.CIRCULATORY, 0.9, at_step=5)]
+    )
+    assert len(trace.steps) > 5
+    assert trace.steps[5][SystemKind.CIRCULATORY] > trace.steps[4][SystemKind.CIRCULATORY]
+    assert trace.steps[5][SystemKind.CIRCULATORY] >= 0.5
+
+
+def test_run_extends_to_cover_late_shock(healthy_market: Market):
+    # A late shock must fire even though the pre-shock trajectory is already flat.
+    trace = ShockSimulator(healthy_market).propagate(Shock(SystemKind.SKELETON, 0.8, at_step=6))
+    assert trace.steps[6][SystemKind.SKELETON] >= 0.7
+
+
+# --- Extension 4: recovery / intervention ----------------------------------
+
+
+def test_recovery_reduces_total_stress(stressed_market: Market):
+    base = ShockSimulator(stressed_market).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    healed = ShockSimulator(stressed_market, SimulationConfig(recovery_rate=0.1)).propagate(
+        Shock(SystemKind.CIRCULATORY, 0.9)
+    )
+    assert _total_stress(healed) < _total_stress(base)
+
+
+def test_intervention_improves_resilience(stressed_market: Market):
+    sim = ShockSimulator(stressed_market, _CASCADE)
+    without = sim.propagate(Shock(SystemKind.NERVOUS, 0.9))
+    with_iv = sim.propagate(
+        Shock(SystemKind.NERVOUS, 0.9),
+        interventions=[Intervention(SystemKind.CIRCULATORY, 0.5, at_step=0)],
+    )
+    assert without.resilience is not None
+    assert with_iv.resilience is not None
+    assert with_iv.resilience.value >= without.resilience.value - 1e-9
+    assert _total_stress(with_iv) <= _total_stress(without) + 1e-9
+
+
+def test_a_delayed_intervention_absorbs_less_than_an_immediate_one(stressed_market: Market):
+    # Before its at_step the intervention is inactive, so a containment measure
+    # that arrives late leaves more total stress behind than the same measure
+    # applied from the start -- while still helping relative to no measure.
+    sim = ShockSimulator(stressed_market, _CASCADE)
+    shock = Shock(SystemKind.NERVOUS, 0.9)
+    without = _total_stress(sim.propagate(shock))
+    delayed = _total_stress(sim.propagate(shock, interventions=[Intervention(SystemKind.CIRCULATORY, 0.5, at_step=4)]))
+    immediate = _total_stress(
+        sim.propagate(shock, interventions=[Intervention(SystemKind.CIRCULATORY, 0.5, at_step=0)])
+    )
+    assert immediate <= delayed + 1e-9
+    assert delayed <= without + 1e-9
 
 
 def test_a_stable_market_can_still_exhaust_the_step_budget(market_factory):
@@ -324,3 +451,47 @@ def test_amplification_factor_never_below_one(stressed_market: Market, target: S
     # never report a peak below what was injected: amplification is always >= 1.
     score = ShockSimulator(stressed_market).resilience(Shock(target, 0.8))
     assert score.amplification_factor >= 1.0
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"max_steps": 0}, "max_steps must be at least 1"),
+        ({"max_steps": -5}, "max_steps must be at least 1"),
+        ({"damping": 0.0}, "damping must be in"),
+        ({"damping": 5.0}, "damping must be in"),
+        ({"damping": float("nan")}, "damping must be in"),
+        ({"retention": -3.0}, "retention must be in"),
+        ({"retention": 1.5}, "retention must be in"),
+        ({"transmission": -2.0}, "transmission must be"),
+        ({"transmission": float("inf")}, "transmission must be"),
+        ({"convergence_eps": 0.0}, "convergence_eps must be"),
+        ({"convergence_eps": -1.0}, "convergence_eps must be"),
+        ({"jitter": -1.0}, "jitter must be"),
+        ({"jitter": float("nan")}, "jitter must be"),
+        ({"cascade_threshold": 0.0}, "cascade_threshold must be"),
+        ({"cascade_threshold": 1.0}, "cascade_threshold must be"),
+        ({"cascade_threshold": float("nan")}, "cascade_threshold must be"),
+        ({"cascade_gain": -0.5}, "cascade_gain must be"),
+        ({"cascade_gain": float("inf")}, "cascade_gain must be"),
+        ({"cascade_absorption_drop": -0.1}, "cascade_absorption_drop must be"),
+        ({"cascade_absorption_drop": 1.5}, "cascade_absorption_drop must be"),
+        ({"recovery_rate": -0.1}, "recovery_rate must be"),
+        ({"recovery_rate": 2.0}, "recovery_rate must be"),
+    ],
+)
+def test_simulation_config_rejects_out_of_range_parameters(kwargs: dict[str, float], match: str):
+    # Each of these used to be accepted and produce a plausible-looking but
+    # meaningless trajectory: max_steps=0 reported a market as never settling
+    # without simulating a single step, damping=5.0 amplified every step
+    # globally, and a negative transmission inverted the direction of stress.
+    with pytest.raises(InvalidConfigError, match=match):
+        SimulationConfig(**kwargs)
+
+
+def test_simulation_config_accepts_its_documented_boundaries():
+    # The validation must not narrow the supported range: damping of exactly 1
+    # (no global decay), zero retention, zero transmission and zero jitter are
+    # all meaningful settings.
+    config = SimulationConfig(max_steps=1, damping=1.0, retention=0.0, transmission=0.0, jitter=0.0)
+    assert config.damping == 1.0
