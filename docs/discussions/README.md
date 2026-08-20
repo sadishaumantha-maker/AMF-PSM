@@ -46,36 +46,41 @@ exactly as they appear:
 Eleven discussions, one file each. Every file is a complete GitHub Discussion body: paste it
 whole into the category named in the table.
 
+> **Status: the module files are not committed yet.** This index landed ahead of the eleven
+> files it describes, so the codes below are plain filenames rather than links — a link to a
+> file that does not exist fails the Markdown link check in CI, and with it the whole
+> `validate` job. Restore each entry to a link in the same pull request that adds its file.
+
 ### 🔬 Quantum Computing in Finance
 
 | Code | Module | Discussion title to use | Suggested category | Core theory |
 |------|--------|------------------------|--------------------|-------------|
-| **Q1** | [`Q1-quantum-market-superposition.md`](Q1-quantum-market-superposition.md) | Quantum Interpretation for Financial State Superposition | Ideas / Research | Hilbert-space postulates, density matrices, measurement, decoherence |
-| **Q2** | [`Q2-quantum-markov-lindblad.md`](Q2-quantum-markov-lindblad.md) | Markov Chains as Quantum State Transitions | Ideas / Research | Markov chains, CPTP maps, GKSL/Lindblad generators, non-Markovianity |
-| **Q3** | [`Q3-shannon-information-market-entropy.md`](Q3-shannon-information-market-entropy.md) | Shannon Information Theory & Market Entropy | Ideas / Research | Entropy, mutual information, channel capacity, transfer entropy |
+| **Q1** | `Q1-quantum-market-superposition.md` | Quantum Interpretation for Financial State Superposition | Ideas / Research | Hilbert-space postulates, density matrices, measurement, decoherence |
+| **Q2** | `Q2-quantum-markov-lindblad.md` | Markov Chains as Quantum State Transitions | Ideas / Research | Markov chains, CPTP maps, GKSL/Lindblad generators, non-Markovianity |
+| **Q3** | `Q3-shannon-information-market-entropy.md` | Shannon Information Theory & Market Entropy | Ideas / Research | Entropy, mutual information, channel capacity, transfer entropy |
 
 ### 🧠 Deep Neural Networks for Market Prediction
 
 | Code | Module | Discussion title to use | Suggested category | Core theory |
 |------|--------|------------------------|--------------------|-------------|
-| **D1** | [`D1-deep-learning-architectures.md`](D1-deep-learning-architectures.md) | Deep Learning Architectures for Multi-Asset Forecasting | Ideas / Research | Recurrent gating, self-attention, message passing, GNN expressivity |
-| **D2** | [`D2-embedding-spaces-regimes.md`](D2-embedding-spaces-regimes.md) | Embedding Spaces & Latent Representations of Market Regimes | Ideas / Research | Manifold learning, VAE/ELBO, contrastive objectives, projection pitfalls |
-| **D3** | [`D3-knowledge-graphs-causal-pathways.md`](D3-knowledge-graphs-causal-pathways.md) | Neural Connection Pathways & Knowledge Graphs | Ideas / Research | Ontologies, structural causal models, do-calculus, identification strategies |
+| **D1** | `D1-deep-learning-architectures.md` | Deep Learning Architectures for Multi-Asset Forecasting | Ideas / Research | Recurrent gating, self-attention, message passing, GNN expressivity |
+| **D2** | `D2-embedding-spaces-regimes.md` | Embedding Spaces & Latent Representations of Market Regimes | Ideas / Research | Manifold learning, VAE/ELBO, contrastive objectives, projection pitfalls |
+| **D3** | `D3-knowledge-graphs-causal-pathways.md` | Neural Connection Pathways & Knowledge Graphs | Ideas / Research | Ontologies, structural causal models, do-calculus, identification strategies |
 
 ### 🌊 Quantum-Neural Hybrid Systems
 
 | Code | Module | Discussion title to use | Suggested category | Core theory |
 |------|--------|------------------------|--------------------|-------------|
-| **H1** | [`H1-quantum-neural-hybrid-circuits.md`](H1-quantum-neural-hybrid-circuits.md) | Quantum Circuits as Neural Network Components | Ideas / Research | Variational circuits, parameter-shift rule, barren plateaus, quantum kernels |
-| **H2** | [`H2-topological-data-analysis.md`](H2-topological-data-analysis.md) | Topological Data Analysis (TDA) & Persistent Homology | Ideas / Research | Simplicial homology, persistence modules, stability, Takens embedding |
-| **H3** | [`H3-symplectic-hamiltonian-dynamics.md`](H3-symplectic-hamiltonian-dynamics.md) | Symplectic Geometry & Hamiltonian Dynamics | Ideas / Research | Symplectic manifolds, Liouville's theorem, symplectic integrators, port-Hamiltonian systems |
+| **H1** | `H1-quantum-neural-hybrid-circuits.md` | Quantum Circuits as Neural Network Components | Ideas / Research | Variational circuits, parameter-shift rule, barren plateaus, quantum kernels |
+| **H2** | `H2-topological-data-analysis.md` | Topological Data Analysis (TDA) & Persistent Homology | Ideas / Research | Simplicial homology, persistence modules, stability, Takens embedding |
+| **H3** | `H3-symplectic-hamiltonian-dynamics.md` | Symplectic Geometry & Hamiltonian Dynamics | Ideas / Research | Symplectic manifolds, Liouville's theorem, symplectic integrators, port-Hamiltonian systems |
 
 ### 🔗 Integration & Implementation
 
 | Code | Module | Discussion title to use | Suggested category | Core theory |
 |------|--------|------------------------|--------------------|-------------|
-| **I1** | [`I1-unified-framework-architecture.md`](I1-unified-framework-architecture.md) | Unified Framework Architecture | Ideas / Research | Forecast combination, proper scoring, calibration, conformal prediction |
-| **I2** | [`I2-validation-backtesting-generalization.md`](I2-validation-backtesting-generalization.md) | Validation, Backtesting & Generalization | Ideas / Research | Learning theory under dependence, purged CV, data-snooping tests, rare-event evaluation |
+| **I1** | `I1-unified-framework-architecture.md` | Unified Framework Architecture | Ideas / Research | Forecast combination, proper scoring, calibration, conformal prediction |
+| **I2** | `I2-validation-backtesting-generalization.md` | Validation, Backtesting & Generalization | Ideas / Research | Learning theory under dependence, purged CV, data-snooping tests, rare-event evaluation |
 
 ---
 
