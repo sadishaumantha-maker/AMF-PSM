@@ -53,6 +53,41 @@ class DependencyKind(StrEnum):
     """One system is constrained or protected by another's controls."""
 
 
+class SystemMetric(StrEnum):
+    """One of the four structural metrics carried by an anatomical system.
+
+    Naming a metric as a value lets analyses iterate over the metrics
+    generically -- perturbing each in turn -- instead of hard-coding four
+    branches. Every member is the name of the corresponding
+    :class:`~amf.systems.AnatomicalSystem` field.
+    """
+
+    INTEGRITY = "integrity"
+    """How intact and robust the system is."""
+    REDUNDANCY = "redundancy"
+    """Availability of fallbacks or alternatives."""
+    CRITICALITY = "criticality"
+    """How load-bearing the system is for the market."""
+    LOAD = "load"
+    """Current stress level."""
+
+    def improving_direction(self) -> int:
+        """Return the sign of the change that *reduces* structural weakness.
+
+        ``+1`` for metrics that help when raised (integrity, redundancy), ``-1``
+        for metrics that help when lowered (load), and ``0`` for
+        :attr:`CRITICALITY`, which describes how load-bearing a system is rather
+        than a lever an operator can pull. Analyses use the zero to exclude
+        criticality from intervention rankings while still reporting how
+        sensitive the diagnosis is to it.
+        """
+        if self is SystemMetric.LOAD:
+            return -1
+        if self is SystemMetric.CRITICALITY:
+            return 0
+        return 1
+
+
 class Severity(StrEnum):
     """An ordinal risk band used to summarise a normalised score in ``[0, 1]``."""
 
@@ -396,4 +431,115 @@ class SimulationTrace:
             "steps": [{k.value: v for k, v in step.items()} for step in self.steps],
             "converged": self.converged,
             "resilience": self.resilience.to_dict() if self.resilience else None,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class Sensitivity:
+    """How strongly the overall weakness index responds to one structural metric.
+
+    Estimated by perturbing a single metric of a single system and re-running the
+    diagnosis. The gradient is a finite-difference slope, not an analytic
+    derivative, so it describes the model's local behaviour around the market as
+    supplied -- it is not a prediction about any real market.
+
+    Attributes:
+        system: The system whose metric was perturbed.
+        metric: The metric that was perturbed.
+        baseline_value: The metric's value in the unperturbed market.
+        span: The distance actually traversed, which shrinks near ``0`` or ``1``.
+        index_delta: Change in the overall weakness index across ``span``.
+        gradient: ``index_delta / span``; positive means raising the metric
+            raises structural weakness.
+    """
+
+    system: SystemKind
+    metric: SystemMetric
+    baseline_value: float
+    span: float
+    index_delta: float
+    gradient: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the sensitivity."""
+        return {
+            "system": self.system.value,
+            "metric": self.metric.value,
+            "baseline_value": self.baseline_value,
+            "span": self.span,
+            "index_delta": self.index_delta,
+            "gradient": self.gradient,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class LeveragePoint:
+    """A single structural adjustment and the improvement it would yield.
+
+    Leverage points answer AMF analytical Step 5 -- where to intervene -- by
+    reporting, for one feasible adjustment to one system, how far the overall
+    weakness index falls. They rank candidate interventions within the supplied
+    model; they are not recommendations about any real market.
+
+    Attributes:
+        system: The system to adjust.
+        metric: The metric to adjust.
+        baseline_value: The metric's current value.
+        adjusted_value: The value after the adjustment.
+        index_before: Overall weakness index before the adjustment.
+        index_after: Overall weakness index after the adjustment.
+        improvement: ``index_before - index_after``; positive means the
+            adjustment reduces structural weakness.
+    """
+
+    system: SystemKind
+    metric: SystemMetric
+    baseline_value: float
+    adjusted_value: float
+    index_before: float
+    index_after: float
+    improvement: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the leverage point."""
+        return {
+            "system": self.system.value,
+            "metric": self.metric.value,
+            "baseline_value": self.baseline_value,
+            "adjusted_value": self.adjusted_value,
+            "index_before": self.index_before,
+            "index_after": self.index_after,
+            "improvement": self.improvement,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SensitivityReport:
+    """The full output of a sensitivity and leverage analysis.
+
+    Attributes:
+        boundary: The analysed market's boundary.
+        baseline_index: The unperturbed overall weakness index.
+        baseline_severity: Severity band derived from ``baseline_index``.
+        step: The requested perturbation size.
+        sensitivities: Per metric, ordered by absolute gradient descending.
+        leverage_points: Feasible adjustments, ordered by improvement descending.
+    """
+
+    boundary: MarketBoundary
+    baseline_index: float
+    baseline_severity: Severity
+    step: float
+    sensitivities: tuple[Sensitivity, ...]
+    leverage_points: tuple[LeveragePoint, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the report."""
+        return {
+            "boundary": self.boundary.to_dict(),
+            "baseline_index": self.baseline_index,
+            "baseline_severity": self.baseline_severity.value,
+            "step": self.step,
+            "sensitivities": [s.to_dict() for s in self.sensitivities],
+            "leverage_points": [p.to_dict() for p in self.leverage_points],
         }

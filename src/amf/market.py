@@ -113,6 +113,23 @@ class Market:
             msg = f"market has no {kind} system"
             raise IncompleteMarketError(msg) from exc
 
+    def with_system(self, system: AnatomicalSystem) -> Market:
+        """Return a copy of this market with one system replaced.
+
+        The dependency graph is shared rather than copied: it is keyed by
+        :class:`~amf.models.SystemKind`, so swapping a system's *metrics* leaves
+        every coupling valid. Analyses that sweep perturbed variants of a market
+        rely on this being cheap.
+
+        Args:
+            system: The replacement system; it substitutes the existing system of
+                the same :attr:`~amf.systems.AnatomicalSystem.kind`.
+
+        Returns:
+            A new :class:`Market`; the original is untouched.
+        """
+        return Market(boundary=self.boundary, systems={**self.systems, system.kind: system}, graph=self.graph)
+
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable representation of the market.
 

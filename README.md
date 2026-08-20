@@ -73,11 +73,12 @@ amf diagnose examples/sample_market.json                # structural weaknesses
 amf simulate examples/sample_market.json --target circulatory --magnitude 0.8
 amf simulate examples/sample_market.json --target circulatory --cascade-threshold 0.2
 amf stress-test examples/sample_market.json             # shock each system in turn
+amf sensitivity examples/sample_market.json --top 5      # what matters most, & where to intervene
 amf ensemble examples/sample_market.json --target circulatory --runs 200
 ```
 
-`diagnose`, `simulate`, and `stress-test` accept `--format json` or `--format md`;
-`ensemble` accepts `--format json`.
+`diagnose`, `simulate`, `stress-test`, and `sensitivity` accept `--format json`
+or `--format md`; `ensemble` accepts `--format json`.
 
 Render the dependency graph or a shock timeline (no extra dependencies needed —
 the SVG output is drawn with the standard library alone):
@@ -124,15 +125,16 @@ report = DiagnosticEngine().diagnose(market)
 score = ShockSimulator(market).resilience(Shock(SystemKind.CIRCULATORY, 0.8))
 ```
 
-See `examples/equity_market.py` and `examples/liquidity_shock.py` for complete
-runnable scripts, and `CLAUDE.md` for the design and contributor guide.
+See `examples/equity_market.py`, `examples/liquidity_shock.py`, and
+`examples/where_to_intervene.py` for complete runnable scripts, and `CLAUDE.md`
+for the design and contributor guide.
 
 ### Develop
 
 ```sh
 ruff check . && ruff format --check .   # lint & format
 mypy                                    # type-check (strict)
-pytest                                  # tests with coverage gate (>= 90%)
+pytest                                  # tests with coverage gate (100%)
 ```
 
 The `CI` GitHub Actions workflow runs all of the above (plus YAML, citation, and
@@ -171,6 +173,12 @@ Copyright (c) 2026 Sadisha. **All Rights Reserved.**
 This work is proprietary. No part of this framework or its associated documents may be reproduced, distributed, published, modified, adapted, translated, transmitted, or used in any form — commercial or non-commercial — without the **explicit prior written permission** of the author. Unauthorized use may result in civil and criminal liability under applicable copyright and intellectual property law.
 
 See [`LICENSE.txt`](LICENSE.txt) for the full notice.
+
+**The `amf` package is distributed privately only.** It is never published to
+PyPI or any other public index: the packaging metadata carries the
+`Private :: Do Not Upload` classifier, which makes PyPI reject the upload, and
+a test enforces that the guard stays in place. See [`RELEASING.md`](RELEASING.md)
+for the release and distribution procedure.
 
 ---
 

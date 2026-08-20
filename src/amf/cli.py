@@ -1,7 +1,7 @@
 """Command-line interface for the :mod:`amf` toolkit.
 
-Exposes ``diagnose``, ``simulate``, ``stress-test``, ``viz``, ``describe``,
-and ``version`` subcommands. ``main`` returns a process exit code so it can be unit
+Exposes ``diagnose``, ``simulate``, ``stress-test``, ``sensitivity``, ``viz``,
+``describe``, and ``version`` subcommands. ``main`` returns a process exit code so it can be unit
 tested without spawning a subprocess.
 
 The ``describe`` text is generated from the paraphrased constants below rather
@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -29,6 +30,7 @@ if TYPE_CHECKING:
     from amf.models import DiagnosticReport
     from amf.report import Renderable
 from amf.report import render_distribution, render_json, render_markdown, render_text
+from amf.sensitivity import SensitivityAnalyzer, SensitivityConfig
 from amf.simulation import ShockSimulator, SimulationConfig
 from amf.viz import render_dot, render_graph_svg, render_mermaid, render_timeline_svg
 
@@ -132,6 +134,19 @@ def _build_parser() -> argparse.ArgumentParser:
     ens.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
     ens.set_defaults(handler=_cmd_ensemble)
 
+    sens = sub.add_parser("sensitivity", help="Rank the metrics the diagnosis responds to, and where to intervene.")
+    sens.add_argument("market", type=Path, help="Path to a market JSON file.")
+    sens.add_argument("--step", type=float, default=0.05, help="Perturbation size in (0, 1].")
+    sens.add_argument(
+        "--top",
+        type=int,
+        default=0,
+        metavar="N",
+        help="Show only the N strongest entries in each ranking (default: all).",
+    )
+    _add_format(sens)
+    sens.set_defaults(handler=_cmd_sensitivity)
+
     viz = sub.add_parser("viz", help="Render the dependency graph or a shock timeline.")
     viz.add_argument("market", type=Path, help="Path to a market JSON file.")
     viz.add_argument(
@@ -226,6 +241,22 @@ def _cmd_stress_test(args: argparse.Namespace) -> int:
     market = _load_market(args.market)
     profile = ShockSimulator(market).stress_test(magnitude=args.magnitude)
     print(_format(profile, args.format))
+    _print_disclaimer()
+    return 0
+
+
+def _cmd_sensitivity(args: argparse.Namespace) -> int:
+    """Handle the ``sensitivity`` subcommand."""
+    market = _load_market(args.market)
+    analyzer = SensitivityAnalyzer(config=SensitivityConfig(step=args.step))
+    report = analyzer.analyse(market)
+    if args.top > 0:
+        report = replace(
+            report,
+            sensitivities=report.sensitivities[: args.top],
+            leverage_points=report.leverage_points[: args.top],
+        )
+    print(_format(report, args.format))
     _print_disclaimer()
     return 0
 
