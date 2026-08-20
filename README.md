@@ -134,7 +134,7 @@ for the design and contributor guide.
 ```sh
 ruff check . && ruff format --check .   # lint & format
 mypy                                    # type-check (strict)
-pytest                                  # tests with coverage gate (>= 90%)
+pytest                                  # tests with coverage gate (100%)
 ```
 
 The `CI` GitHub Actions workflow runs all of the above (plus YAML, citation, and
