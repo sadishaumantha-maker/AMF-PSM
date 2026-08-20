@@ -292,3 +292,20 @@ def test_sample_market_round_trip_preserves_all_dependency_kinds():
     restored = Market.from_dict(market.to_dict())
     assert restored.graph.dependencies() == market.graph.dependencies()
     assert Counter(d.kind for d in restored.graph.dependencies()) == expected
+
+
+def test_non_utf8_market_file_is_a_handled_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # `Path.read_text` raises UnicodeDecodeError, which is a ValueError and not
+    # an OSError, so pointing the CLI at a binary file escaped the AMFError
+    # contract in `main` and printed a raw traceback instead of exiting 2.
+    binary = tmp_path / "market.json"
+    binary.write_bytes(b"\xff\xfe{}")
+    assert main(["diagnose", str(binary)]) == 2
+    assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_load_market_wraps_a_decoding_failure(tmp_path: Path):
+    binary = tmp_path / "market.json"
+    binary.write_bytes(b"\x80\x81")
+    with pytest.raises(MarketParseError, match="not valid UTF-8"):
+        _load_market(binary)

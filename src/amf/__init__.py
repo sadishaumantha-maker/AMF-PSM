@@ -20,6 +20,7 @@ from amf.diagnostics import DiagnosticConfig, DiagnosticEngine
 from amf.errors import (
     AMFError,
     IncompleteMarketError,
+    InvalidConfigError,
     InvalidDependencyError,
     InvalidShockError,
     InvalidSystemError,
@@ -70,6 +71,7 @@ __all__ = [
     "DiagnosticReport",
     "IncompleteMarketError",
     "Intervention",
+    "InvalidConfigError",
     "InvalidDependencyError",
     "InvalidShockError",
     "InvalidSystemError",

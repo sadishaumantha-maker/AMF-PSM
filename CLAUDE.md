@@ -65,11 +65,11 @@ SHA256SUMS          the four protected artifacts and their digests
 
 | Module | Responsibility |
 |--------|----------------|
-| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `MarketParseError`). Has no internal dependencies. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` and the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`). Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`. |
 | `graph.py` | `DependencyGraph`: feedback-loop (simple-cycle) enumeration, articulation points, Katz-style centrality, and the stress-transmission `CouplingMatrix`. Dependency-free. |
-| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. |
+| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn; `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
 | `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
@@ -191,6 +191,29 @@ builder and runs a shock + stress test).
   denominator.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
   `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical.
+
+## Determinism and parameter validation
+
+Two cross-cutting invariants that any change must preserve:
+
+- **Equal markets produce equal output.** Nothing user-visible may depend on the
+  order a market was assembled in. `DependencyGraph` canonicalises its own
+  orderings (`dependencies`, `dependencies_of`, `dependents_of`); `Market.assemble`
+  stores the seven systems in `SystemKind` declaration order and `to_dict` emits
+  them in that order; `DiagnosticEngine.diagnose` breaks ties in both the findings
+  ranking and the SPOF ranking by declaration order. A dict-insertion-order tie-break
+  is a bug, not a detail — `tests/unit/test_properties.py` asserts a market and any
+  permutation of it diagnose identically.
+- **Tuning knobs are validated on construction, never normalised into nonsense.**
+  `DiagnosticConfig` requires finite, non-negative weights (an all-zero triple is
+  still allowed and yields zero scores); `SimulationConfig` requires
+  `max_steps >= 1`, `damping` in `(0, 1]`, `retention` in `[0, 1]`, finite
+  non-negative `transmission` and `jitter`, and `convergence_eps > 0`;
+  `DependencyGraph.centrality` requires `alpha` in `(0, 1)`, `iterations >= 1`, and
+  a finite non-negative `tolerance`. All raise `InvalidConfigError`. These are not
+  cosmetic: a negative blend weight used to yield findings scoring `2.0`, and
+  `alpha >= 10` overflowed the influence series to infinity and returned `NaN` for
+  every system.
 
 ## Developing
 
