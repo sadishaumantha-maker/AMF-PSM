@@ -2,16 +2,21 @@
 
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from amf.diagnostics import DiagnosticConfig, DiagnosticEngine
+from amf.errors import InvalidConfigError
 from amf.market import Market
 from amf.models import (
     Dependency,
     DependencyKind,
+    MarketBoundary,
     Severity,
     SystemKind,
 )
+from amf.systems import SYSTEM_FACTORIES
 
 
 def test_fragility_formula(market_factory):
@@ -184,3 +189,106 @@ def test_splitting_one_edge_across_kinds_does_not_affect_scoring(market_factory)
     for a, b in zip(one.findings, other.findings, strict=True):
         assert a.score == pytest.approx(b.score)
         assert a.concentration == pytest.approx(b.concentration)
+
+
+@pytest.mark.parametrize("trial", range(25))
+def test_scores_stay_in_unit_interval_for_any_positive_weights(stressed_market: Market, trial: int):
+    """Property test: every score and the overall index land in [0, 1]."""
+    rng = random.Random(trial)
+    config = DiagnosticConfig(rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0))
+    report = DiagnosticEngine(config).diagnose(stressed_market)
+    assert 0.0 <= report.overall_index <= 1.0
+    for finding in report.findings:
+        assert 0.0 <= finding.score <= 1.0
+        assert finding.severity is Severity.from_score(finding.score)
+
+
+def test_default_config_weights_are_pinned():
+    # Tests that pass explicit weights exercise the blending but leave the
+    # defaults themselves free to drift.
+    config = DiagnosticConfig()
+    assert (config.fragility_weight, config.concentration_weight, config.feedback_weight) == pytest.approx(
+        (0.4, 0.3, 0.3)
+    )
+    assert config.fragility_weight + config.concentration_weight + config.feedback_weight == pytest.approx(1.0)
+
+
+def test_default_engine_matches_the_default_config(stressed_market: Market):
+    assert DiagnosticEngine().diagnose(stressed_market).overall_index == pytest.approx(
+        DiagnosticEngine(DiagnosticConfig(0.4, 0.3, 0.3)).diagnose(stressed_market).overall_index
+    )
+
+
+def _feedback_drivers(market_factory, weight: float) -> tuple[str, ...]:
+    # A single 2-cycle whose weight product is exactly the threshold under test.
+    deps = [
+        Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, weight=weight),
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, weight=1.0),
+    ]
+    report = DiagnosticEngine().diagnose(market_factory(deps))
+    return next(f for f in report.findings if f.system is SystemKind.SKELETON).drivers
+
+
+def test_feedback_driver_appears_at_threshold(market_factory):
+    # loop product = 0.25 * 1.0, exactly at the >= 0.25 cutoff.
+    assert any(d.startswith("participates in") for d in _feedback_drivers(market_factory, 0.25))
+
+
+def test_feedback_driver_absent_just_below_threshold(market_factory):
+    # loop product = 0.249, just under the cutoff.
+    assert not any(d.startswith("participates in") for d in _feedback_drivers(market_factory, 0.249))
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"fragility_weight": -2.0},
+        {"concentration_weight": -0.1},
+        {"feedback_weight": -1e-9},
+        {"fragility_weight": float("nan")},
+        {"concentration_weight": float("inf")},
+    ],
+)
+def test_diagnostic_config_rejects_negative_or_non_finite_weights(kwargs: dict[str, float]):
+    # A negative weight used to be normalised like any other, pushing scores far
+    # outside the [0, 1] interval that WeaknessFinding documents and that
+    # Severity.from_score assumes -- a fragility weight of -2 produced findings
+    # scoring 2.0 and banded `critical`.
+    with pytest.raises(InvalidConfigError, match="must be a finite, non-negative"):
+        DiagnosticConfig(**kwargs)
+
+
+def test_diagnostic_config_still_allows_an_all_zero_blend():
+    # Zero weights are a supported degenerate case (every score becomes 0), so
+    # the new validation must reject only negatives, not the zero fallback.
+    assert DiagnosticConfig(0.0, 0.0, 0.0).fragility_weight == 0.0
+
+
+def _ranked(boundary: MarketBoundary, kinds: list[SystemKind]) -> tuple[list[SystemKind], tuple[SystemKind, ...]]:
+    """Diagnose a market whose systems are supplied in ``kinds`` order."""
+    deps = [
+        Dependency(SystemKind.SKELETON, SystemKind.MUSCULATURE, DependencyKind.STRUCTURAL, 0.5),
+        Dependency(SystemKind.MUSCULATURE, SystemKind.NERVOUS, DependencyKind.STRUCTURAL, 0.5),
+        Dependency(SystemKind.ORGANS, SystemKind.METABOLISM, DependencyKind.STRUCTURAL, 0.5),
+        Dependency(SystemKind.METABOLISM, SystemKind.IMMUNE, DependencyKind.STRUCTURAL, 0.5),
+        Dependency(SystemKind.NERVOUS, SystemKind.CIRCULATORY, DependencyKind.STRUCTURAL, 0.5),
+    ]
+    market = Market.assemble(boundary, [SYSTEM_FACTORIES[kind](redundancy=0.2) for kind in kinds], deps)
+    report = DiagnosticEngine().diagnose(market)
+    return [f.system for f in report.findings], report.single_points_of_failure
+
+
+def test_ranking_is_independent_of_how_the_market_was_assembled(boundary: MarketBoundary):
+    # musculature and metabolism share both a weakness score and a criticality of
+    # 0.60, so before the tie-break the two rankings below came out in opposite
+    # orders for markets that compare equal -- the rendered report depended on
+    # the order the systems happened to be passed in.
+    forwards_findings, forwards_spofs = _ranked(boundary, list(SystemKind))
+    backwards_findings, backwards_spofs = _ranked(boundary, list(SystemKind)[::-1])
+
+    assert forwards_findings == backwards_findings
+    assert forwards_spofs == backwards_spofs
+    # And the tie itself is genuine, not an artefact of the fixture drifting.
+    musculature = forwards_findings.index(SystemKind.MUSCULATURE)
+    metabolism = forwards_findings.index(SystemKind.METABOLISM)
+    assert musculature < metabolism, "ties must fall in SystemKind declaration order"

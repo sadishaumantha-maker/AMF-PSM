@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import get_args
 
 from amf.diagnostics import DiagnosticEngine
 from amf.market import Market
@@ -18,6 +19,7 @@ from amf.models import (
     WeaknessFinding,
 )
 from amf.report import (
+    Renderable,
     _to_jsonable,
     render_distribution,
     render_json,
@@ -236,6 +238,46 @@ def test_render_trace_without_resilience():
     assert "Shock Propagation" in render_text(trace)
     assert "Resilience" not in render_text(trace)
     assert render_markdown(trace).startswith("# AMF Shock Propagation")
+
+
+def test_to_jsonable_stringifies_non_system_keys():
+    # The str(k) fallback is a conditional expression, which branch coverage does
+    # not measure -- so this path read as covered while no test exercised it.
+    assert _to_jsonable({"already-a-string": 1, 2: "two"}) == {"already-a-string": 1, "2": "two"}
+
+
+def test_render_json_is_sorted_and_stable(stressed_market: Market):
+    # Renderers are pure: the same input must produce byte-identical output.
+    report = DiagnosticEngine().diagnose(stressed_market)
+    assert render_json(report) == render_json(report)
+    payload = json.loads(render_json(report))
+    assert list(payload) == sorted(payload)
+
+
+def test_stress_test_renderers_rank_weakest_first(stressed_market: Market):
+    profile = ShockSimulator(stressed_market).stress_test()
+    ranked = [k.value for k, _ in sorted(profile.items(), key=lambda kv: kv[1].value)]
+    text_order = [line.split()[0] for line in render_stress_test(profile).splitlines()[2:] if line.strip()]
+    assert text_order == ranked
+
+
+def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
+    # The `Renderable` alias is what types the CLI's `_format`. If a new result
+    # type joins the renderers' dispatch without being added to the alias, the
+    # CLI stops type-checking against reality -- so pin the alias to the set of
+    # things all three renderers actually accept.
+    engine_report = DiagnosticEngine().diagnose(healthy_market)
+    simulator = ShockSimulator(healthy_market)
+    trace = simulator.propagate(Shock(target=SystemKind.CIRCULATORY, magnitude=0.6))
+    profile = simulator.stress_test(magnitude=0.6)
+
+    members = get_args(Renderable)
+    assert set(members) == {DiagnosticReport, SimulationTrace, dict[SystemKind, ResilienceScore]}
+
+    for result in (engine_report, trace, profile):
+        assert render_text(result)
+        assert render_markdown(result)
+        assert json.loads(render_json(result))
 
 
 def test_render_cascade_trace_shows_tipped_systems(stressed_market: Market):

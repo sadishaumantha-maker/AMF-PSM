@@ -71,7 +71,7 @@ disallow_any_generics = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-addopts = "-ra --strict-markers --strict-config --cov=amf --cov-report=term-missing --cov-report=xml --cov-fail-under=90"
+addopts = "-ra --strict-markers --strict-config --cov=amf --cov-report=term-missing --cov-report=xml --cov-fail-under=100"
 testpaths = ["tests"]
 markers = ["integration: end-to-end tests across multiple modules"]
 

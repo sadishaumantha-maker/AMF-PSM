@@ -209,3 +209,40 @@ def test_from_dict_self_loop_dependency_raises_market_parse_error(stressed_marke
     dep["target"] = dep["source"]
     with pytest.raises(MarketParseError, match="cannot depend on itself"):
         Market.from_dict(data)
+
+
+@pytest.mark.parametrize("value", ["abc", 5, {"a": 1}])
+def test_from_dict_non_list_components_raises_market_parse_error(stressed_market: Market, value):
+    # A bare string is iterable, so accepting one would split "abc" into three
+    # single-character components instead of reporting malformed input.
+    data = stressed_market.to_dict()
+    data["systems"]["skeleton"]["components"] = value
+    with pytest.raises(MarketParseError, match="components"):
+        Market.from_dict(data)
+
+
+def test_require_complete_rejects_a_system_filed_under_the_wrong_kind(healthy_market: Market):
+    # `systems` is a plain mutable dict, so a caller can file a system under the
+    # wrong key. Every engine reads the label from the key and the metrics from
+    # the value, so this would silently attribute one system's weaknesses to
+    # another instead of failing.
+    healthy_market.systems[SystemKind.SKELETON] = SYSTEM_FACTORIES[SystemKind.CIRCULATORY]()
+    with pytest.raises(IncompleteMarketError, match="skeleton holds a circulatory system"):
+        healthy_market.require_complete()
+
+
+def test_assemble_stores_systems_in_declaration_order(boundary: MarketBoundary):
+    # The caller's ordering must not leak into the model: it would otherwise
+    # reach every consumer that iterates `systems`, including `to_dict` and the
+    # diagnostic engine's per-system maps.
+    reversed_kinds = list(SystemKind)[::-1]
+    market = Market.assemble(boundary, [SYSTEM_FACTORIES[kind]() for kind in reversed_kinds])
+    assert list(market.systems) == list(SystemKind)
+
+
+def test_to_dict_system_order_is_independent_of_assembly_order(boundary: MarketBoundary):
+    forwards = Market.assemble(boundary, [SYSTEM_FACTORIES[kind]() for kind in SystemKind])
+    backwards = Market.assemble(boundary, [SYSTEM_FACTORIES[kind]() for kind in list(SystemKind)[::-1]])
+    expected = [kind.value for kind in SystemKind]
+    assert list(forwards.to_dict()["systems"]) == expected
+    assert list(backwards.to_dict()["systems"]) == expected
