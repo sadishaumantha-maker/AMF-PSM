@@ -11,6 +11,19 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Substantially superseded on `main`.** `amf.numeric.stable_sum` now performs exactly-rounded
+> accumulation across every scoring path, and `amf.numeric.square` replaces `x ** 2` because IEEE 754
+> requires multiplication to be correctly rounded while `libm`'s `pow` does not. That answers this
+> charter's central question - canonical ordering was *not* sufficient, and the repository chose exact
+> rounding over compensated summation.
+>
+> What remains for this charter, and only this: the **error-bound inventory** the landed change did not
+> produce. Exact rounding removes order-dependence; it does not by itself bound the error of the
+> *derived* quantities, nor does it cover the ensemble percentile machinery (owned by P19). Rewrite the
+> dispute in section 1 before starting, and treat sections 4-5 as an audit of what `stable_sum` does and
+> does not guarantee rather than a proposal to introduce it.
+
 ---
 
 ## 1. The dispute this project settles

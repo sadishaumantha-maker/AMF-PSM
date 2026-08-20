@@ -11,6 +11,14 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Narrowed by `main`.** `amf.numeric.stable_sum` removes the *arithmetic* sensitivity to
+> traversal order: every permutation of the same terms now yields the identical double. The ordering
+> proof obligation is therefore no longer about accumulation. It still stands for everything else
+> ordering reaches - ranking ties, SPOF ordering, `to_dict` emission order and rendered output - where a
+> different order still produces different observable output. Read section 1 as scoped to
+> ordering-as-ranking, not ordering-as-arithmetic.
+
 ---
 
 ## 1. The dispute this project settles

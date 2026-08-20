@@ -11,6 +11,14 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Landed on `main` since this charter was written.** `.github/milestones.json`,
+> `tools/sync_milestones.py` and `.github/workflows/milestones.yml` make the milestone set a checked-in,
+> idempotent manifest validated offline by `tests/unit/test_milestones_manifest.py`. The *mechanism* for
+> milestones therefore exists. What this charter still owns is the part the manifest cannot supply: the
+> cadence decision itself, and exit criteria that are checkable facts rather than estimates. Task 3
+> becomes "populate the existing manifest", not "create the milestone set".
+
 ---
 
 ## 1. The dispute this project settles

@@ -11,6 +11,14 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Narrowed by `main`.** `amf.invariants` now checks every engine result at the public
+> boundary and raises `InvariantError` for a non-finite or out-of-range score, so a NaN can no longer
+> reach `Severity.from_score` *through an engine*. The dispute survives for the direct path:
+> `Severity.from_score` is public, still total, and still bands NaN as critical when called directly. The
+> consumer analysis in step 1 should now distinguish the guarded engine path from the unguarded direct
+> one, and the fail-safe/fail-loud argument applies only to the latter.
+
 ---
 
 ## 1. The dispute this project settles

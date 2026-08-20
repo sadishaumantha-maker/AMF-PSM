@@ -11,6 +11,14 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Landed on `main` since this charter was written.** `docs/90_DAY_PLAN_INDEX.md` now maps the
+> 90-day issue tree (one program issue, ten epics, fifty-four sub-issues) with its phase calendar and
+> metric ledger, and `docs/discussions/README.md` indexes the research discussion set. Step 1 of the
+> instructions must therefore *reconcile with* those two documents rather than re-derive the inventory
+> from scratch, and the triage constitution must not duplicate the phase calendar. The dispute itself is
+> unchanged: neither document defines what "triaged" means or rules on the ambiguous issue types.
+
 ---
 
 ## 1. The dispute this project settles

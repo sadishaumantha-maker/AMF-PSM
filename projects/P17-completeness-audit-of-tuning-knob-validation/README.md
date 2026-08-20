@@ -11,6 +11,14 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Complemented by `main`, not superseded.** `amf.invariants` guards engine results on the way
+> *out*; this charter guards tuning parameters on the way *in*. Both are needed, and the completeness
+> question - is the set of input-domain validations complete? - is untouched by the new result-side
+> guard. Section 4 should now state the relationship explicitly, so that a future contributor does not
+> assume the output guard makes an input domain safe: a knob that produces a plausible-but-wrong score
+> inside `[0, 1]` passes every invariant check.
+
 ---
 
 ## 1. The dispute this project settles

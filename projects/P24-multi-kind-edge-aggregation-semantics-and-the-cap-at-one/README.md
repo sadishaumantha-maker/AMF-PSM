@@ -11,6 +11,13 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Unchanged in substance by `main`.** Pair-weight aggregation now sums with
+> `amf.numeric.stable_sum`, so the order-dependence artefact is gone. The `min(1.0, ...)` cap and the
+> information it destroys when reliance saturates are exactly as this charter describes them, so the
+> dispute stands as written. Section 4 should use the landed implementation as its starting point rather
+> than the pre-merge one.
+
 ---
 
 ## 1. The dispute this project settles

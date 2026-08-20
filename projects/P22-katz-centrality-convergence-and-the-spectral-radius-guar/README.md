@@ -11,6 +11,19 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Substantially superseded on `main`.** `DependencyGraph.centrality` now raises rather than
+> returning a coin flip when the max-normalised vector never settles, and its docstring states the
+> above-`1 / spectral radius` behaviour explicitly: the iteration still settles there, but on the
+> dominant-eigenvector direction rather than on the Katz sum.
+>
+> That leaves a sharper dispute than the one section 1 describes, and it is worth this charter's
+> remaining effort: **"settles" and "is the Katz sum" are not the same acceptance criterion.** Above
+> `1 / rho` the returned vector is well defined and stable, and is *not* the quantity the Katz
+> interpretation promises, so a caller reading the result as attenuated influence is misreading a
+> converged number. Rewrite section 1 to that question before starting; sections 4-5 become "decide
+> whether to report which regime the result came from", not "add a guard".
+
 ---
 
 ## 1. The dispute this project settles
