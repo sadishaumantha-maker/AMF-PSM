@@ -6,6 +6,25 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `docs/discussions/` — eleven standalone theoretical modules, one per research
+  discussion in `docs/QUANTUM_NEURAL_RESEARCH.md` (Q1–Q3 quantum and information
+  theory, D1–D3 neural architectures and knowledge graphs, H1–H3 quantum-neural
+  hybrids, topology and symplectic dynamics, I1–I2 integration and validation),
+  plus a `README.md` index. Each module reproduces its source specification
+  verbatim, then adds formal foundations with attributed theorem statements, the
+  standard graduate curriculum around the topic, an annotated bibliography of
+  exact primary and canonical source material, a derivation for the AMF setting,
+  falsifiable propositions, and a governance section reconciling the source
+  note's proposed deliverables with this repository's hard rules. Three modules
+  reach negative results worth recording: H3 shows AMF's seven-dimensional stress
+  space admits no symplectic form and that the step map contracts phase-space
+  volume by `damping⁷` per step, so the proposed Liouville-violation alarm cannot
+  discriminate; I1 shows the proposed inverse-RMSE ensemble weighting is optimal
+  under no standard assumption and that a union of confidence intervals is not a
+  confidence interval; I2 shows several proposed artefacts sit outside the
+  non-trading boundary — `backtest` and the Sharpe-ratio metric among them — and
+  sets out what can legitimately be checked inside it instead. Documentation
+  only — no package behaviour changes.
 - `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
   program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
   with the phase calendar, the metric ledger, the guardrails every issue inherits, and
