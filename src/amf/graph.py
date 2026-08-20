@@ -26,6 +26,15 @@ _INDEX: dict[SystemKind, int] = {k: i for i, k in enumerate(_ORDER)}
 _KIND_ORDER: tuple[DependencyKind, ...] = tuple(DependencyKind)
 _KIND_INDEX: dict[DependencyKind, int] = {k: i for i, k in enumerate(_KIND_ORDER)}
 
+# Rescale the influence accumulator once it passes this magnitude. Above the Katz
+# bound the series grows without limit, so this keeps its magnitude bounded however
+# long the caller iterates. The result is max-normalised at the end, so dividing
+# through changes nothing observable.
+_RESCALE_AT = 1e12
+# How many past normalised states to remember when looking for a repeat. A cycle
+# on seven systems has period at most seven, so this window covers every one.
+_CYCLE_WINDOW = 8
+
 
 @dataclass(frozen=True, slots=True)
 class CouplingMatrix:
@@ -97,8 +106,15 @@ class DependencyGraph:
             raise InvalidDependencyError(msg)
         key = (dependency.source, dependency.target, dependency.kind)
         self._edges[key] = min(1.0, self._edges.get(key, 0.0) + dependency.weight)
-        pair = (dependency.source, dependency.target)
-        self._pair_weights[pair] = min(1.0, sum(w for (s, t, _k), w in self._edges.items() if (s, t) == pair))
+        source, target = dependency.source, dependency.target
+        # Sum across kinds in DependencyKind declaration order rather than in the
+        # order the edges were added. Floating-point addition is not associative,
+        # so summing insertion-first made a pair's weight -- and every score
+        # derived from it -- depend on the order the dependencies were listed in.
+        self._pair_weights[source, target] = min(
+            1.0,
+            sum(self._edges[source, target, kind] for kind in _KIND_ORDER if (source, target, kind) in self._edges),
+        )
 
     def dependencies(self) -> list[Dependency]:
         """Return every dependency, one per ``(source, target, kind)``, in canonical order.
@@ -208,11 +224,27 @@ class DependencyGraph:
         well defined on acyclic graphs (it does not collapse to zero), and an
         isolated graph yields all zeros.
 
+        Below ``alpha = 1 / spectral radius`` this is the Katz sum proper. Above it
+        the underlying series grows without bound, but the *max-normalised* result
+        still settles -- on the dominant-eigenvector direction rather than a Katz
+        total. Both are meaningful rankings of "how much is depended upon", so
+        neither is rejected; the accumulator is rescaled as it grows so its
+        magnitude stays bounded either way.
+
+        What is *not* meaningful is a graph with no single dominant mode. There the
+        normalised vector never settles: it cycles between two or more states
+        forever, and the answer would be decided by whichever step the iteration
+        budget happened to stop on. A complete bipartite market with unequal sides
+        does exactly this. That case raises rather than returning a coin flip.
+
         Args:
-            alpha: Per-hop attenuation in ``(0, 1)``; kept below the inverse of the
-                graph's spectral radius so the series converges.
-            iterations: Maximum propagation steps.
-            tolerance: Convergence threshold on the total influence added per step.
+            alpha: Per-hop attenuation in ``(0, 1)``.
+            iterations: Maximum propagation steps. Exhausting the budget on a
+                trajectory that is still settling returns the partial result, as
+                a truncated run is what the caller asked for.
+            tolerance: Threshold on the per-step change in the max-normalised
+                vector. Being scale-free, it means the same thing whether the
+                underlying series converges or grows.
 
         Returns:
             A mapping from system to centrality in ``[0, 1]`` (max-normalised).
@@ -220,10 +252,9 @@ class DependencyGraph:
         Raises:
             InvalidConfigError: If ``alpha`` is outside ``(0, 1)``, ``iterations``
                 is below ``1``, or ``tolerance`` is negative or not finite.
-                Attenuation of ``1`` or more lets the influence series grow
-                without bound; past roughly ``alpha = 10`` it overflows to
-                infinity and every result normalises to ``NaN``, so the range is
-                enforced rather than documented.
+            InvalidDependencyError: If the dependency structure has no single
+                dominant mode, so the ranking oscillates instead of settling and
+                no stable centrality exists to report.
         """
         if not math.isfinite(alpha) or not 0.0 < alpha < 1.0:
             msg = f"alpha must be in (0, 1), got {alpha!r}"
@@ -237,21 +268,46 @@ class DependencyGraph:
 
         influence: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
         frontier: dict[SystemKind, float] = dict.fromkeys(_ORDER, 1.0)
+        normalised: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
+        history: list[dict[SystemKind, float]] = []
+
         for _ in range(iterations):
             nxt: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
             for (source, target), weight in self._pair_weights.items():
                 # Influence flows from a dependent ``source`` to its ``target``.
                 nxt[target] += alpha * weight * frontier[source]
-            added = sum(nxt.values())
             for k in _ORDER:
                 influence[k] += nxt[k]
             frontier = nxt
-            if added < tolerance:
-                break
-        peak = max(influence.values())
-        if peak <= 0.0:
-            return dict.fromkeys(_ORDER, 0.0)
-        return {k: influence[k] / peak for k in _ORDER}
+
+            peak = max(influence.values())
+            if peak > _RESCALE_AT:
+                influence = {k: v / peak for k, v in influence.items()}
+                frontier = {k: v / peak for k, v in frontier.items()}
+                peak = max(influence.values())
+            normalised = dict.fromkeys(_ORDER, 0.0) if peak <= 0.0 else {k: influence[k] / peak for k in _ORDER}
+
+            if history:
+                # Settled: the ranking stopped moving, whether the underlying
+                # series converged or merely stabilised in direction.
+                if _within(normalised, history[-1], tolerance):
+                    return normalised
+                # Returned to a state older than the previous one: the ranking is
+                # cycling and will never settle, so no answer exists to report.
+                if any(_within(normalised, earlier, tolerance) for earlier in history[:-1]):
+                    msg = (
+                        "dependency structure has no single dominant mode: the centrality "
+                        "ranking cycles instead of settling, so it would be decided by where "
+                        "the iteration budget stopped"
+                    )
+                    raise InvalidDependencyError(msg)
+            history.append(normalised)
+            if len(history) > _CYCLE_WINDOW:
+                history.pop(0)
+
+        # Budget spent on a trajectory that is still settling: a truncated run is
+        # what was asked for, so return what it reached.
+        return normalised
 
     def articulation_points(self) -> set[SystemKind]:
         """Return systems whose removal disconnects the (undirected) dependency graph.
@@ -296,3 +352,8 @@ class DependencyGraph:
             if start not in visited:
                 dfs(start, None)
         return articulation
+
+
+def _within(a: dict[SystemKind, float], b: dict[SystemKind, float], tolerance: float) -> bool:
+    """Return whether two normalised vectors agree within ``tolerance``."""
+    return max(abs(a[k] - b[k]) for k in _ORDER) <= tolerance

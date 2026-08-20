@@ -76,6 +76,26 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `DependencyGraph` no longer lets the order dependencies were listed in change a
+  market's scores. A pair coupled by several kinds had its aggregate weight summed
+  in dict-insertion order, and floating-point addition is not associative, so the
+  same market described with its couplings in a different order produced
+  `edge_weight` values differing in the last bits — and with them different
+  concentration scores. Kinds are now summed in `DependencyKind` declaration order,
+  matching the canonical ordering every other graph query already used. Found by
+  the existing order-independence property test, which had been passing only
+  because the generator had not yet drawn a multi-kind pair with weights that
+  expose it.
+- `DependencyGraph.centrality()` no longer returns a ranking decided by where the
+  iteration budget happened to stop. On a graph with no single dominant mode — a
+  complete bipartite market with unequal sides, for instance — the normalised
+  ranking cycles between two states forever, and at 200 iterations four of the six
+  coupled systems scored `0.7222` while at 199 or 201 they scored `0.6923`. That
+  case now raises `InvalidDependencyError`. Convergence is also now tested on the
+  max-normalised vector rather than on raw influence added, which is scale-free and
+  so settles correctly whether the underlying series converges or grows; the
+  previous absolute threshold was unreachable within the default budget on densely
+  coupled graphs and silently returned an under-converged result.
 - `Market.from_dict()` now rejects a `components` value that is not a list. A
   bare string is iterable, so it was previously split into single-character
   components rather than reported as malformed.
@@ -122,6 +142,13 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- `DependencyGraph.centrality()` treats a diverging series as valid rather than as
+  an error. Above `alpha = 1/spectral radius` the max-normalised result settles on
+  the dominant-eigenvector direction, which is still a meaningful "most depended
+  upon" ranking, so a densely coupled market now returns an answer instead of being
+  refused. Only a genuinely unstable ranking is rejected. Every graph that returned
+  a stable answer before returns exactly that answer; nothing in the diagnostic or
+  simulation pipeline consumes `centrality`, so no published score moves.
 - The diagnostic concentration driver now reports the coupling count and total
   reliance alongside the index (`reliance concentrated in 1 coupling(s) (HHI 1.00,
   total reliance 0.30)`). The index alone cannot distinguish a genuine

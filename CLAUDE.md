@@ -277,12 +277,18 @@ example.
   threshold.
 - **Centrality**: Katz-style "being depended upon" influence, max-normalised to
   `[0, 1]`, attenuated by `alpha` (default 0.4) per hop. Chosen over eigenvector
-  centrality because it is well defined on acyclic graphs. The series only
-  converges while `alpha` stays below the inverse of the graph's spectral radius;
-  the default `0.4` satisfies that on a sparse market but not on a densely coupled
-  one, where the influence series diverges before being max-normalised — so treat
-  a dense graph's centrality with suspicion and pass a smaller `alpha`. Nothing in
-  the scoring pipeline consumes `centrality`; it is a standalone query.
+  centrality because it is well defined on acyclic graphs. Below
+  `alpha = 1/spectral radius` this is the Katz sum proper; above it the series
+  grows without bound but the *max-normalised* result still settles, on the
+  dominant-eigenvector direction. Both rank "how much is depended upon", so
+  divergence alone is not treated as an error — a densely coupled market returns a
+  perfectly usable answer. What is rejected (`InvalidDependencyError`) is a graph
+  with no single dominant mode, where the normalised ranking cycles forever and the
+  answer would be decided by whichever step the iteration budget stopped on; a
+  complete bipartite market with unequal sides does this. Exhausting `iterations`
+  on a still-settling run returns the partial result, since a truncated run is what
+  the caller asked for. Nothing in the scoring pipeline consumes `centrality`; it
+  is a standalone query.
 - **Simulation**: a stress vector `x_t ∈ [0,1]^7` evolves by
   `x_{t+1}[j] = clip(damping·(x_t[j]·retention + Σ_i x_t[i]·W[i][j]·transmission·(1−a_j)), 0, 1)`,
   where `W` is the coupling matrix (stress flows target → source, the reverse of
