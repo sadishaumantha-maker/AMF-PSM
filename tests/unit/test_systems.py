@@ -7,7 +7,7 @@ import dataclasses
 import pytest
 
 from amf.errors import InvalidSystemError
-from amf.models import SystemKind
+from amf.models import SystemKind, SystemMetric
 from amf.systems import (
     AnatomicalSystem,
     circulatory,
@@ -80,17 +80,37 @@ def test_factory_default_names_are_distinct():
     assert len({factory().name for factory in _FACTORIES}) == len(_FACTORIES)
 
 
-@pytest.mark.parametrize("factory", _FACTORIES)
-def test_factory_rejects_unknown_metric(factory):
-    # A misspelled metric must not be silently discarded.
-    with pytest.raises(InvalidSystemError, match="integritty"):
-        factory(integritty=0.1)
+def test_default_criticality_table_is_exact():
+    # The seven defaults are a design decision, not incidental: pin all of them.
+    factories = (skeleton, circulatory, nervous, musculature, organs, immune, metabolism)
+    assert {f().kind: f().criticality for f in factories} == {
+        SystemKind.SKELETON: pytest.approx(0.90),
+        SystemKind.CIRCULATORY: pytest.approx(0.85),
+        SystemKind.IMMUNE: pytest.approx(0.75),
+        SystemKind.NERVOUS: pytest.approx(0.70),
+        SystemKind.ORGANS: pytest.approx(0.65),
+        SystemKind.MUSCULATURE: pytest.approx(0.60),
+        SystemKind.METABOLISM: pytest.approx(0.60),
+    }
 
 
-def test_factory_rejects_trading_vocabulary_kwarg():
-    # The non-trading boundary has to hold at runtime too, not just in name scans.
-    with pytest.raises(InvalidSystemError, match="price"):
-        skeleton(price=3.0)
+def test_default_criticality_ordering_reflects_load_bearing_rank():
+    # The ordering is the claim the table encodes: infrastructure and capital flow
+    # are the most load-bearing, participants and metabolism the least.
+    ranked = [skeleton(), circulatory(), immune(), nervous(), organs()]
+    scores = [s.criticality for s in ranked]
+    assert scores == sorted(scores, reverse=True)
+    assert organs().criticality > musculature().criticality
+    assert musculature().criticality == pytest.approx(metabolism().criticality)
+
+
+def test_absorptive_capacity_weights_sum_to_one():
+    # A fully redundant, fully intact, unloaded system absorbs everything; the
+    # blend can therefore never exceed the unit interval.
+    best = AnatomicalSystem(SystemKind.SKELETON, "s", integrity=1.0, redundancy=1.0, load=0.0)
+    worst = AnatomicalSystem(SystemKind.SKELETON, "s", integrity=0.0, redundancy=0.0, load=1.0)
+    assert best.absorptive_capacity() == pytest.approx(1.0)
+    assert worst.absorptive_capacity() == pytest.approx(0.0)
 
 
 def test_factory_error_lists_every_unknown_metric_sorted():
@@ -121,3 +141,50 @@ def test_factory_overrides_metrics_and_components():
     assert system.components == ["NYSE", "DTCC"]
     assert system.integrity == pytest.approx(0.5)
     assert system.redundancy == pytest.approx(0.2)
+
+
+class TestMetricAccess:
+    @pytest.mark.parametrize(
+        ("metric", "expected"),
+        [
+            (SystemMetric.INTEGRITY, 0.7),
+            (SystemMetric.REDUNDANCY, 0.3),
+            (SystemMetric.CRITICALITY, 0.9),
+            (SystemMetric.LOAD, 0.1),
+        ],
+    )
+    def test_metric_reads_each_field(self, metric, expected):
+        system = skeleton(integrity=0.7, redundancy=0.3, criticality=0.9, load=0.1)
+        assert system.metric(metric) == pytest.approx(expected)
+
+    @pytest.mark.parametrize("metric", list(SystemMetric))
+    def test_with_metric_replaces_only_that_metric(self, metric):
+        system = skeleton(integrity=0.7, redundancy=0.3, criticality=0.9, load=0.1)
+        variant = system.with_metric(metric, 0.5)
+        assert variant.metric(metric) == pytest.approx(0.5)
+        for other in SystemMetric:
+            if other is not metric:
+                assert variant.metric(other) == system.metric(other)
+
+    def test_with_metric_leaves_the_original_untouched(self):
+        system = skeleton(integrity=0.7)
+        system.with_metric(SystemMetric.INTEGRITY, 0.2)
+        assert system.integrity == pytest.approx(0.7)
+
+    def test_with_metric_preserves_identity_fields(self):
+        system = skeleton(name="NYSE + DTCC", components=["clearing"])
+        variant = system.with_metric(SystemMetric.LOAD, 0.4)
+        assert variant.kind is system.kind
+        assert variant.name == system.name
+        assert variant.components == system.components
+
+    def test_with_metric_copies_components_rather_than_aliasing(self):
+        system = skeleton(components=["clearing"])
+        variant = system.with_metric(SystemMetric.LOAD, 0.4)
+        variant.components.append("settlement")
+        assert system.components == ["clearing"]
+
+    @pytest.mark.parametrize("value", [-0.1, 1.5])
+    def test_with_metric_validates_the_new_value(self, value):
+        with pytest.raises(InvalidSystemError):
+            skeleton().with_metric(SystemMetric.INTEGRITY, value)

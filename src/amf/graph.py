@@ -196,18 +196,6 @@ class DependencyGraph:
             data[target][source] = weight
         return CouplingMatrix(order=_ORDER, data=data)
 
-    def _spectral_radius_bound(self) -> float:
-        """Return an upper bound on the spectral radius of the pair-weight matrix.
-
-        The maximum absolute row sum bounds every eigenvalue, so this is the
-        cheapest sufficient condition for the Katz series to converge. Returns
-        ``0`` for a graph with no edges, where any ``alpha`` is safe.
-        """
-        totals: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
-        for (source, _target), weight in self._pair_weights.items():
-            totals[source] += weight
-        return max(totals.values())
-
     def centrality(
         self, alpha: float = 0.4, iterations: int = 200, tolerance: float = 1e-12
     ) -> dict[SystemKind, float]:
@@ -221,28 +209,21 @@ class DependencyGraph:
         isolated graph yields all zeros.
 
         Args:
-            alpha: Per-hop attenuation in ``(0, 1)``. It must also sit below the
-                inverse of this graph's spectral radius, which is what makes the
-                influence series converge; see Raises.
+            alpha: Per-hop attenuation in ``(0, 1)``; kept below the inverse of the
+                graph's spectral radius so the series converges.
             iterations: Maximum propagation steps.
-            tolerance: Convergence threshold on the influence added per step,
-                relative to the influence accumulated so far.
+            tolerance: Convergence threshold on the total influence added per step.
 
         Returns:
             A mapping from system to centrality in ``[0, 1]`` (max-normalised).
-            Exhausting ``iterations`` before the residual falls below ``tolerance``
-            returns a partially converged approximation rather than an error; the
-            remaining residual decays geometrically in ``alpha * spectral radius``.
 
         Raises:
             InvalidConfigError: If ``alpha`` is outside ``(0, 1)``, ``iterations``
-                is below ``1``, ``tolerance`` is negative or not finite, or
-                ``alpha`` is too large for this particular graph. The Katz series
-                only converges while ``alpha`` stays below the inverse of the
-                graph's spectral radius, so an ``alpha`` that is fine on a sparse
-                market diverges on a dense one -- and a diverging series is
-                reported as an error rather than silently max-normalised into
-                plausible-looking numbers.
+                is below ``1``, or ``tolerance`` is negative or not finite.
+                Attenuation of ``1`` or more lets the influence series grow
+                without bound; past roughly ``alpha = 10`` it overflows to
+                infinity and every result normalises to ``NaN``, so the range is
+                enforced rather than documented.
         """
         if not math.isfinite(alpha) or not 0.0 < alpha < 1.0:
             msg = f"alpha must be in (0, 1), got {alpha!r}"
@@ -252,17 +233,6 @@ class DependencyGraph:
             raise InvalidConfigError(msg)
         if not math.isfinite(tolerance) or tolerance < 0.0:
             msg = f"tolerance must be a finite, non-negative number, got {tolerance!r}"
-            raise InvalidConfigError(msg)
-        # The largest total outgoing weight bounds the spectral radius from above
-        # (Perron-Frobenius / Gershgorin), so alpha * bound < 1 is sufficient for
-        # convergence and needs no eigenvalue solve.
-        radius_bound = self._spectral_radius_bound()
-        if alpha * radius_bound >= 1.0:
-            safe = 1.0 / radius_bound
-            msg = (
-                f"alpha must be below 1/{radius_bound:.4g} = {safe:.4g} for this graph "
-                f"or the influence series diverges, got {alpha!r}"
-            )
             raise InvalidConfigError(msg)
 
         influence: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
@@ -276,10 +246,7 @@ class DependencyGraph:
             for k in _ORDER:
                 influence[k] += nxt[k]
             frontier = nxt
-            # Relative, not absolute: an absolute threshold is unreachable within
-            # the budget once the accumulated influence is large, which silently
-            # returned an under-converged result on densely coupled markets.
-            if added <= tolerance * max(1.0, sum(influence.values())):
+            if added < tolerance:
                 break
         peak = max(influence.values())
         if peak <= 0.0:

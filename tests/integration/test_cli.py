@@ -294,6 +294,46 @@ def test_sample_market_round_trip_preserves_all_dependency_kinds():
     assert Counter(d.kind for d in restored.graph.dependencies()) == expected
 
 
+def test_wrong_typed_metric_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # A string where a number belongs must be reported, not raised: it used to
+    # escape main's AMFError handler and crash the CLI with a traceback.
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["systems"]["skeleton"]["integrity"] = "high"
+    bad = tmp_path / "wrong-type.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["diagnose", str(bad)]) == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_wrong_typed_dependency_weight_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["dependencies"][0]["weight"] = "heavy"
+    bad = tmp_path / "bad-weight.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["simulate", str(bad), "--target", "skeleton"]) == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_non_list_components_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # A bare string is iterable, so it would otherwise be split into three
+    # single-character components rather than rejected.
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["systems"]["skeleton"]["components"] = "abc"
+    bad = tmp_path / "bad-components.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["diagnose", str(bad)]) == 2
+    assert "components" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["diagnose", "stress-test"])
+def test_malformed_market_never_raises_out_of_main(tmp_path: Path, command: str):
+    # Whatever is wrong with the file, main returns an exit code rather than
+    # letting an exception escape.
+    bad = tmp_path / "junk.json"
+    bad.write_text(json.dumps({"boundary": [], "systems": "nope"}), encoding="utf-8")
+    assert main([command, str(bad)]) == 2
+
+
 def test_non_utf8_market_file_is_a_handled_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     # `Path.read_text` raises UnicodeDecodeError, which is a ValueError and not
     # an OSError, so pointing the CLI at a binary file escaped the AMFError
@@ -309,3 +349,39 @@ def test_load_market_wraps_a_decoding_failure(tmp_path: Path):
     binary.write_bytes(b"\x80\x81")
     with pytest.raises(MarketParseError, match="not valid UTF-8"):
         _load_market(binary)
+
+
+def test_sensitivity_text(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE)]) == 0
+    captured = capsys.readouterr()
+    assert "Sensitivity & Leverage" in captured.out
+    assert "illustrative" in captured.err.lower()
+
+
+def test_sensitivity_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["sensitivities"]
+    assert "baseline_index" in payload
+
+
+def test_sensitivity_markdown(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "md"]) == 0
+    assert capsys.readouterr().out.startswith("# AMF Sensitivity & Leverage")
+
+
+def test_sensitivity_top_limits_both_rankings(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "json", "--top", "3"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert len(payload["sensitivities"]) == 3
+    assert len(payload["leverage_points"]) == 3
+
+
+def test_sensitivity_custom_step_is_reported(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "json", "--step", "0.2"]) == 0
+    assert json.loads(capsys.readouterr().out)["step"] == pytest.approx(0.2)
+
+
+def test_sensitivity_bad_step_returns_error_code(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--step", "0"]) == 2
+    assert "step" in capsys.readouterr().err

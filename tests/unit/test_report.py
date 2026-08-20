@@ -12,10 +12,12 @@ from amf.models import (
     DiagnosticReport,
     MarketBoundary,
     ResilienceScore,
+    SensitivityReport,
     Severity,
     Shock,
     SimulationTrace,
     SystemKind,
+    SystemMetric,
     WeaknessFinding,
 )
 from amf.report import (
@@ -27,6 +29,7 @@ from amf.report import (
     render_stress_test,
     render_text,
 )
+from amf.sensitivity import SensitivityAnalyzer
 from amf.simulation import ShockSimulator, SimulationConfig
 
 
@@ -240,6 +243,27 @@ def test_render_trace_without_resilience():
     assert render_markdown(trace).startswith("# AMF Shock Propagation")
 
 
+def test_to_jsonable_stringifies_non_system_keys():
+    # The str(k) fallback is a conditional expression, which branch coverage does
+    # not measure -- so this path read as covered while no test exercised it.
+    assert _to_jsonable({"already-a-string": 1, 2: "two"}) == {"already-a-string": 1, "2": "two"}
+
+
+def test_render_json_is_sorted_and_stable(stressed_market: Market):
+    # Renderers are pure: the same input must produce byte-identical output.
+    report = DiagnosticEngine().diagnose(stressed_market)
+    assert render_json(report) == render_json(report)
+    payload = json.loads(render_json(report))
+    assert list(payload) == sorted(payload)
+
+
+def test_stress_test_renderers_rank_weakest_first(stressed_market: Market):
+    profile = ShockSimulator(stressed_market).stress_test()
+    ranked = [k.value for k, _ in sorted(profile.items(), key=lambda kv: kv[1].value)]
+    text_order = [line.split()[0] for line in render_stress_test(profile).splitlines()[2:] if line.strip()]
+    assert text_order == ranked
+
+
 def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
     # The `Renderable` alias is what types the CLI's `_format`. If a new result
     # type joins the renderers' dispatch without being added to the alias, the
@@ -249,11 +273,17 @@ def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
     simulator = ShockSimulator(healthy_market)
     trace = simulator.propagate(Shock(target=SystemKind.CIRCULATORY, magnitude=0.6))
     profile = simulator.stress_test(magnitude=0.6)
+    sensitivity = SensitivityAnalyzer().analyse(healthy_market)
 
     members = get_args(Renderable)
-    assert set(members) == {DiagnosticReport, SimulationTrace, dict[SystemKind, ResilienceScore]}
+    assert set(members) == {
+        DiagnosticReport,
+        SimulationTrace,
+        SensitivityReport,
+        dict[SystemKind, ResilienceScore],
+    }
 
-    for result in (engine_report, trace, profile):
+    for result in (engine_report, trace, profile, sensitivity):
         assert render_text(result)
         assert render_markdown(result)
         assert json.loads(render_json(result))
@@ -274,3 +304,52 @@ def test_render_distribution_text_and_json(stressed_market: Market):
     payload = json.loads(render_json(dist))
     assert payload["runs"] == 20
     assert set(payload["value"]) == {"mean", "minimum", "maximum", "p10", "p50", "p90"}
+
+
+class TestSensitivityRenderers:
+    def _report(self, market):
+        return SensitivityAnalyzer().analyse(market)
+
+    def test_text_lists_both_rankings(self, stressed_market):
+        out = render_text(self._report(stressed_market))
+        assert "Sensitivity & Leverage" in out
+        assert "Most influential metrics" in out
+        assert "Leverage points" in out
+
+    def test_text_states_direction_of_effect(self, stressed_market):
+        out = render_text(self._report(stressed_market))
+        assert "raises weakness" in out
+        assert "lowers weakness" in out
+
+    def test_text_reports_when_no_leverage_is_available(self, healthy_market):
+        # Give every system full redundancy too, so no metric has headroom.
+        market = healthy_market
+        for kind in SystemKind:
+            market = market.with_system(market.system(kind).with_metric(SystemMetric.REDUNDANCY, 1.0))
+        out = render_text(SensitivityAnalyzer().analyse(market))
+        assert "No adjustable metric has headroom" in out
+
+    def test_markdown_has_both_tables(self, stressed_market):
+        out = render_markdown(self._report(stressed_market))
+        assert out.startswith("# AMF Sensitivity & Leverage")
+        assert "## Metric sensitivity" in out
+        assert "## Leverage points" in out
+        assert "| System | Metric | Baseline | Span | Index delta | Gradient |" in out
+
+    def test_markdown_reports_when_no_leverage_is_available(self, healthy_market):
+        market = healthy_market
+        for kind in SystemKind:
+            market = market.with_system(market.system(kind).with_metric(SystemMetric.REDUNDANCY, 1.0))
+        assert "No adjustable metric has headroom" in render_markdown(SensitivityAnalyzer().analyse(market))
+
+    def test_json_is_parseable_and_complete(self, stressed_market):
+        payload = json.loads(render_json(self._report(stressed_market)))
+        assert set(payload) == {
+            "boundary",
+            "baseline_index",
+            "baseline_severity",
+            "step",
+            "sensitivities",
+            "leverage_points",
+        }
+        assert len(payload["sensitivities"]) == len(SystemKind) * len(SystemMetric)

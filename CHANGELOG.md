@@ -16,6 +16,12 @@ this file. Versions correspond to framework releases.
   scores `0.00`, and giving it one trivial coupling scores `1.00`. Enabling the
   flag fixes both. It is opt-in because it moves every concentration score the
   engine reports; the default output is unchanged.
+- Private-distribution guard: the `Private :: Do Not Upload` classifier in
+  `pyproject.toml` makes PyPI reject any upload of this proprietary package, and
+  `tests/unit/test_packaging.py` fails if that classifier is dropped from either
+  the source config or the built wheel, if a public-index URL is added, or if the
+  package and `pyproject.toml` versions drift apart. `RELEASING.md` documents the
+  private release procedure.
 - `InvalidConfigError`, a new `AMFError` subclass raised when an engine or
   algorithm parameter is outside its documented range — `DiagnosticConfig`,
   `SimulationConfig`, and `DependencyGraph.centrality()` all validate on
@@ -28,6 +34,14 @@ this file. Versions correspond to framework releases.
   **time-scheduled / multi-wave shocks** (`Shock.at_step`); and **recovery /
   intervention** modeling (`SimulationConfig.recovery_rate`, `Intervention`). New
   CLI: `amf ensemble` plus `simulate --cascade-threshold/--recovery/--seed/...`.
+- `amf sensitivity` subcommand and `amf.sensitivity` module: comparative-statics
+  analysis that perturbs each structural metric of each system and reports (a)
+  the finite-difference gradient of the overall weakness index and (b) ranked
+  *leverage points* — the feasible adjustments that reduce the index most (AMF
+  analytical Step 5). `criticality` is reported as sensitive but excluded from
+  leverage rankings, since it describes how load-bearing a system is rather than
+  a lever an operator tunes. Supporting API: `SystemMetric`,
+  `AnatomicalSystem.metric`/`with_metric`, and `Market.with_system`.
 - `amf viz` subcommand and `amf.viz` module: dependency-free renderers that draw
   the dependency graph as Graphviz DOT, Mermaid, or a self-contained SVG
   (severity-coloured when diagnostics are available) and a shock-propagation
@@ -57,6 +71,9 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `Market.from_dict()` now rejects a `components` value that is not a list. A
+  bare string is iterable, so it was previously split into single-character
+  components rather than reported as malformed.
 - Diagnostic output no longer depends on the order a market was assembled in.
   Both the per-system findings ranking and the single-point-of-failure ranking
   fell back on `dict` insertion order whenever two systems tied, so two markets
@@ -100,22 +117,6 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
-- **Breaking:** `DependencyGraph.centrality()` now rejects an `alpha` that is too
-  large for the graph it is called on, instead of returning numbers derived from a
-  diverging series. The Katz series converges only while `alpha` stays below the
-  inverse of the graph's spectral radius; the default `0.4` satisfies that on a
-  sparse market (`examples/sample_market.json` bounds it at `1/1.3`) but not on a
-  densely coupled one, where the influence series grew to ~1e76 before being
-  max-normalised into plausible-looking output. `alpha` is now checked against the
-  max-row-sum bound for that graph and an out-of-range value raises
-  `InvalidConfigError` naming a usable value. *Migration:* pass a smaller `alpha`
-  — the error message states the bound. Results are unchanged wherever the
-  previous call was mathematically valid, and nothing in the diagnostic or
-  simulation pipeline consumes `centrality`, so no score moves.
-- `DependencyGraph.centrality()` now tests convergence relative to the influence
-  accumulated so far rather than against an absolute threshold. The absolute test
-  was unreachable within the default iteration budget on densely coupled graphs,
-  so the method silently returned an under-converged result.
 - The diagnostic concentration driver now reports the coupling count and total
   reliance alongside the index (`reliance concentrated in 1 coupling(s) (HHI 1.00,
   total reliance 0.30)`). The index alone cannot distinguish a genuine
@@ -125,6 +126,8 @@ this file. Versions correspond to framework releases.
   rather than the mutable `v1` tag, and moves the GitHub-owned actions to
   `checkout@v5`, `setup-python@v6`, and `upload-artifact@v6`, which clears the
   Node 20 deprecation warning the runner emitted for the previous majors.
+- The coverage gate rose from 90% to 100% branch coverage. A suite already at
+  100% cannot fail a 90% gate, so the gate was rejecting nothing.
 - `amf.report` now exports a `Renderable` type alias for the result types the
   renderers accept, and `cli._format` is annotated with it instead of `object`.
   This removes three `# type: ignore[arg-type]` comments that were suppressing

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from amf.diagnostics import DiagnosticConfig, DiagnosticEngine
@@ -169,6 +171,26 @@ def test_dependency_kinds_do_not_affect_scoring(market_factory):
     assert a == pytest.approx(b)
 
 
+def test_diagnosis_is_identical_whatever_order_dependencies_were_added(market_factory):
+    # The concentration HHI sums over dependencies_of, and floating-point addition
+    # is not associative, so an insertion-ordered traversal made the same market
+    # diagnose differently in the last bits depending on how it was assembled.
+    # These four weights are one of the pairs that actually diverged before
+    # dependencies_of was given a canonical order.
+    deps = [
+        Dependency(SystemKind.NERVOUS, SystemKind.ORGANS, DependencyKind.CAPITAL, 0.37),
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.891),
+        Dependency(SystemKind.NERVOUS, SystemKind.CIRCULATORY, DependencyKind.INFORMATIONAL, 0.599),
+        Dependency(SystemKind.NERVOUS, SystemKind.IMMUNE, DependencyKind.REGULATORY, 0.806),
+    ]
+    engine = DiagnosticEngine()
+    forward = engine.diagnose(market_factory(deps))
+    backward = engine.diagnose(market_factory(list(reversed(deps))))
+    # Exact equality, not approx: this is a bit-for-bit reproducibility claim, and
+    # approx would pass against precisely the drift it exists to catch.
+    assert forward.to_dict() == backward.to_dict()
+
+
 def test_splitting_one_edge_across_kinds_does_not_affect_scoring(market_factory):
     # Kind is part of edge identity, but every pair-level query aggregates across
     # kinds -- so 0.3 structural + 0.2 capital must score exactly as 0.5 structural.
@@ -187,6 +209,54 @@ def test_splitting_one_edge_across_kinds_does_not_affect_scoring(market_factory)
     for a, b in zip(one.findings, other.findings, strict=True):
         assert a.score == pytest.approx(b.score)
         assert a.concentration == pytest.approx(b.concentration)
+
+
+@pytest.mark.parametrize("trial", range(25))
+def test_scores_stay_in_unit_interval_for_any_positive_weights(stressed_market: Market, trial: int):
+    """Property test: every score and the overall index land in [0, 1]."""
+    rng = random.Random(trial)
+    config = DiagnosticConfig(rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0))
+    report = DiagnosticEngine(config).diagnose(stressed_market)
+    assert 0.0 <= report.overall_index <= 1.0
+    for finding in report.findings:
+        assert 0.0 <= finding.score <= 1.0
+        assert finding.severity is Severity.from_score(finding.score)
+
+
+def test_default_config_weights_are_pinned():
+    # Tests that pass explicit weights exercise the blending but leave the
+    # defaults themselves free to drift.
+    config = DiagnosticConfig()
+    assert (config.fragility_weight, config.concentration_weight, config.feedback_weight) == pytest.approx(
+        (0.4, 0.3, 0.3)
+    )
+    assert config.fragility_weight + config.concentration_weight + config.feedback_weight == pytest.approx(1.0)
+
+
+def test_default_engine_matches_the_default_config(stressed_market: Market):
+    assert DiagnosticEngine().diagnose(stressed_market).overall_index == pytest.approx(
+        DiagnosticEngine(DiagnosticConfig(0.4, 0.3, 0.3)).diagnose(stressed_market).overall_index
+    )
+
+
+def _feedback_drivers(market_factory, weight: float) -> tuple[str, ...]:
+    # A single 2-cycle whose weight product is exactly the threshold under test.
+    deps = [
+        Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, weight=weight),
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, weight=1.0),
+    ]
+    report = DiagnosticEngine().diagnose(market_factory(deps))
+    return next(f for f in report.findings if f.system is SystemKind.SKELETON).drivers
+
+
+def test_feedback_driver_appears_at_threshold(market_factory):
+    # loop product = 0.25 * 1.0, exactly at the >= 0.25 cutoff.
+    assert any(d.startswith("participates in") for d in _feedback_drivers(market_factory, 0.25))
+
+
+def test_feedback_driver_absent_just_below_threshold(market_factory):
+    # loop product = 0.249, just under the cutoff.
+    assert not any(d.startswith("participates in") for d in _feedback_drivers(market_factory, 0.249))
 
 
 @pytest.mark.parametrize(

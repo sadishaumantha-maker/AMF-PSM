@@ -211,6 +211,16 @@ def test_from_dict_self_loop_dependency_raises_market_parse_error(stressed_marke
         Market.from_dict(data)
 
 
+@pytest.mark.parametrize("value", ["abc", 5, {"a": 1}])
+def test_from_dict_non_list_components_raises_market_parse_error(stressed_market: Market, value):
+    # A bare string is iterable, so accepting one would split "abc" into three
+    # single-character components instead of reporting malformed input.
+    data = stressed_market.to_dict()
+    data["systems"]["skeleton"]["components"] = value
+    with pytest.raises(MarketParseError, match="components"):
+        Market.from_dict(data)
+
+
 def test_require_complete_rejects_a_system_filed_under_the_wrong_kind(healthy_market: Market):
     # `systems` is a plain mutable dict, so a caller can file a system under the
     # wrong key. Every engine reads the label from the key and the metrics from
@@ -236,3 +246,29 @@ def test_to_dict_system_order_is_independent_of_assembly_order(boundary: MarketB
     expected = [kind.value for kind in SystemKind]
     assert list(forwards.to_dict()["systems"]) == expected
     assert list(backwards.to_dict()["systems"]) == expected
+
+
+class TestWithSystem:
+    def test_replaces_the_system_of_the_same_kind(self, stressed_market):
+        replacement = skeleton(integrity=0.15)
+        variant = stressed_market.with_system(replacement)
+        assert variant.system(SystemKind.SKELETON).integrity == pytest.approx(0.15)
+
+    def test_leaves_the_original_untouched(self, stressed_market):
+        before = stressed_market.system(SystemKind.SKELETON).integrity
+        stressed_market.with_system(skeleton(integrity=0.15))
+        assert stressed_market.system(SystemKind.SKELETON).integrity == pytest.approx(before)
+
+    def test_other_systems_are_carried_over(self, stressed_market):
+        variant = stressed_market.with_system(skeleton(integrity=0.15))
+        for kind in SystemKind:
+            if kind is not SystemKind.SKELETON:
+                assert variant.system(kind) is stressed_market.system(kind)
+
+    def test_boundary_and_graph_are_shared(self, stressed_market):
+        variant = stressed_market.with_system(skeleton(integrity=0.15))
+        assert variant.boundary == stressed_market.boundary
+        assert variant.graph is stressed_market.graph
+
+    def test_result_is_still_complete(self, stressed_market):
+        stressed_market.with_system(skeleton(integrity=0.15)).require_complete()

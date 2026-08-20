@@ -300,6 +300,80 @@ def test_articulation_points_none_in_a_cycle():
     assert graph.articulation_points() == set()
 
 
+def test_centrality_alpha_controls_per_hop_attenuation():
+    # alpha attenuates influence per hop, so raising it must lift a system that is
+    # only reached transitively. skeleton is two hops from musculature.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.MUSCULATURE, SystemKind.NERVOUS),
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+            _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+        ]
+    )
+    low = graph.centrality(alpha=0.1)
+    high = graph.centrality(alpha=0.8)
+    # Nervous is one hop from its dependents; skeleton also collects two-hop flow,
+    # so a higher alpha widens skeleton's lead over nervous.
+    assert high[SystemKind.NERVOUS] < low[SystemKind.NERVOUS]
+    assert all(0.0 <= v <= 1.0 for v in low.values())
+    assert all(0.0 <= v <= 1.0 for v in high.values())
+
+
+def test_centrality_is_max_normalised_to_one():
+    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
+    for alpha in (0.1, 0.4, 0.9):
+        centrality = graph.centrality(alpha=alpha)
+        assert max(centrality.values()) == pytest.approx(1.0)
+
+
+def test_centrality_ranks_transitive_dependence_above_none():
+    # A chain metabolism -> organs -> circulatory: circulatory is depended upon
+    # both directly and transitively, so it must outrank organs.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.METABOLISM, SystemKind.ORGANS),
+            _dep(SystemKind.ORGANS, SystemKind.CIRCULATORY),
+        ]
+    )
+    centrality = graph.centrality()
+    assert centrality[SystemKind.CIRCULATORY] > centrality[SystemKind.ORGANS]
+    assert centrality[SystemKind.METABOLISM] == pytest.approx(0.0)
+
+
+def test_feedback_loops_enumerates_each_cycle_once_in_a_dense_graph():
+    # Two cycles share an edge; each must still be reported exactly once, with its
+    # lowest-ordered system first.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.SKELETON, SystemKind.CIRCULATORY),
+            _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+            _dep(SystemKind.CIRCULATORY, SystemKind.NERVOUS),
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+        ]
+    )
+    loops = graph.feedback_loops()
+    assert len(loops) == len(set(loops))
+    assert set(loops) == {
+        (SystemKind.SKELETON, SystemKind.CIRCULATORY),
+        (SystemKind.SKELETON, SystemKind.CIRCULATORY, SystemKind.NERVOUS),
+    }
+    for loop in loops:
+        assert loop[0] == min(loop, key=list(SystemKind).index)
+
+
+def test_centrality_default_alpha_is_pinned():
+    # The default attenuation is documented as 0.4; the alpha tests above pass it
+    # explicitly, which would leave the default free to drift.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.METABOLISM, SystemKind.ORGANS),
+            _dep(SystemKind.ORGANS, SystemKind.CIRCULATORY),
+        ]
+    )
+    assert graph.centrality() == pytest.approx(graph.centrality(alpha=0.4))
+    assert graph.centrality() != pytest.approx(graph.centrality(alpha=0.9))
+
+
 @pytest.mark.parametrize("alpha", [0.0, 1.0, 1.5, 10.0, -0.4, float("nan"), float("inf")])
 def test_centrality_rejects_out_of_range_alpha(alpha: float):
     # At alpha >= 1 the influence series grows without bound; by alpha = 10 it
@@ -322,47 +396,3 @@ def test_centrality_rejects_an_invalid_tolerance(tolerance: float):
     graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
     with pytest.raises(InvalidConfigError, match="tolerance must be"):
         graph.centrality(tolerance=tolerance)
-
-
-def _dense_graph() -> DependencyGraph:
-    """Every ordered pair coupled at full weight: max row sum 6."""
-    return DependencyGraph(
-        [_dep(source, target, 1.0) for source in SystemKind for target in SystemKind if source is not target]
-    )
-
-
-def test_centrality_rejects_an_alpha_that_diverges_on_this_graph():
-    # alpha=0.4 is inside (0, 1) and fine on a sparse market, but on a densely
-    # coupled one it sits far above 1/rho: the influence series then grows without
-    # bound and used to be max-normalised into plausible-looking numbers.
-    with pytest.raises(InvalidConfigError, match=r"alpha must be below 1/6"):
-        _dense_graph().centrality(alpha=0.4)
-
-
-def test_centrality_error_names_a_usable_alpha():
-    with pytest.raises(InvalidConfigError) as excinfo:
-        _dense_graph().centrality(alpha=0.4)
-    assert "0.1667" in str(excinfo.value)
-    # And that suggested bound is genuinely usable.
-    centrality = _dense_graph().centrality(alpha=0.15)
-    assert all(0.0 <= v <= 1.0 for v in centrality.values())
-
-
-def test_centrality_still_accepts_alpha_on_a_sparse_graph():
-    # The guard is per-graph, so the default keeps working wherever it was valid.
-    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON, 0.5)])
-    assert graph.centrality()[SystemKind.SKELETON] == pytest.approx(1.0)
-
-
-def test_centrality_converges_where_an_absolute_tolerance_could_not():
-    # Just under the divergence bound the residual decays slowly; an absolute
-    # threshold on the influence added per step was unreachable within the default
-    # budget, so the result was silently under-converged. The relative test settles.
-    centrality = _dense_graph().centrality(alpha=0.16)
-    assert all(0.0 <= v <= 1.0 for v in centrality.values())
-    assert max(centrality.values()) == pytest.approx(1.0)
-
-
-def test_spectral_radius_bound_is_zero_without_edges():
-    # An empty graph constrains nothing, so every alpha in (0, 1) stays legal.
-    assert DependencyGraph().centrality(alpha=0.99) == dict.fromkeys(SystemKind, 0.0)

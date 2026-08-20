@@ -113,6 +113,23 @@ class Market:
             msg = f"market has no {kind} system"
             raise IncompleteMarketError(msg) from exc
 
+    def with_system(self, system: AnatomicalSystem) -> Market:
+        """Return a copy of this market with one system replaced.
+
+        The dependency graph is shared rather than copied: it is keyed by
+        :class:`~amf.models.SystemKind`, so swapping a system's *metrics* leaves
+        every coupling valid. Analyses that sweep perturbed variants of a market
+        rely on this being cheap.
+
+        Args:
+            system: The replacement system; it substitutes the existing system of
+                the same :attr:`~amf.systems.AnatomicalSystem.kind`.
+
+        Returns:
+            A new :class:`Market`; the original is untouched.
+        """
+        return Market(boundary=self.boundary, systems={**self.systems, system.kind: system}, graph=self.graph)
+
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable representation of the market.
 
@@ -203,9 +220,15 @@ def _parse_system(name: str, body: dict[str, Any]) -> AnatomicalSystem:
         msg = f"unknown field(s) for system {kind.value!r}: {', '.join(sorted(unknown))}"
         raise MarketParseError(msg)
     metrics = {metric: float(body[metric]) for metric in _SYSTEM_METRICS if metric in body}
+    components = body.get("components", [])
+    if not isinstance(components, list):
+        # A bare string is iterable, so accepting one would split "abc" into three
+        # single-character components instead of reporting malformed input.
+        msg = f"components for system {kind.value!r} must be a list, got {type(components).__name__}"
+        raise MarketParseError(msg)
     return SYSTEM_FACTORIES[kind](
         name=str(body["name"]) if "name" in body else None,
-        components=[str(c) for c in body.get("components", [])],
+        components=[str(c) for c in components],
         **metrics,
     )
 
