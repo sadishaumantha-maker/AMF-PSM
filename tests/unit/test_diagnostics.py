@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import random
+
 import pytest
 
 from amf.diagnostics import DiagnosticConfig, DiagnosticEngine
+from amf.errors import InvalidConfigError
 from amf.market import Market
 from amf.models import (
     Dependency,
@@ -189,3 +192,105 @@ def test_dependency_kinds_do_not_affect_scoring(boundary: MarketBoundary):
     a = DiagnosticEngine().diagnose(structural).overall_index
     b = DiagnosticEngine().diagnose(capital).overall_index
     assert a == pytest.approx(b)
+
+
+@pytest.mark.parametrize(
+    "weights",
+    [(-0.1, 0.3, 0.3), (0.4, -1.0, 0.3), (0.4, 0.3, -0.5)],
+)
+def test_negative_config_weights_rejected(weights):
+    # The docstring promises any positive triple yields a score in [0, 1]. A
+    # negative weight broke that silently: scores ran to -8.8, and a negative
+    # overall index was still reported as "low" severity.
+    with pytest.raises(InvalidConfigError, match="must be non-negative"):
+        DiagnosticConfig(*weights)
+
+
+@pytest.mark.parametrize("trial", range(25))
+def test_scores_stay_in_unit_interval_for_any_positive_weights(stressed_market: Market, trial: int):
+    """Property test: every score and the overall index land in [0, 1]."""
+    rng = random.Random(trial)
+    config = DiagnosticConfig(rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0), rng.uniform(0.0, 5.0))
+    report = DiagnosticEngine(config).diagnose(stressed_market)
+    assert 0.0 <= report.overall_index <= 1.0
+    for finding in report.findings:
+        assert 0.0 <= finding.score <= 1.0
+        assert finding.severity is Severity.from_score(finding.score)
+
+
+def test_components_stay_in_unit_interval(stressed_market: Market):
+    engine = DiagnosticEngine()
+    for values in (
+        engine.fragility(stressed_market),
+        engine.concentration(stressed_market),
+        engine.feedback_amplification(stressed_market),
+    ):
+        assert all(0.0 <= v <= 1.0 for v in values.values())
+
+
+def test_weights_shift_the_ranking_toward_their_component(boundary: MarketBoundary):
+    # Weighting concentration alone must rank the system with the most concentrated
+    # reliance first; weighting fragility alone must not.
+    systems = [
+        skeleton(integrity=0.2, redundancy=0.1, criticality=0.9),
+        circulatory(),
+        nervous(),
+        musculature(),
+        organs(),
+        immune(),
+        metabolism(),
+    ]
+    # nervous leans entirely on one coupling (HHI 1.0); skeleton is the fragile one.
+    deps = [Dependency(SystemKind.NERVOUS, SystemKind.ORGANS, weight=0.9)]
+    market = Market.assemble(boundary, systems, deps)
+    by_concentration = DiagnosticEngine(DiagnosticConfig(0.0, 1.0, 0.0)).diagnose(market)
+    by_fragility = DiagnosticEngine(DiagnosticConfig(1.0, 0.0, 0.0)).diagnose(market)
+    assert by_concentration.findings[0].system is SystemKind.NERVOUS
+    assert by_fragility.findings[0].system is SystemKind.SKELETON
+
+
+def test_default_config_weights_are_pinned():
+    # The documented default blend. Tests that pass explicit weights exercise the
+    # blending but leave the defaults themselves free to drift.
+    config = DiagnosticConfig()
+    assert (config.fragility_weight, config.concentration_weight, config.feedback_weight) == pytest.approx(
+        (0.4, 0.3, 0.3)
+    )
+    assert config.fragility_weight + config.concentration_weight + config.feedback_weight == pytest.approx(1.0)
+
+
+def test_default_engine_matches_the_default_config(stressed_market: Market):
+    assert DiagnosticEngine().diagnose(stressed_market).overall_index == pytest.approx(
+        DiagnosticEngine(DiagnosticConfig(0.4, 0.3, 0.3)).diagnose(stressed_market).overall_index
+    )
+
+
+def _feedback_drivers(boundary: MarketBoundary, weight: float) -> tuple[str, ...]:
+    # A single 2-cycle whose weight product is exactly the driver threshold under
+    # test; the two systems have no other couplings, so no concentration driver
+    # competes. Full redundancy keeps fragility and the SPOF flag out of it.
+    systems = [
+        skeleton(redundancy=1.0),
+        circulatory(redundancy=1.0),
+        nervous(),
+        musculature(),
+        organs(),
+        immune(),
+        metabolism(),
+    ]
+    deps = [
+        Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, weight=weight),
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, weight=1.0),
+    ]
+    report = DiagnosticEngine().diagnose(Market.assemble(boundary, systems, deps))
+    return next(f for f in report.findings if f.system is SystemKind.SKELETON).drivers
+
+
+def test_feedback_driver_appears_at_threshold(boundary: MarketBoundary):
+    # loop product = 0.25 * 1.0, exactly at the >= 0.25 cutoff.
+    assert any(d.startswith("participates in") for d in _feedback_drivers(boundary, 0.25))
+
+
+def test_feedback_driver_absent_just_below_threshold(boundary: MarketBoundary):
+    # loop product = 0.249, just under the cutoff.
+    assert not any(d.startswith("participates in") for d in _feedback_drivers(boundary, 0.249))

@@ -65,6 +65,14 @@ class Severity(StrEnum):
     def from_score(cls, score: float) -> Severity:
         """Map a normalised score in ``[0, 1]`` to a severity band.
 
+        The bands are half-open and ordered from below, so the mapping is total:
+        a score under ``0`` saturates at :attr:`LOW`, one above ``1`` saturates at
+        :attr:`CRITICAL`, and ``NaN`` -- which compares false against every
+        threshold -- falls through to :attr:`CRITICAL`. Saturating on the
+        pessimistic side is deliberate: a score that has escaped ``[0, 1]``
+        indicates a broken upstream computation, and under-reporting its severity
+        would be the more dangerous failure.
+
         Args:
             score: A value where ``0`` is benign and ``1`` is the worst case.
 

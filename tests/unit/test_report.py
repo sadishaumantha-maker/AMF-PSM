@@ -100,3 +100,24 @@ def test_render_trace_without_resilience():
     assert "Shock Propagation" in render_text(trace)
     assert "Resilience" not in render_text(trace)
     assert render_markdown(trace).startswith("# AMF Shock Propagation")
+
+
+def test_to_jsonable_stringifies_non_system_keys():
+    # The str(k) fallback is a conditional expression, which branch coverage does
+    # not measure -- so this path read as covered while no test exercised it.
+    assert _to_jsonable({"already-a-string": 1, 2: "two"}) == {"already-a-string": 1, "2": "two"}
+
+
+def test_render_json_is_sorted_and_stable(stressed_market: Market):
+    # Renderers are pure: the same input must produce byte-identical output.
+    report = DiagnosticEngine().diagnose(stressed_market)
+    assert render_json(report) == render_json(report)
+    payload = json.loads(render_json(report))
+    assert list(payload) == sorted(payload)
+
+
+def test_stress_test_renderers_rank_weakest_first(stressed_market: Market):
+    profile = ShockSimulator(stressed_market).stress_test()
+    ranked = [k.value for k, _ in sorted(profile.items(), key=lambda kv: kv[1].value)]
+    text_order = [line.split()[0] for line in render_stress_test(profile).splitlines()[2:] if line.strip()]
+    assert text_order == ranked

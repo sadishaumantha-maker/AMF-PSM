@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from amf.errors import InvalidConfigError
 from amf.models import (
     DiagnosticReport,
     Severity,
@@ -44,6 +45,24 @@ class DiagnosticConfig:
     fragility_weight: float = 0.4
     concentration_weight: float = 0.3
     feedback_weight: float = 0.3
+
+    def __post_init__(self) -> None:
+        """Validate the weights on construction.
+
+        Raises:
+            InvalidConfigError: If any weight is negative. Negative weights would
+                push per-system scores outside ``[0, 1]``, which every consumer of
+                a score -- :meth:`~amf.models.Severity.from_score` above all --
+                assumes it can rely on.
+        """
+        for name, value in (
+            ("fragility_weight", self.fragility_weight),
+            ("concentration_weight", self.concentration_weight),
+            ("feedback_weight", self.feedback_weight),
+        ):
+            if value < 0.0:
+                msg = f"{name} must be non-negative, got {value!r}"
+                raise InvalidConfigError(msg)
 
 
 class DiagnosticEngine:

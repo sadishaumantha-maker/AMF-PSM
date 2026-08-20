@@ -186,3 +186,77 @@ def test_articulation_points_none_in_a_cycle():
         ]
     )
     assert graph.articulation_points() == set()
+
+
+def test_centrality_alpha_controls_per_hop_attenuation():
+    # alpha attenuates influence per hop, so raising it must lift a system that is
+    # only reached transitively. skeleton is two hops from musculature.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.MUSCULATURE, SystemKind.NERVOUS),
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+            _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+        ]
+    )
+    low = graph.centrality(alpha=0.1)
+    high = graph.centrality(alpha=0.8)
+    # Nervous is one hop from its dependents; skeleton also collects two-hop flow,
+    # so a higher alpha widens skeleton's lead over nervous.
+    assert high[SystemKind.NERVOUS] < low[SystemKind.NERVOUS]
+    assert all(0.0 <= v <= 1.0 for v in low.values())
+    assert all(0.0 <= v <= 1.0 for v in high.values())
+
+
+def test_centrality_is_max_normalised_to_one():
+    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
+    for alpha in (0.1, 0.4, 0.9):
+        centrality = graph.centrality(alpha=alpha)
+        assert max(centrality.values()) == pytest.approx(1.0)
+
+
+def test_centrality_ranks_transitive_dependence_above_none():
+    # A chain metabolism -> organs -> circulatory: circulatory is depended upon
+    # both directly and transitively, so it must outrank organs.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.METABOLISM, SystemKind.ORGANS),
+            _dep(SystemKind.ORGANS, SystemKind.CIRCULATORY),
+        ]
+    )
+    centrality = graph.centrality()
+    assert centrality[SystemKind.CIRCULATORY] > centrality[SystemKind.ORGANS]
+    assert centrality[SystemKind.METABOLISM] == pytest.approx(0.0)
+
+
+def test_feedback_loops_enumerates_each_cycle_once_in_a_dense_graph():
+    # Two cycles share an edge; each must still be reported exactly once, with its
+    # lowest-ordered system first.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.SKELETON, SystemKind.CIRCULATORY),
+            _dep(SystemKind.CIRCULATORY, SystemKind.SKELETON),
+            _dep(SystemKind.CIRCULATORY, SystemKind.NERVOUS),
+            _dep(SystemKind.NERVOUS, SystemKind.SKELETON),
+        ]
+    )
+    loops = graph.feedback_loops()
+    assert len(loops) == len(set(loops))
+    assert set(loops) == {
+        (SystemKind.SKELETON, SystemKind.CIRCULATORY),
+        (SystemKind.SKELETON, SystemKind.CIRCULATORY, SystemKind.NERVOUS),
+    }
+    for loop in loops:
+        assert loop[0] == min(loop, key=list(SystemKind).index)
+
+
+def test_centrality_default_alpha_is_pinned():
+    # The default attenuation is documented as 0.4; the alpha tests above pass it
+    # explicitly, which would leave the default free to drift.
+    graph = DependencyGraph(
+        [
+            _dep(SystemKind.METABOLISM, SystemKind.ORGANS),
+            _dep(SystemKind.ORGANS, SystemKind.CIRCULATORY),
+        ]
+    )
+    assert graph.centrality() == pytest.approx(graph.centrality(alpha=0.4))
+    assert graph.centrality() != pytest.approx(graph.centrality(alpha=0.9))

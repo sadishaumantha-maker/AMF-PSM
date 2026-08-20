@@ -66,15 +66,24 @@ class Market:
         return market
 
     def require_complete(self) -> None:
-        """Ensure all seven systems are present.
+        """Ensure all seven systems are present and each still holds valid state.
+
+        Systems are mutable, so a metric can be pushed out of ``[0, 1]`` after
+        construction. Every engine calls this before reading a market, which makes
+        it the boundary where such a mutation is caught rather than silently
+        propagated into a score.
 
         Raises:
             IncompleteMarketError: If any :class:`~amf.models.SystemKind` is absent.
+            InvalidSystemError: If a present system holds an out-of-range metric or
+                a blank name.
         """
         missing = [k.value for k in SystemKind if k not in self.systems]
         if missing:
             msg = f"market is missing systems: {', '.join(missing)}"
             raise IncompleteMarketError(msg)
+        for system in self.systems.values():
+            system.validate()
 
     def system(self, kind: SystemKind) -> AnatomicalSystem:
         """Return the system of the given kind.
@@ -138,13 +147,42 @@ class Market:
             return cls.assemble(boundary, systems, dependencies)
         except MarketParseError:
             raise
-        except (KeyError, TypeError, AttributeError) as exc:
+        except (KeyError, TypeError, AttributeError, ValueError) as exc:
             msg = f"malformed market description: {exc}"
             raise MarketParseError(msg) from exc
         except AMFError as exc:
             # Domain validation failed: an out-of-range metric, a bad dependency, or
             # a missing/duplicated system. Surface it as a parse error per the schema.
             raise MarketParseError(str(exc)) from exc
+
+
+def _number(body: dict[str, Any], key: str, default: float) -> float:
+    """Coerce ``body[key]`` to a float, naming the offending field on failure.
+
+    Raises:
+        MarketParseError: If the value is present but not numeric.
+    """
+    value = body.get(key, default)
+    try:
+        return float(value)
+    except (TypeError, ValueError) as exc:
+        msg = f"{key} must be a number, got {value!r}"
+        raise MarketParseError(msg) from exc
+
+
+def _components(body: dict[str, Any]) -> list[str]:
+    """Read a system's component list.
+
+    Raises:
+        MarketParseError: If ``components`` is present but not a list. A bare
+            string is iterable, so accepting one would silently split it into
+            single-character components.
+    """
+    value = body.get("components", [])
+    if not isinstance(value, list):
+        msg = f"components must be a list, got {type(value).__name__}"
+        raise MarketParseError(msg)
+    return [str(c) for c in value]
 
 
 def _parse_boundary(body: dict[str, Any]) -> MarketBoundary:
@@ -172,11 +210,11 @@ def _parse_system(name: str, body: dict[str, Any]) -> AnatomicalSystem:
     return AnatomicalSystem(
         kind=kind,
         name=str(body.get("name", kind.value)),
-        components=[str(c) for c in body.get("components", [])],
-        integrity=float(body.get("integrity", 1.0)),
-        redundancy=float(body.get("redundancy", 0.5)),
-        criticality=float(body.get("criticality", 0.5)),
-        load=float(body.get("load", 0.0)),
+        components=_components(body),
+        integrity=_number(body, "integrity", 1.0),
+        redundancy=_number(body, "redundancy", 0.5),
+        criticality=_number(body, "criticality", 0.5),
+        load=_number(body, "load", 0.0),
     )
 
 
@@ -192,5 +230,5 @@ def _parse_dependency(item: dict[str, Any]) -> Dependency:
         source=_parse_kind(str(item["source"])),
         target=_parse_kind(str(item["target"])),
         kind=kind,
-        weight=float(item.get("weight", 0.5)),
+        weight=_number(item, "weight", 0.5),
     )

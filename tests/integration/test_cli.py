@@ -149,3 +149,34 @@ def test_diagnose_requires_market_path():
 def test_sample_market_is_loadable():
     market = Market.from_dict(json.loads(SAMPLE.read_text(encoding="utf-8")))
     market.require_complete()
+
+
+def test_wrong_typed_metric_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # A string where a number belongs used to raise a bare ValueError that escaped
+    # main's AMFError handler entirely, crashing the CLI with a traceback.
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["systems"]["skeleton"]["integrity"] = "high"
+    bad = tmp_path / "wrong-type.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["diagnose", str(bad)]) == 2
+    err = capsys.readouterr().err
+    assert "error:" in err
+    assert "integrity" in err
+
+
+def test_wrong_typed_dependency_weight_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["dependencies"][0]["weight"] = "heavy"
+    bad = tmp_path / "bad-weight.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["simulate", str(bad), "--target", "skeleton"]) == 2
+    assert "weight" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["diagnose", "stress-test"])
+def test_malformed_market_never_raises_out_of_main(tmp_path: Path, command: str):
+    # Whatever is wrong with the file, main returns an exit code rather than
+    # letting an exception escape.
+    bad = tmp_path / "junk.json"
+    bad.write_text(json.dumps({"boundary": [], "systems": "nope"}), encoding="utf-8")
+    assert main([command, str(bad)]) == 2

@@ -65,11 +65,11 @@ SHA256SUMS          the four protected artifacts and their digests
 
 | Module | Responsibility |
 |--------|----------------|
-| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `MarketParseError`). Has no internal dependencies. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `MarketParseError`, `InvalidConfigError`). Has no internal dependencies. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `SimulationTrace`, `ResilienceScore`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` and the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`). Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`. |
 | `graph.py` | `DependencyGraph`: feedback-loop (simple-cycle) enumeration, articulation points, Katz-style centrality, and the stress-transmission `CouplingMatrix`. Dependency-free. |
-| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. |
+| `market.py` | `Market` aggregate root; `assemble`, `require_complete` (which also re-validates each system, catching post-construction mutation at the engine boundary), `system`, and the JSON `from_dict`/`to_dict` schema. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn. |
 | `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
@@ -99,8 +99,13 @@ Dependencies flow one way: `errors`/`models` ← `systems`/`graph` ← `market` 
 
 All seven systems must be present. A dependency means `source` relies on
 `target`; `kind` is one of `structural | informational | capital | regulatory`;
-`weight` is in `(0, 1]`. `to_dict`/`from_dict` round-trips losslessly (including
-each dependency's `kind`) — keep it that way. See `examples/sample_market.json`.
+`weight` is in `(0, 1]`. `to_dict`/`from_dict` round-trips losslessly for the one-kind-per-edge case the
+schema models: every system metric, edge weight, and edge `kind` survives. The one
+documented exception is an edge aggregated from dependencies of *several* kinds —
+the schema carries one `kind` per entry, so such an edge is re-read under its first
+recorded kind only (`test_multi_kind_edge_is_a_documented_round_trip_limitation`
+pins this). Aggregated weights are likewise capped at `1.0` and not decomposable.
+See `examples/sample_market.json`.
 
 ## Using the CLI
 
@@ -128,6 +133,10 @@ builder and runs a shock + stress test).
 - **Per-system derived metrics**: `health = integrity·(1 − load)`;
   `absorptive_capacity = 0.5·redundancy + 0.3·integrity + 0.2·(1 − load)` (weights
   sum to 1, so the result stays in `[0, 1]`).
+- **Config validation**: `DiagnosticConfig` rejects negative weights and
+  `SimulationConfig` rejects `max_steps < 1`, `damping` outside `(0, 1]`, and
+  negative `retention`/`transmission`/`jitter`, all as `InvalidConfigError`. These
+  keep every score inside `[0, 1]` and keep the dynamics a contraction.
 - **Diagnostics** (deterministic): per-system
   `fragility = criticality·(1 − health)·(1 − redundancy)`; `concentration` is an
   HHI over a system's outgoing dependency weights; `feedback` sums the edge-weight
@@ -150,7 +159,9 @@ builder and runs a shock + stress test).
   is fully deterministic, which the tests rely on; only set `jitter` together with
   `seed`.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
-  `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical.
+  `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. The mapping is
+  total and saturating: input below `0` reports low, above `1` reports critical, and
+  `NaN` falls through to critical.
 
 ## Developing
 
@@ -158,7 +169,7 @@ builder and runs a shock + stress test).
 python -m pip install -e ".[dev]"
 ruff check . && ruff format --check .   # lint & format (line length 120)
 mypy                                    # strict type-check of src/ only
-pytest                                  # tests + branch coverage gate (>= 90%)
+pytest                                  # tests + branch coverage gate (100%)
 pre-commit install                      # optional: run hooks on commit
 ```
 
@@ -181,7 +192,9 @@ marker for cross-module tests (`--strict-markers` is on).
 3. New result types are frozen, slotted dataclasses with a `to_dict()`; if they
    are serialised, extend `report._to_jsonable` and the text/Markdown renderers.
 4. Raise a typed `AMFError` subclass, never a bare `ValueError`, across the
-   public API.
+   public API. This includes values coerced while parsing: `market._number` and
+   `market._components` exist so a wrong-*typed* JSON value surfaces as a
+   `MarketParseError` naming the field, not as a `ValueError` escaping `from_dict`.
 5. Add unit tests in the matching `tests/unit/test_<module>.py`, plus an
    integration test if the CLI or an end-to-end path changed.
 6. Run ruff, mypy, and pytest locally before pushing.

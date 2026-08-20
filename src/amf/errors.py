@@ -38,3 +38,11 @@ class InvalidShockError(AMFError):
 
 class MarketParseError(AMFError):
     """Raised when a market description (e.g. JSON) cannot be parsed into a model."""
+
+
+class InvalidConfigError(AMFError):
+    """Raised when an engine configuration holds values outside its valid domain.
+
+    For example a negative :class:`~amf.diagnostics.DiagnosticConfig` weight, or a
+    :class:`~amf.simulation.SimulationConfig` damping factor outside ``(0, 1]``.
+    """

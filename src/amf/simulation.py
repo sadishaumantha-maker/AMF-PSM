@@ -22,7 +22,7 @@ import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from amf.errors import InvalidShockError
+from amf.errors import InvalidConfigError, InvalidShockError
 from amf.models import (
     ResilienceScore,
     Severity,
@@ -58,6 +58,31 @@ class SimulationConfig:
     convergence_eps: float = 1e-4
     seed: int | None = None
     jitter: float = 0.0
+
+    def __post_init__(self) -> None:
+        """Validate the dynamics parameters on construction.
+
+        Raises:
+            InvalidConfigError: If ``max_steps`` is not positive, ``damping`` is
+                outside ``(0, 1]``, or ``retention``/``transmission``/``jitter``
+                is negative. Damping above one turns the dynamics from a
+                contraction into an amplifier, so the convergence guarantee the
+                whole engine rests on would no longer hold.
+        """
+        if self.max_steps < 1:
+            msg = f"max_steps must be at least 1, got {self.max_steps!r}"
+            raise InvalidConfigError(msg)
+        if not 0.0 < self.damping <= 1.0:
+            msg = f"damping must be in (0, 1], got {self.damping!r}"
+            raise InvalidConfigError(msg)
+        for name, value in (
+            ("retention", self.retention),
+            ("transmission", self.transmission),
+            ("jitter", self.jitter),
+        ):
+            if value < 0.0:
+                msg = f"{name} must be non-negative, got {value!r}"
+                raise InvalidConfigError(msg)
 
 
 class ShockSimulator:

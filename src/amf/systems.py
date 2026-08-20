@@ -109,8 +109,14 @@ class AnatomicalSystem:
 
 
 def _make(kind: SystemKind, name: str | None, components: list[str] | None, **metrics: float) -> AnatomicalSystem:
-    """Build a system of ``kind`` with AMF-aligned defaults."""
-    return AnatomicalSystem(
+    """Build a system of ``kind`` with AMF-aligned defaults.
+
+    Raises:
+        InvalidSystemError: If ``metrics`` carries a name that is not one of the
+            four structural metrics. Silently dropping a misspelled keyword would
+            return a system built from defaults, so unknown names are rejected.
+    """
+    system = AnatomicalSystem(
         kind=kind,
         name=name if name is not None else _DEFAULT_NAME[kind],
         components=list(components) if components is not None else [],
@@ -119,6 +125,11 @@ def _make(kind: SystemKind, name: str | None, components: list[str] | None, **me
         redundancy=metrics.pop("redundancy", 0.5),
         load=metrics.pop("load", 0.0),
     )
+    if metrics:
+        unknown = ", ".join(sorted(metrics))
+        msg = f"unknown metric(s) for {kind.value}: {unknown}; expected integrity, redundancy, criticality, or load"
+        raise InvalidSystemError(msg)
+    return system
 
 
 def skeleton(name: str | None = None, components: list[str] | None = None, **metrics: float) -> AnatomicalSystem:
