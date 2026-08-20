@@ -232,6 +232,15 @@ example.
 - **Per-system derived metrics**: `health = integrity·(1 − load)`;
   `absorptive_capacity = 0.5·redundancy + 0.3·integrity + 0.2·(1 − load)` (weights
   sum to 1, so the result stays in `[0, 1]`).
+- **Config validation**: `DiagnosticConfig` rejects negative and non-finite
+  weights, `SimulationConfig` rejects `max_steps < 1`, `damping` outside `(0, 1]`,
+  and negative `retention`/`transmission`/`jitter`, and
+  `DependencyGraph.centrality` rejects `alpha` outside `(0, 1)` — all as
+  `InvalidConfigError`. This is what keeps every score inside `[0, 1]`, the
+  interval `Severity.from_score` and `WeaknessFinding` both rely on. See
+  *Determinism and parameter validation* for the full set of checks and why each
+  one exists. Note it does **not** make the dynamics a contraction — nothing does;
+  see the Simulation bullet below.
 - **Diagnostics** (deterministic): per-system
   `fragility = criticality·(1 − health)·(1 − redundancy)`; `concentration` is an
   HHI over a system's outgoing dependency weights; `feedback` sums the edge-weight
