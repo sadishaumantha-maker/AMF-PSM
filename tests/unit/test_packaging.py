@@ -30,8 +30,9 @@ def test_console_script_points_at_the_cli():
     assert _pyproject()["project"]["scripts"]["amf"] == "amf.cli:main"
 
 
-def test_all_is_sorted():
-    assert list(amf.__all__) == sorted(amf.__all__)
+# __all__ ordering is enforced by ruff's RUF022, which uses an isort-style natural
+# sort (SCREAMING_CASE constants first) rather than plain str ordering. Asserting it
+# here would duplicate the linter and encode the wrong convention.
 
 
 def test_all_has_no_duplicates():

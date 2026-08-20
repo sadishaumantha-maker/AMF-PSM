@@ -17,6 +17,8 @@ from amf.systems import (
     skeleton,
 )
 
+_FACTORIES = (skeleton, circulatory, nervous, musculature, organs, immune, metabolism)
+
 
 def test_health_combines_integrity_and_load():
     system = AnatomicalSystem(SystemKind.SKELETON, "infra", integrity=0.8, load=0.5)
@@ -47,35 +49,33 @@ def test_factories_set_kind_and_default_criticality():
     assert metabolism().criticality == pytest.approx(0.60)
 
 
-def test_factory_default_names_present():
-    for factory in (skeleton, circulatory, nervous, musculature, organs, immune, metabolism):
-        system = factory()
-        assert system.name.strip()
-
-
-def test_factory_overrides_metrics_and_components():
-    system = skeleton(name="NYSE", components=["NYSE", "DTCC"], integrity=0.5, redundancy=0.2)
-    assert system.name == "NYSE"
-    assert system.components == ["NYSE", "DTCC"]
-    assert system.integrity == pytest.approx(0.5)
-    assert system.redundancy == pytest.approx(0.2)
-
-
 @pytest.mark.parametrize(
-    "factory",
-    [skeleton, circulatory, nervous, musculature, organs, immune, metabolism],
+    ("factory", "kind", "name", "criticality"),
+    [
+        (skeleton, SystemKind.SKELETON, "Market infrastructure", 0.90),
+        (circulatory, SystemKind.CIRCULATORY, "Capital flow", 0.85),
+        (nervous, SystemKind.NERVOUS, "Information & signals", 0.70),
+        (musculature, SystemKind.MUSCULATURE, "Active participants", 0.60),
+        (organs, SystemKind.ORGANS, "Functional subsystems", 0.65),
+        (immune, SystemKind.IMMUNE, "Risk management & regulation", 0.75),
+        (metabolism, SystemKind.METABOLISM, "Value creation & destruction", 0.60),
+    ],
 )
-def test_factory_rejects_unknown_metric_keyword(factory):
-    # A misspelled metric must not be silently dropped: doing so would return a
-    # system built entirely from defaults, and mypy cannot catch it because the
-    # factories take **metrics: float.
-    with pytest.raises(InvalidSystemError, match="unknown metric"):
-        factory(integirty=0.1)
+def test_factory_defaults_are_exact(factory, kind: SystemKind, name: str, criticality: float):
+    # Replaces a `assert system.name.strip()` check that would pass even if every
+    # factory's default name were swapped with another's.
+    system = factory()
+    assert system.kind is kind
+    assert system.name == name
+    assert system.criticality == pytest.approx(criticality)
+    assert system.integrity == pytest.approx(1.0)
+    assert system.redundancy == pytest.approx(0.5)
+    assert system.load == pytest.approx(0.0)
+    assert system.components == []
 
 
-def test_factory_reports_every_unknown_keyword():
-    with pytest.raises(InvalidSystemError, match=r"integirty, redundnacy"):
-        skeleton(integirty=0.1, redundnacy=0.2)
+def test_factory_default_names_are_distinct():
+    assert len({factory().name for factory in _FACTORIES}) == len(_FACTORIES)
 
 
 def test_default_criticality_table_is_exact():

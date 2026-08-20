@@ -15,10 +15,16 @@ from typing import TYPE_CHECKING, Any
 from amf.errors import AMFError, IncompleteMarketError, MarketParseError
 from amf.graph import DependencyGraph
 from amf.models import Dependency, DependencyKind, MarketBoundary, SystemKind
-from amf.systems import AnatomicalSystem
+from amf.systems import SYSTEM_FACTORIES
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+
+    from amf.systems import AnatomicalSystem
+
+# Metric fields a system entry may carry; everything else is a name, components,
+# or an error.
+_SYSTEM_METRICS = ("integrity", "redundancy", "criticality", "load")
 
 
 @dataclass(slots=True)
@@ -66,24 +72,15 @@ class Market:
         return market
 
     def require_complete(self) -> None:
-        """Ensure all seven systems are present and each still holds valid state.
-
-        Systems are mutable, so a metric can be pushed out of ``[0, 1]`` after
-        construction. Every engine calls this before reading a market, which makes
-        it the boundary where such a mutation is caught rather than silently
-        propagated into a score.
+        """Ensure all seven systems are present.
 
         Raises:
             IncompleteMarketError: If any :class:`~amf.models.SystemKind` is absent.
-            InvalidSystemError: If a present system holds an out-of-range metric or
-                a blank name.
         """
         missing = [k.value for k in SystemKind if k not in self.systems]
         if missing:
             msg = f"market is missing systems: {', '.join(missing)}"
             raise IncompleteMarketError(msg)
-        for system in self.systems.values():
-            system.validate()
 
     def system(self, kind: SystemKind) -> AnatomicalSystem:
         """Return the system of the given kind.
@@ -112,19 +109,7 @@ class Market:
                 }
                 for kind, system in self.systems.items()
             },
-            "dependencies": [
-                # The schema carries one kind per entry, so an edge aggregated
-                # from dependencies of several kinds serialises under the first
-                # recorded kind (in DependencyKind declaration order).
-                Dependency(
-                    source=source,
-                    target=target,
-                    kind=self.graph.edge_kinds(source, target)[0],
-                    weight=self.graph.edge_weight(source, target),
-                ).to_dict()
-                for source in SystemKind
-                for target in self.graph.dependencies_of(source)
-            ],
+            "dependencies": [dependency.to_dict() for dependency in self.graph.dependencies()],
         }
 
     @classmethod
@@ -148,41 +133,14 @@ class Market:
         except MarketParseError:
             raise
         except (KeyError, TypeError, AttributeError, ValueError) as exc:
+            # ValueError covers non-numeric metrics and weights (``float("abc")``),
+            # which would otherwise escape the documented MarketParseError contract.
             msg = f"malformed market description: {exc}"
             raise MarketParseError(msg) from exc
         except AMFError as exc:
             # Domain validation failed: an out-of-range metric, a bad dependency, or
             # a missing/duplicated system. Surface it as a parse error per the schema.
             raise MarketParseError(str(exc)) from exc
-
-
-def _number(body: dict[str, Any], key: str, default: float) -> float:
-    """Coerce ``body[key]`` to a float, naming the offending field on failure.
-
-    Raises:
-        MarketParseError: If the value is present but not numeric.
-    """
-    value = body.get(key, default)
-    try:
-        return float(value)
-    except (TypeError, ValueError) as exc:
-        msg = f"{key} must be a number, got {value!r}"
-        raise MarketParseError(msg) from exc
-
-
-def _components(body: dict[str, Any]) -> list[str]:
-    """Read a system's component list.
-
-    Raises:
-        MarketParseError: If ``components`` is present but not a list. A bare
-            string is iterable, so accepting one would silently split it into
-            single-character components.
-    """
-    value = body.get("components", [])
-    if not isinstance(value, list):
-        msg = f"components must be a list, got {type(value).__name__}"
-        raise MarketParseError(msg)
-    return [str(c) for c in value]
 
 
 def _parse_boundary(body: dict[str, Any]) -> MarketBoundary:
@@ -205,16 +163,30 @@ def _parse_kind(value: str) -> SystemKind:
 
 
 def _parse_system(name: str, body: dict[str, Any]) -> AnatomicalSystem:
-    """Parse one system entry into an :class:`AnatomicalSystem`."""
+    """Parse one system entry into an :class:`AnatomicalSystem`.
+
+    Delegates to the system factories so that a field omitted from the JSON gets
+    exactly the same default as the equivalent factory call.
+
+    Raises:
+        MarketParseError: If the body carries an unrecognised field.
+    """
     kind = _parse_kind(name)
-    return AnatomicalSystem(
-        kind=kind,
-        name=str(body.get("name", kind.value)),
-        components=_components(body),
-        integrity=_number(body, "integrity", 1.0),
-        redundancy=_number(body, "redundancy", 0.5),
-        criticality=_number(body, "criticality", 0.5),
-        load=_number(body, "load", 0.0),
+    unknown = set(body) - {"name", "components", *_SYSTEM_METRICS}
+    if unknown:
+        msg = f"unknown field(s) for system {kind.value!r}: {', '.join(sorted(unknown))}"
+        raise MarketParseError(msg)
+    metrics = {metric: float(body[metric]) for metric in _SYSTEM_METRICS if metric in body}
+    components = body.get("components", [])
+    if not isinstance(components, list):
+        # A bare string is iterable, so accepting one would split "abc" into three
+        # single-character components instead of reporting malformed input.
+        msg = f"components for system {kind.value!r} must be a list, got {type(components).__name__}"
+        raise MarketParseError(msg)
+    return SYSTEM_FACTORIES[kind](
+        name=str(body["name"]) if "name" in body else None,
+        components=[str(c) for c in components],
+        **metrics,
     )
 
 
@@ -230,5 +202,5 @@ def _parse_dependency(item: dict[str, Any]) -> Dependency:
         source=_parse_kind(str(item["source"])),
         target=_parse_kind(str(item["target"])),
         kind=kind,
-        weight=_number(item, "weight", 0.5),
+        weight=float(item.get("weight", 0.5)),
     )

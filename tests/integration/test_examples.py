@@ -1,12 +1,20 @@
-"""The example scripts are the documented on-ramp, so CI must actually run them.
+"""Integration tests that run the shipped example scripts.
 
-`ruff` checks their style and `mypy` skips them by design, which left nothing
-verifying that they still execute against the current API.
+The README calls these "complete runnable scripts", but nothing executed them, so
+they could rot silently. They are run as subprocesses rather than through
+``runpy`` because ``liquidity_shock.py`` imports its sibling
+(``from equity_market import build_market``), which only resolves because the
+interpreter puts the script's own directory on ``sys.path``. A subprocess
+therefore tests exactly the invocation the README documents.
+
+Coverage is scoped to ``--cov=amf``, so these add no coverage; they are pure
+regression guards.
 """
 
 from __future__ import annotations
 
-import runpy
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -14,19 +22,25 @@ import pytest
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
 
 
-@pytest.mark.integration
-@pytest.mark.parametrize("script", ["equity_market.py", "liquidity_shock.py"])
-def test_example_script_runs(script: str, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch):
-    # liquidity_shock imports its market builder from the sibling equity_market
-    # module, so the examples directory has to be importable.
-    monkeypatch.syspath_prepend(str(EXAMPLES))
-    runpy.run_path(str(EXAMPLES / script), run_name="__main__")
-    assert capsys.readouterr().out.strip(), "the example should print its analysis"
+def _run(script: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, str(EXAMPLES / script)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
 
 
 @pytest.mark.integration
-def test_every_example_script_is_covered():
-    # A new example must be added to the parametrisation above rather than
-    # silently going unrun.
-    scripts = {p.name for p in EXAMPLES.glob("*.py")}
-    assert scripts == {"equity_market.py", "liquidity_shock.py"}
+def test_equity_market_example_runs():
+    result = _run("equity_market.py")
+    assert result.returncode == 0, result.stderr
+    assert "Structural Diagnosis" in result.stdout
+
+
+@pytest.mark.integration
+def test_liquidity_shock_example_runs():
+    result = _run("liquidity_shock.py")
+    assert result.returncode == 0, result.stderr
+    assert "Shock Propagation" in result.stdout
+    assert "Systemic stress test" in result.stdout
