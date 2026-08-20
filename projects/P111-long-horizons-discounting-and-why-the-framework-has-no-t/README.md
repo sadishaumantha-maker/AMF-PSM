@@ -130,4 +130,3 @@ docs(p111): document the flat weighting as a stated choice
 ```
 
 Rules: one logical change per commit; the body states *what changed, why, and which reference justifies it*; every commit that changes a number in `src/amf/` cites the work that fixes that number. See [COMMIT_PROTOCOL.md](../COMMIT_PROTOCOL.md).
-
