@@ -25,6 +25,8 @@ from amf.models import Shock, SystemKind
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
+
+    from amf.report import Renderable
 from amf.report import render_json, render_markdown, render_text
 from amf.simulation import ShockSimulator
 
@@ -184,13 +186,13 @@ def _cmd_version(_: argparse.Namespace) -> int:
     return 0
 
 
-def _format(obj: object, fmt: str) -> str:
+def _format(obj: Renderable, fmt: str) -> str:
     """Render a result object in the requested format."""
     if fmt == "json":
-        return render_json(obj)  # type: ignore[arg-type]
+        return render_json(obj)
     if fmt == "md":
-        return render_markdown(obj)  # type: ignore[arg-type]
-    return render_text(obj)  # type: ignore[arg-type]
+        return render_markdown(obj)
+    return render_text(obj)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -8,12 +8,20 @@ of presentation concerns and the renderers trivial to test.
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, TypeAlias
 
 from amf.models import DiagnosticReport, ResilienceScore, SimulationTrace, SystemKind
 
+Renderable: TypeAlias = DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]
+"""Any result object the renderers accept.
 
-def render_json(obj: DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]) -> str:
+A :class:`~amf.models.DiagnosticReport` from the diagnostic engine, a
+:class:`~amf.models.SimulationTrace` from a single shock, or the
+system-to-:class:`~amf.models.ResilienceScore` mapping a stress test returns.
+"""
+
+
+def render_json(obj: Renderable) -> str:
     """Render any result object as pretty-printed JSON."""
     return json.dumps(_to_jsonable(obj), indent=2, sort_keys=True)
 
@@ -27,7 +35,7 @@ def _to_jsonable(obj: Any) -> Any:  # noqa: ANN401 - intentional dispatch over r
     return obj
 
 
-def render_text(report: DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]) -> str:
+def render_text(report: Renderable) -> str:
     """Render a diagnostic report, simulation trace, or stress-test profile as plain text."""
     if isinstance(report, DiagnosticReport):
         return _diagnostic_text(report)
@@ -36,7 +44,7 @@ def render_text(report: DiagnosticReport | SimulationTrace | dict[SystemKind, Re
     return _simulation_text(report)
 
 
-def render_markdown(report: DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]) -> str:
+def render_markdown(report: Renderable) -> str:
     """Render a diagnostic report, simulation trace, or stress-test profile as Markdown."""
     if isinstance(report, DiagnosticReport):
         return _diagnostic_markdown(report)

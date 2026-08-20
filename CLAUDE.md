@@ -72,7 +72,7 @@ SHA256SUMS          the four protected artifacts and their digests
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn. |
-| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
+| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, plus the `Renderable` type alias naming the result types they accept. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
 The public API is re-exported from `amf/__init__.py` (`__all__`); import types and
