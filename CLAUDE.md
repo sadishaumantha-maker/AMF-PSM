@@ -46,6 +46,14 @@ Two things live side by side:
   disclaimers (package docstring, README, the CLI's `_DISCLAIMER`, and `viz`'s
   `_FOOTNOTE` baked into every rendered image) in place, and do not add language
   that claims predictive power or validated performance.
+- **Private distribution only.** `amf` is proprietary and all-rights-reserved, so
+  it must never be published to PyPI or any other public index — doing so would
+  invite the use its licence forbids. `pyproject.toml` carries the
+  `Private :: Do Not Upload` classifier (PyPI rejects such uploads) and
+  `tests/unit/test_packaging.py` fails if it is removed from the config or the
+  built wheel. Do not add a publish workflow. Note the repository is public, so a
+  GitHub Release asset or Actions artifact is *not* a private channel. See
+  `RELEASING.md`.
 - **Never read the framework document to generate output.** The CLI's `describe`
   text comes from paraphrased constants in `cli.py` (`_SYSTEM_SUMMARY`,
   `_METHOD_STEPS`), deliberately so the software never touches the protected
@@ -73,6 +81,7 @@ pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .yamllint.yml       yamllint config (line length 140, `on:` truthy allowed)
 .gitattributes      binary / EOL rules that keep the IP checksums stable
 SHA256SUMS          the four protected artifacts and their digests
+RELEASING.md        private-only release procedure and what enforces it
 README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 ```
 
@@ -81,13 +90,14 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 | Module | Responsibility |
 |--------|----------------|
 | `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
-| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
-| `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
+| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
+| `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
 | `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Dependency-free. |
-| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
+| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, `with_system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable, validated `DiagnosticConfig`): deterministic structural-weakness scoring (`fragility`, `concentration`, `feedback_amplification`, `single_points_of_failure`) → `DiagnosticReport`. Both the findings ranking and the SPOF ranking break ties by `SystemKind` declaration order. |
+| `sensitivity.py` | `SensitivityAnalyzer` (+ tunable, validated `SensitivityConfig`): perturbs each `SystemMetric` of each system and re-diagnoses → `SensitivityReport` (gradients + ranked `LeveragePoint`s). Builds on `diagnostics`. |
 | `simulation.py` | `ShockSimulator` (+ tunable, validated `SimulationConfig`): damped, capacity-gated shock-propagation dynamics; `propagate()` → `SimulationTrace`, `resilience()` → `ResilienceScore`, `stress_test()` shocks every system in turn, `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
-| `report.py` | Pure textual renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept (`ResilienceDistribution` is deliberately excluded — only `render_json` serialises one). No I/O. |
+| `report.py` | Pure textual renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept, including `SensitivityReport` (`ResilienceDistribution` is deliberately excluded — only `render_json` serialises one). No I/O. |
 | `viz.py` | Pure visual renderers: `render_dot`, `render_mermaid`, `render_graph_svg` (dependency graph, severity-coloured when given a `DiagnosticReport`), `render_timeline_svg` (stress timeline). SVG is drawn with the standard library alone — no Graphviz, no matplotlib. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
@@ -95,7 +105,7 @@ The public API is re-exported from `amf/__init__.py` (`__all__`); import types a
 engines from `amf`, not submodules. The renderers are the exception — they live
 in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
 `examples/` do). Dependencies flow one way: `errors`/`models` ←
-`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `report`/`viz`/`cli`.
+`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`.
 Keep it acyclic.
 
 ## Determinism and parameter validation
@@ -186,7 +196,7 @@ boundary.
 ## Using the CLI
 
 The `amf` console script prints the `_DISCLAIMER` to stderr (so `--format json`
-stdout stays machine-parseable) after every analytical command, and offers seven
+stdout stays machine-parseable) after every analytical command, and offers eight
 subcommands:
 
 ```sh
@@ -196,6 +206,7 @@ amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.
                 [--seed N] [--jitter 0.0] [--format ...]
 amf stress-test examples/sample_market.json [--magnitude 0.8] [--format ...]  # shocks each system in turn
 amf ensemble    examples/sample_market.json --target circulatory [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
+amf sensitivity examples/sample_market.json [--step 0.05] [--top N] [--format ...]
 amf viz         examples/sample_market.json [--format svg|dot|mermaid] [--output FILE] \
                 [--timeline SYSTEM [--magnitude 0.8]]
 amf describe                                                    # explains the 7 systems & method
@@ -212,7 +223,10 @@ goes to stderr. Note `viz` has its own `--format` values (`svg|dot|mermaid`), an
 
 Multi-wave (`Shock.at_step`) and `Intervention`s are exposed through the Python API
 and `examples/cascade_scenario.py`, not the CLI. `--target` accepts any
-`SystemKind` value; `--magnitude` is in `(0, 1]`.
+`SystemKind` value; `--magnitude` and `--step` are in `(0, 1]`. `viz` has its own
+`--format` (image formats, not text/json/md) and writes to stdout unless `-o` is
+given. `--top` truncates both rankings in the sensitivity report.
+
 `main(argv)` returns an exit code rather than calling `sys.exit`, so it is unit
 tested in-process: `0` on success, `2` on a handled `AMFError`, `1` on bad usage
 (no subcommand); argparse itself exits `2` on an unknown flag or choice.
@@ -220,10 +234,11 @@ tested in-process: `0` on success, `2` on a handled `AMFError`, `1` on bad usage
 Runnable scripts live in `examples/`: `equity_market.py` builds a market in code
 and diagnoses it; `liquidity_shock.py` imports that builder and runs a shock plus
 a stress test; `cascade_scenario.py` contrasts linear and cascade dynamics and
-demonstrates multi-wave shocks, interventions, and the ensemble. The sibling
-imports only resolve when a script is run directly (its own directory lands on
-`sys.path`), which is why `tests/integration/test_examples.py` runs them as
-subprocesses. That test currently covers `equity_market.py` and
+demonstrates multi-wave shocks, interventions, and the ensemble;
+`where_to_intervene.py` ranks metric sensitivities and leverage points. The
+sibling imports only resolve when a script is run directly (its own directory
+lands on `sys.path`), which is why `tests/integration/test_examples.py` runs them
+as subprocesses. That test currently covers `equity_market.py` and
 `liquidity_shock.py` — add a case there if you add or substantially change an
 example.
 
@@ -285,6 +300,18 @@ example.
   `i` uses `base_seed + i`) into a `ResilienceDistribution` (percentiles computed
   in-house by linear interpolation, no numpy). Amplification/absorption use total
   injected load as a timing-independent denominator.
+- **Sensitivity**: for each system and each `SystemMetric`, the overall index is
+  re-evaluated at `baseline ± step` (clipped to `[0, 1]`), giving
+  `gradient = index_delta / span`. The difference is central where the metric has
+  room on both sides and one-sided near a bound, so `span` — the interval actually
+  explored — is reported alongside the gradient. `SensitivityConfig` defaults:
+  `step=0.05, include_criticality=True`.
+- **Leverage points**: the same perturbation restricted to
+  `SystemMetric.improving_direction()` (+1 for integrity/redundancy, −1 for load,
+  0 for criticality), ranked by `index_before − index_after`. A metric with no
+  headroom in its improving direction yields no leverage point. Criticality is
+  never a leverage point — it describes how load-bearing a system *is*, not a
+  lever — but it is still reported as a sensitivity.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
   `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. Weakness
   scores feed it directly; resilience feeds it `1 − value`, so a resilient market

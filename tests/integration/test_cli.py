@@ -349,3 +349,39 @@ def test_load_market_wraps_a_decoding_failure(tmp_path: Path):
     binary.write_bytes(b"\x80\x81")
     with pytest.raises(MarketParseError, match="not valid UTF-8"):
         _load_market(binary)
+
+
+def test_sensitivity_text(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE)]) == 0
+    captured = capsys.readouterr()
+    assert "Sensitivity & Leverage" in captured.out
+    assert "illustrative" in captured.err.lower()
+
+
+def test_sensitivity_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "json"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["sensitivities"]
+    assert "baseline_index" in payload
+
+
+def test_sensitivity_markdown(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "md"]) == 0
+    assert capsys.readouterr().out.startswith("# AMF Sensitivity & Leverage")
+
+
+def test_sensitivity_top_limits_both_rankings(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "json", "--top", "3"]) == 0
+    payload = json.loads(capsys.readouterr().out)
+    assert len(payload["sensitivities"]) == 3
+    assert len(payload["leverage_points"]) == 3
+
+
+def test_sensitivity_custom_step_is_reported(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--format", "json", "--step", "0.2"]) == 0
+    assert json.loads(capsys.readouterr().out)["step"] == pytest.approx(0.2)
+
+
+def test_sensitivity_bad_step_returns_error_code(capsys: pytest.CaptureFixture[str]):
+    assert main(["sensitivity", str(SAMPLE), "--step", "0"]) == 2
+    assert "step" in capsys.readouterr().err
