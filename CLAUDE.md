@@ -134,8 +134,9 @@ are easy to break by accident:
   dynamics parameter (`max_steps >= 1`, `damping` in `(0, 1]`, `retention` in
   `[0, 1]`, finite non-negative `transmission` and `jitter`,
   `convergence_eps > 0`, `cascade_threshold` `None` or in `(0, 1)`, and so on);
-  `DependencyGraph.centrality` requires `alpha` in `(0, 1)`, `iterations >= 1`,
-  and a finite non-negative `tolerance`. All raise `InvalidConfigError`. These
+  `SensitivityConfig` requires a `step` in `(0, 1]`; `DependencyGraph.centrality`
+  requires `alpha` in `(0, 1)`, `iterations >= 1`, and a finite non-negative
+  `tolerance`. All raise `InvalidConfigError`. These
   are not cosmetic either: a negative blend weight used to yield findings scoring
   `2.0`, and `alpha >= 10` overflowed the influence series to infinity and
   returned `NaN` for every system. Keeping every score inside `[0, 1]` is what
@@ -249,10 +250,11 @@ example.
   sum to 1, so the result stays in `[0, 1]`).
 - **Config validation**: `DiagnosticConfig` rejects negative and non-finite
   weights, `SimulationConfig` rejects `max_steps < 1`, `damping` outside `(0, 1]`,
-  and negative `retention`/`transmission`/`jitter`, and
-  `DependencyGraph.centrality` rejects `alpha` outside `(0, 1)` — all as
-  `InvalidConfigError`. This is what keeps every score inside `[0, 1]`, the
-  interval `Severity.from_score` and `WeaknessFinding` both rely on. See
+  and negative `retention`/`transmission`/`jitter`, `SensitivityConfig` rejects a
+  `step` outside `(0, 1]`, and `DependencyGraph.centrality` rejects `alpha`
+  outside `(0, 1)` — all as `InvalidConfigError`. This is what keeps every score
+  inside `[0, 1]`, the interval `Severity.from_score` and `WeaknessFinding` both
+  rely on. See
   *Determinism and parameter validation* for the full set of checks and why each
   one exists. Note it does **not** make the dynamics a contraction — nothing does;
   see the Simulation bullet below.
