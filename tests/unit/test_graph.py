@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import pytest
@@ -476,3 +477,32 @@ def test_pair_weight_does_not_depend_on_the_order_kinds_were_added():
     backwards = DependencyGraph(reversed(edges)).edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON)
     # Exact equality, not approx: approx is what let this through.
     assert forwards == backwards
+
+
+def test_centrality_is_identical_under_every_ordering_of_the_same_edges():
+    # Regression, exhaustive rather than sampled: the influence propagation used
+    # to accumulate into the target while iterating the pair-weight dict, which
+    # is keyed in insertion order. Because float addition is not associative,
+    # feeding the identical edges in a different order shifted the published
+    # centralities by an ulp. All 720 orderings of these six edges must now agree
+    # exactly -- not approximately.
+    edges = [
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.8),
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.5),
+        Dependency(SystemKind.IMMUNE, SystemKind.SKELETON, DependencyKind.REGULATORY, 0.3),
+        Dependency(SystemKind.ORGANS, SystemKind.CIRCULATORY, DependencyKind.CAPITAL, 0.6),
+        Dependency(SystemKind.MUSCULATURE, SystemKind.CIRCULATORY, DependencyKind.CAPITAL, 0.7),
+        Dependency(SystemKind.METABOLISM, SystemKind.ORGANS, DependencyKind.STRUCTURAL, 0.4),
+    ]
+    results = {
+        tuple(sorted(DependencyGraph(ordering).centrality().items(), key=lambda kv: kv[0].value))
+        for ordering in itertools.permutations(edges)
+    }
+    assert len(results) == 1
+
+
+def test_centrality_is_max_normalised():
+    # The guard in amf.invariants relies on this: a non-empty influence vector is
+    # divided through by its own maximum, so the peak is exactly 1.
+    graph = DependencyGraph([_dep(SystemKind.CIRCULATORY, SystemKind.SKELETON, 0.8)])
+    assert max(graph.centrality().values()) == 1.0
