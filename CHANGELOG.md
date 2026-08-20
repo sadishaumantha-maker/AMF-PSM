@@ -90,6 +90,11 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- `amf.report` now exports a `Renderable` type alias for the result types the
+  renderers accept, and `cli._format` is annotated with it instead of `object`.
+  This removes three `# type: ignore[arg-type]` comments that were suppressing
+  every argument check on the CLI's formatting path — mypy now rejects a wrong
+  result type there. Runtime behaviour is unchanged.
 - The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching
   `diagnose` and `simulate`. JSON output for the stress-test profile was already
   supported by `render_json`; this adds a Markdown table renderer and routes the

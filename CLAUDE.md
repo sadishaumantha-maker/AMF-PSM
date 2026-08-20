@@ -72,7 +72,7 @@ SHA256SUMS          the four protected artifacts and their digests
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn; `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
-| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
+| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept. |
 | `viz.py` | Pure visual renderers: dependency graph as DOT / Mermaid / SVG, stress timeline as SVG. Dependency-free. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 

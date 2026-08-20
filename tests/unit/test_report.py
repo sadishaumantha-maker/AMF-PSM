@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import get_args
 
 from amf.diagnostics import DiagnosticEngine
 from amf.market import Market
@@ -18,6 +19,7 @@ from amf.models import (
     WeaknessFinding,
 )
 from amf.report import (
+    Renderable,
     _to_jsonable,
     render_distribution,
     render_json,
@@ -236,6 +238,25 @@ def test_render_trace_without_resilience():
     assert "Shock Propagation" in render_text(trace)
     assert "Resilience" not in render_text(trace)
     assert render_markdown(trace).startswith("# AMF Shock Propagation")
+
+
+def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
+    # The `Renderable` alias is what types the CLI's `_format`. If a new result
+    # type joins the renderers' dispatch without being added to the alias, the
+    # CLI stops type-checking against reality -- so pin the alias to the set of
+    # things all three renderers actually accept.
+    engine_report = DiagnosticEngine().diagnose(healthy_market)
+    simulator = ShockSimulator(healthy_market)
+    trace = simulator.propagate(Shock(target=SystemKind.CIRCULATORY, magnitude=0.6))
+    profile = simulator.stress_test(magnitude=0.6)
+
+    members = get_args(Renderable)
+    assert set(members) == {DiagnosticReport, SimulationTrace, dict[SystemKind, ResilienceScore]}
+
+    for result in (engine_report, trace, profile):
+        assert render_text(result)
+        assert render_markdown(result)
+        assert json.loads(render_json(result))
 
 
 def test_render_cascade_trace_shows_tipped_systems(stressed_market: Market):
