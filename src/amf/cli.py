@@ -175,6 +175,10 @@ def _load_market(path: Path) -> Market:
         data = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise MarketParseError(f"cannot read {path}: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        # Not an OSError: pointing the CLI at a binary or non-UTF-8 file would
+        # otherwise escape the AMFError contract and print a raw traceback.
+        raise MarketParseError(f"{path} is not valid UTF-8 text: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise MarketParseError(f"invalid JSON in {path}: {exc}") from exc
     return Market.from_dict(data)
