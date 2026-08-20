@@ -13,12 +13,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from amf.errors import InvalidConfigError
+from amf.invariants import check_diagnostic_report
 from amf.models import (
     DiagnosticReport,
     Severity,
     SystemKind,
     WeaknessFinding,
 )
+from amf.numeric import clip_unit, square, stable_sum
 
 if TYPE_CHECKING:
     from amf.graph import DependencyGraph
@@ -131,11 +133,11 @@ class DiagnosticEngine:
         result: dict[SystemKind, float] = {}
         for kind in market.systems:
             weights = [graph.edge_weight(kind, t) for t in graph.dependencies_of(kind)]
-            total = sum(weights)
+            total = stable_sum(weights)
             if total <= 0.0:
                 result[kind] = 0.0
                 continue
-            index = sum((w / total) ** 2 for w in weights)
+            index = stable_sum(square(w / total) for w in weights)
             if self.config.scale_concentration_by_reliance:
                 index *= min(1.0, total)
             result[kind] = index
@@ -153,7 +155,7 @@ class DiagnosticEngine:
         for loop in graph.feedback_loops():
             product = _loop_weight_product(graph, loop)
             for kind in loop:
-                result[kind] = min(1.0, result[kind] + product)
+                result[kind] = clip_unit(result[kind] + product)
         return result
 
     def single_points_of_failure(self, market: Market) -> list[SystemKind]:
@@ -201,8 +203,11 @@ class DiagnosticEngine:
             w_total = 1.0
 
         findings: list[WeaknessFinding] = []
-        weighted_sum = 0.0
-        criticality_sum = 0.0
+        # Accumulated as lists and reduced with ``stable_sum`` rather than with a
+        # running ``+=``: the exactly-rounded reduction removes the last-bit
+        # sensitivity to the order the seven systems are visited in.
+        weighted: list[float] = []
+        criticalities: list[float] = []
         for kind, system in market.systems.items():
             score = (
                 self.config.fragility_weight * fragility[kind]
@@ -228,20 +233,23 @@ class DiagnosticEngine:
                     ),
                 )
             )
-            weighted_sum += score * system.criticality
-            criticality_sum += system.criticality
+            weighted.append(score * system.criticality)
+            criticalities.append(system.criticality)
 
-        overall = weighted_sum / criticality_sum if criticality_sum > 0.0 else 0.0
+        criticality_total = stable_sum(criticalities)
+        overall = stable_sum(weighted) / criticality_total if criticality_total > 0.0 else 0.0
         # Weakest first, with equally weak systems ordered by declaration rather
         # than by however the market happened to be assembled.
         findings.sort(key=lambda f: (-f.score, _INDEX[f.system]))
-        return DiagnosticReport(
-            boundary=market.boundary,
-            overall_index=overall,
-            overall_severity=Severity.from_score(overall),
-            findings=tuple(findings),
-            single_points_of_failure=tuple(ranked_spofs),
-            feedback_loops=tuple(market.graph.feedback_loops()),
+        return check_diagnostic_report(
+            DiagnosticReport(
+                boundary=market.boundary,
+                overall_index=overall,
+                overall_severity=Severity.from_score(overall),
+                findings=tuple(findings),
+                single_points_of_failure=tuple(ranked_spofs),
+                feedback_loops=tuple(market.graph.feedback_loops()),
+            )
         )
 
 
