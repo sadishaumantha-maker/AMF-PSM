@@ -72,7 +72,7 @@ SHA256SUMS          the four protected artifacts and their digests
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn; `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
-| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
+| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept. |
 | `viz.py` | Pure visual renderers: dependency graph as DOT / Mermaid / SVG, stress timeline as SVG. Dependency-free. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
@@ -151,6 +151,10 @@ builder and runs a shock + stress test).
 - **Per-system derived metrics**: `health = integrity·(1 − load)`;
   `absorptive_capacity = 0.5·redundancy + 0.3·integrity + 0.2·(1 − load)` (weights
   sum to 1, so the result stays in `[0, 1]`).
+- **Config validation**: `DiagnosticConfig` rejects negative weights and
+  `SimulationConfig` rejects `max_steps < 1`, `damping` outside `(0, 1]`, and
+  negative `retention`/`transmission`/`jitter`, all as `InvalidConfigError`. These
+  keep every score inside `[0, 1]` and keep the dynamics a contraction.
 - **Diagnostics** (deterministic): per-system
   `fragility = criticality·(1 − health)·(1 − redundancy)`; `concentration` is an
   HHI over a system's outgoing dependency weights; `feedback` sums the edge-weight
@@ -190,7 +194,9 @@ builder and runs a shock + stress test).
   numpy). Amplification/absorption use total injected load as a timing-independent
   denominator.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
-  `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical.
+  `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. The mapping is
+  total and saturating: input below `0` reports low, above `1` reports critical, and
+  `NaN` falls through to critical.
 
 ## Determinism and parameter validation
 
@@ -221,7 +227,7 @@ Two cross-cutting invariants that any change must preserve:
 python -m pip install -e ".[dev]"
 ruff check . && ruff format --check .   # lint & format (line length 120)
 mypy                                    # strict type-check of src/ only
-pytest                                  # tests + branch coverage gate (>= 90%)
+pytest                                  # tests + branch coverage gate (100%)
 pre-commit install                      # optional: run hooks on commit
 ```
 

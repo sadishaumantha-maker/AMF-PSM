@@ -294,6 +294,46 @@ def test_sample_market_round_trip_preserves_all_dependency_kinds():
     assert Counter(d.kind for d in restored.graph.dependencies()) == expected
 
 
+def test_wrong_typed_metric_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # A string where a number belongs must be reported, not raised: it used to
+    # escape main's AMFError handler and crash the CLI with a traceback.
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["systems"]["skeleton"]["integrity"] = "high"
+    bad = tmp_path / "wrong-type.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["diagnose", str(bad)]) == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_wrong_typed_dependency_weight_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["dependencies"][0]["weight"] = "heavy"
+    bad = tmp_path / "bad-weight.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["simulate", str(bad), "--target", "skeleton"]) == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_non_list_components_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # A bare string is iterable, so it would otherwise be split into three
+    # single-character components rather than rejected.
+    data = json.loads(SAMPLE.read_text(encoding="utf-8"))
+    data["systems"]["skeleton"]["components"] = "abc"
+    bad = tmp_path / "bad-components.json"
+    bad.write_text(json.dumps(data), encoding="utf-8")
+    assert main(["diagnose", str(bad)]) == 2
+    assert "components" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("command", ["diagnose", "stress-test"])
+def test_malformed_market_never_raises_out_of_main(tmp_path: Path, command: str):
+    # Whatever is wrong with the file, main returns an exit code rather than
+    # letting an exception escape.
+    bad = tmp_path / "junk.json"
+    bad.write_text(json.dumps({"boundary": [], "systems": "nope"}), encoding="utf-8")
+    assert main([command, str(bad)]) == 2
+
+
 def test_non_utf8_market_file_is_a_handled_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
     # `Path.read_text` raises UnicodeDecodeError, which is a ValueError and not
     # an OSError, so pointing the CLI at a binary file escaped the AMFError

@@ -489,6 +489,96 @@ def test_simulation_config_rejects_out_of_range_parameters(kwargs: dict[str, flo
         SimulationConfig(**kwargs)
 
 
+def test_boundary_config_values_accepted():
+    assert SimulationConfig(max_steps=1, damping=1.0, retention=0.0, transmission=0.0, jitter=0.0).damping == 1.0
+
+
+def test_resilience_blend_is_pinned_on_an_isolated_market(healthy_market: Market):
+    # A market with no couplings absorbs everything and amplifies nothing, so the
+    # blend reduces to 0.6*1 + 0.25*1 + 0.15*(1 - settling/max_steps). Asserting
+    # the number keeps the 0.6/0.25/0.15 weights load-bearing: permuting them
+    # changes this value.
+    config = SimulationConfig()
+    score = ShockSimulator(healthy_market, config).resilience(Shock(SystemKind.SKELETON, 0.8))
+    expected = 0.6 * score.absorbed_fraction + 0.25 * 1.0 + 0.15 * (1.0 - score.settling_time / config.max_steps)
+    assert score.value == pytest.approx(expected)
+    assert score.absorbed_fraction == pytest.approx(1.0, abs=1e-3)
+
+
+def test_lower_damping_dissipates_stress_faster(stressed_market: Market):
+    # Damping is the global per-step decay: less of it must mean a lower peak and
+    # a quicker settle. This is what pins the default at a meaningful value.
+    shock = Shock(SystemKind.CIRCULATORY, 0.9)
+    heavy = ShockSimulator(stressed_market, SimulationConfig(damping=0.4)).resilience(shock)
+    light = ShockSimulator(stressed_market, SimulationConfig(damping=0.95)).resilience(shock)
+    assert heavy.peak_stress <= light.peak_stress
+    assert heavy.settling_time < light.settling_time
+    assert heavy.value > light.value
+
+
+def test_lower_retention_settles_sooner(stressed_market: Market):
+    # Retention is how much of its own stress a system carries forward. Less of it
+    # must not slow convergence down -- but "slower" can mean not settling at all,
+    # which is reported as the -1 sentinel rather than a larger step count, so the
+    # two cannot simply be compared as numbers.
+    shock = Shock(SystemKind.CIRCULATORY, 0.9)
+    low = ShockSimulator(stressed_market, SimulationConfig(retention=0.1)).resilience(shock)
+    high = ShockSimulator(stressed_market, SimulationConfig(retention=0.9)).resilience(shock)
+    assert low.settling_time > 0, "a low-retention market must settle within budget"
+    assert high.settling_time == -1 or high.settling_time > low.settling_time
+    assert low.value > high.value
+
+
+def test_zero_transmission_isolates_every_system(stressed_market: Market):
+    # With no stress transmitted along couplings, a coupled market behaves exactly
+    # like an isolated one: nothing is amplified.
+    score = ShockSimulator(stressed_market, SimulationConfig(transmission=0.0)).resilience(
+        Shock(SystemKind.CIRCULATORY, 0.8)
+    )
+    assert score.amplification_factor == pytest.approx(1.0)
+    assert score.absorbed_fraction == pytest.approx(1.0, abs=1e-3)
+
+
+def test_jitter_without_a_seed_stays_deterministic(stressed_market: Market):
+    # jitter only takes effect alongside a seed; the tests rely on that, so it is
+    # asserted rather than assumed.
+    config = SimulationConfig(jitter=0.5)
+    a = ShockSimulator(stressed_market, config).propagate(Shock(SystemKind.CIRCULATORY, 0.8))
+    b = ShockSimulator(stressed_market, config).propagate(Shock(SystemKind.CIRCULATORY, 0.8))
+    assert a.steps == b.steps
+
+
+def test_different_seeds_produce_different_trajectories(stressed_market: Market):
+    a = ShockSimulator(stressed_market, SimulationConfig(seed=1, jitter=0.05)).propagate(
+        Shock(SystemKind.CIRCULATORY, 0.8)
+    )
+    b = ShockSimulator(stressed_market, SimulationConfig(seed=2, jitter=0.05)).propagate(
+        Shock(SystemKind.CIRCULATORY, 0.8)
+    )
+    assert a.steps != b.steps
+
+
+def test_default_config_values_are_pinned():
+    # The tests above vary each parameter explicitly, which pins the *behaviour*
+    # but leaves the defaults free to drift. jitter must default to 0.0: the whole
+    # suite relies on the simulation being deterministic without a seed.
+    config = SimulationConfig()
+    assert config.max_steps == 50
+    assert config.damping == pytest.approx(0.85)
+    assert config.retention == pytest.approx(0.5)
+    assert config.transmission == pytest.approx(1.0)
+    assert config.convergence_eps == pytest.approx(1e-4)
+    assert config.seed is None
+    assert config.jitter == pytest.approx(0.0)
+
+
+def test_default_simulator_matches_the_default_config(stressed_market: Market):
+    shock = Shock(SystemKind.CIRCULATORY, 0.8)
+    assert ShockSimulator(stressed_market).propagate(shock).steps == (
+        ShockSimulator(stressed_market, SimulationConfig()).propagate(shock).steps
+    )
+
+
 def test_simulation_config_accepts_its_documented_boundaries():
     # The validation must not narrow the supported range: damping of exactly 1
     # (no global decay), zero retention, zero transmission and zero jitter are
