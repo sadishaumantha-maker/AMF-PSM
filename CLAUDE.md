@@ -425,7 +425,9 @@ security scan, and one is broken:
   untouched.
 - `.github/workflows/codeql.yml` — GitHub's stock CodeQL Advanced scan of the
   `python` and `actions` languages, on pushes and PRs to `main` plus a weekly
-  schedule. `build-mode: none`, so it needs no project setup.
+  schedule. `build-mode: none`, so it needs no project setup. Committed
+  unmodified, so it does not satisfy this project's own `yamllint` rules — see
+  the known-red note below.
 - `.github/workflows/python-package-conda.yml` — **broken, and not your fault.**
   It is GitHub's stock conda starter workflow, committed unmodified: it runs
   `conda env update --file environment.yml`, but there is no `environment.yml`
@@ -437,6 +439,36 @@ security scan, and one is broken:
   flake8 config, which would entrench tooling the project does not use. The
   clean resolution is to delete the workflow, but that is a maintainer's call —
   raise it rather than doing it as a side effect of unrelated work.
+
+### Known-red: `Validate metadata` fails on `main`
+
+The **validate** job of `ci.yml` is currently failing on `main`, and therefore on
+every branch cut from it. The cause is its first step, `yamllint .`, which rejects
+the two stock workflows that were added without being reformatted to the project's
+`.yamllint.yml` (line length 140):
+
+- `.github/workflows/codeql.yml` — 10 errors: `too many spaces inside brackets`
+  on the `branches: [ "main" ]` lines (16 and 18), `wrong indentation` at 46 and
+  59, and four lines over 140 characters (50, 55, 57, 78), all of them comments
+  carrying long documentation URLs.
+- `.github/workflows/python-package-conda.yml` — 1 error: `wrong indentation` at
+  line 12.
+
+Reproduce it in one command, and confirm the fix the same way:
+
+```sh
+yamllint .    # exits 1 until both files are reformatted
+```
+
+This is a formatting-only failure — no job logic is involved, and `cffconvert` and
+the Markdown link check never get to run because `yamllint` exits first. **A red
+`Validate metadata` on your PR is almost certainly this, not your change**;
+confirm by checking whether your diff touches any YAML at all before investigating
+further. Fixing it means reformatting the two files (collapsing
+`[ "main" ]` to `["main"]`, correcting the `steps:` indentation, and wrapping or
+shortening the long comment lines) — or, for the conda workflow, deleting it
+outright per the note above. Either is a real change to CI configuration, so do it
+as its own change with the maintainer's agreement, not folded into unrelated work.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
 
