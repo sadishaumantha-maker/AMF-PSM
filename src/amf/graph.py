@@ -9,10 +9,11 @@ dependency, which keeps the core fully typed and self-contained.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from amf.errors import InvalidDependencyError
+from amf.errors import InvalidConfigError, InvalidDependencyError
 from amf.models import Dependency, DependencyKind, SystemKind
 
 if TYPE_CHECKING:
@@ -215,7 +216,25 @@ class DependencyGraph:
 
         Returns:
             A mapping from system to centrality in ``[0, 1]`` (max-normalised).
+
+        Raises:
+            InvalidConfigError: If ``alpha`` is outside ``(0, 1)``, ``iterations``
+                is below ``1``, or ``tolerance`` is negative or not finite.
+                Attenuation of ``1`` or more lets the influence series grow
+                without bound; past roughly ``alpha = 10`` it overflows to
+                infinity and every result normalises to ``NaN``, so the range is
+                enforced rather than documented.
         """
+        if not math.isfinite(alpha) or not 0.0 < alpha < 1.0:
+            msg = f"alpha must be in (0, 1), got {alpha!r}"
+            raise InvalidConfigError(msg)
+        if iterations < 1:
+            msg = f"iterations must be at least 1, got {iterations!r}"
+            raise InvalidConfigError(msg)
+        if not math.isfinite(tolerance) or tolerance < 0.0:
+            msg = f"tolerance must be a finite, non-negative number, got {tolerance!r}"
+            raise InvalidConfigError(msg)
+
         influence: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
         frontier: dict[SystemKind, float] = dict.fromkeys(_ORDER, 1.0)
         for _ in range(iterations):

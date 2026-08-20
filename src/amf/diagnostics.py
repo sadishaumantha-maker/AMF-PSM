@@ -8,9 +8,11 @@ randomness, no simulation, and nothing about prices or trading.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from amf.errors import InvalidConfigError
 from amf.models import (
     DiagnosticReport,
     Severity,
@@ -27,13 +29,23 @@ if TYPE_CHECKING:
 # status) when its redundancy is below this level.
 _LOW_REDUNDANCY = 0.5
 
+# Declaration order of the seven systems, used to break ranking ties so that two
+# markets with equal content rank identically however they were assembled.
+_INDEX: dict[SystemKind, int] = {kind: i for i, kind in enumerate(SystemKind)}
+
 
 @dataclass(frozen=True, slots=True)
 class DiagnosticConfig:
     """Weights blending the three weakness components into one score.
 
-    The three weights should sum to one; they are normalised defensively so any
-    positive triple yields a score in ``[0, 1]``.
+    The three weights conventionally sum to one but need not: they are divided by
+    their own sum, so any non-negative triple yields a score in ``[0, 1]``. An
+    all-zero triple is allowed and yields a score of zero for every system.
+
+    Each weight must be finite and non-negative. A negative weight is rejected
+    rather than normalised, because it would push scores outside the ``[0, 1]``
+    interval that :class:`~amf.models.WeaknessFinding` and
+    :meth:`~amf.models.Severity.from_score` both document and rely on.
 
     Attributes:
         fragility_weight: Weight on intrinsic fragility.
@@ -44,6 +56,18 @@ class DiagnosticConfig:
     fragility_weight: float = 0.4
     concentration_weight: float = 0.3
     feedback_weight: float = 0.3
+
+    def __post_init__(self) -> None:
+        """Validate the blend weights on construction.
+
+        Raises:
+            InvalidConfigError: If any weight is negative or not finite.
+        """
+        for name in ("fragility_weight", "concentration_weight", "feedback_weight"):
+            value: float = getattr(self, name)
+            if not math.isfinite(value) or value < 0.0:
+                msg = f"{name} must be a finite, non-negative number, got {value!r}"
+                raise InvalidConfigError(msg)
 
 
 class DiagnosticEngine:
@@ -109,6 +133,11 @@ class DiagnosticEngine:
         A system qualifies when removing it disconnects the dependency graph
         (an articulation point) *and* its redundancy is below
         :data:`_LOW_REDUNDANCY`.
+
+        Returns:
+            The qualifying systems, most load-bearing first, with equal
+            criticalities broken by :class:`~amf.models.SystemKind` declaration
+            order so the ranking is reproducible.
         """
         articulation = market.graph.articulation_points()
         spofs = [
@@ -116,7 +145,7 @@ class DiagnosticEngine:
             for kind in market.systems
             if kind in articulation and market.systems[kind].redundancy < _LOW_REDUNDANCY
         ]
-        return sorted(spofs, key=lambda k: market.systems[k].criticality, reverse=True)
+        return sorted(spofs, key=lambda k: (-market.systems[k].criticality, _INDEX[k]))
 
     def diagnose(self, market: Market) -> DiagnosticReport:
         """Run the full diagnosis and return a :class:`DiagnosticReport`.
@@ -125,14 +154,17 @@ class DiagnosticEngine:
             market: The market to diagnose (must be complete).
 
         Returns:
-            A report with per-system findings, a criticality-weighted overall
-            index, ranked single points of failure, and risky feedback loops.
+            A report with per-system findings ordered weakest first (ties broken
+            by :class:`~amf.models.SystemKind` declaration order), a
+            criticality-weighted overall index, ranked single points of failure,
+            and risky feedback loops.
         """
         market.require_complete()
         fragility = self.fragility(market)
         concentration = self.concentration(market)
         feedback = self.feedback_amplification(market)
-        spofs = set(self.single_points_of_failure(market))
+        ranked_spofs = self.single_points_of_failure(market)
+        spofs = set(ranked_spofs)
 
         w_total = self.config.fragility_weight + self.config.concentration_weight + self.config.feedback_weight
         if w_total <= 0.0:
@@ -163,13 +195,15 @@ class DiagnosticEngine:
             criticality_sum += system.criticality
 
         overall = weighted_sum / criticality_sum if criticality_sum > 0.0 else 0.0
-        findings.sort(key=lambda f: f.score, reverse=True)
+        # Weakest first, with equally weak systems ordered by declaration rather
+        # than by however the market happened to be assembled.
+        findings.sort(key=lambda f: (-f.score, _INDEX[f.system]))
         return DiagnosticReport(
             boundary=market.boundary,
             overall_index=overall,
             overall_severity=Severity.from_score(overall),
             findings=tuple(findings),
-            single_points_of_failure=tuple(self.single_points_of_failure(market)),
+            single_points_of_failure=tuple(ranked_spofs),
             feedback_loops=tuple(market.graph.feedback_loops()),
         )
 

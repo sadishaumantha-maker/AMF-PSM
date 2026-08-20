@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from amf.errors import InvalidShockError
+from amf.errors import InvalidConfigError, InvalidShockError
 from amf.market import Market
 from amf.models import Dependency, DependencyKind, Severity, Shock, SystemKind
 from amf.simulation import ShockSimulator, SimulationConfig
@@ -324,3 +324,38 @@ def test_amplification_factor_never_below_one(stressed_market: Market, target: S
     # never report a peak below what was injected: amplification is always >= 1.
     score = ShockSimulator(stressed_market).resilience(Shock(target, 0.8))
     assert score.amplification_factor >= 1.0
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "match"),
+    [
+        ({"max_steps": 0}, "max_steps must be at least 1"),
+        ({"max_steps": -5}, "max_steps must be at least 1"),
+        ({"damping": 0.0}, "damping must be in"),
+        ({"damping": 5.0}, "damping must be in"),
+        ({"damping": float("nan")}, "damping must be in"),
+        ({"retention": -3.0}, "retention must be in"),
+        ({"retention": 1.5}, "retention must be in"),
+        ({"transmission": -2.0}, "transmission must be"),
+        ({"transmission": float("inf")}, "transmission must be"),
+        ({"convergence_eps": 0.0}, "convergence_eps must be"),
+        ({"convergence_eps": -1.0}, "convergence_eps must be"),
+        ({"jitter": -1.0}, "jitter must be"),
+        ({"jitter": float("nan")}, "jitter must be"),
+    ],
+)
+def test_simulation_config_rejects_out_of_range_parameters(kwargs: dict[str, float], match: str):
+    # Each of these used to be accepted and produce a plausible-looking but
+    # meaningless trajectory: max_steps=0 reported a market as never settling
+    # without simulating a single step, damping=5.0 amplified every step
+    # globally, and a negative transmission inverted the direction of stress.
+    with pytest.raises(InvalidConfigError, match=match):
+        SimulationConfig(**kwargs)
+
+
+def test_simulation_config_accepts_its_documented_boundaries():
+    # The validation must not narrow the supported range: damping of exactly 1
+    # (no global decay), zero retention, zero transmission and zero jitter are
+    # all meaningful settings.
+    config = SimulationConfig(max_steps=1, damping=1.0, retention=0.0, transmission=0.0, jitter=0.0)
+    assert config.damping == 1.0

@@ -25,11 +25,12 @@ iterated until the trajectory settles or a step budget is exhausted.
 
 from __future__ import annotations
 
+import math
 import random
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from amf.errors import InvalidShockError
+from amf.errors import InvalidConfigError, InvalidShockError
 from amf.models import (
     ResilienceScore,
     Severity,
@@ -48,20 +49,30 @@ _ORDER: tuple[SystemKind, ...] = tuple(SystemKind)
 class SimulationConfig:
     """Parameters controlling the shock-propagation dynamics.
 
+    Every parameter is validated on construction: an out-of-range knob otherwise
+    produces a plausible-looking but meaningless trajectory rather than an error
+    (a negative ``transmission`` inverts stress flow, a ``damping`` above one
+    amplifies every step globally, a ``max_steps`` of zero reports a market as
+    never settling without simulating anything).
+
     Attributes:
-        max_steps: Maximum number of timesteps to simulate. A trajectory that is
-            still decaying when the budget runs out is reported as not converged,
-            with a settling time of ``-1``; a market can be perfectly stable and
-            still exhaust the budget if it settles slowly.
+        max_steps: Maximum number of timesteps to simulate, at least ``1``. A
+            trajectory that is still decaying when the budget runs out is
+            reported as not converged, with a settling time of ``-1``; a market
+            can be perfectly stable and still exhaust the budget if it settles
+            slowly.
         damping: Global per-step decay in ``(0, 1]``; lower means faster dissipation.
-        retention: Fraction of a system's own stress carried to the next step.
-        transmission: Global scaler on stress transmitted along couplings.
-        convergence_eps: L-infinity change below which the trajectory is settled.
+        retention: Fraction of a system's own stress carried to the next step, in
+            ``[0, 1]``.
+        transmission: Global scaler on stress transmitted along couplings; finite
+            and non-negative.
+        convergence_eps: L-infinity change below which the trajectory is settled;
+            strictly positive, since a non-positive threshold can never be met.
         seed: If set, enables small deterministic Gaussian jitter on transmission.
-        jitter: Standard deviation of the optional transmission jitter. Has no
-            effect unless ``seed`` is also set: a diagnostic tool stays
-            reproducible by default, so jitter is only applied when a seed makes
-            it deterministic.
+        jitter: Standard deviation of the optional transmission jitter; finite and
+            non-negative. Has no effect unless ``seed`` is also set: a diagnostic
+            tool stays reproducible by default, so jitter is only applied when a
+            seed makes it deterministic.
     """
 
     max_steps: int = 50
@@ -71,6 +82,31 @@ class SimulationConfig:
     convergence_eps: float = 1e-4
     seed: int | None = None
     jitter: float = 0.0
+
+    def __post_init__(self) -> None:
+        """Validate the dynamics parameters on construction.
+
+        Raises:
+            InvalidConfigError: If any parameter is outside its documented range.
+        """
+        if self.max_steps < 1:
+            msg = f"max_steps must be at least 1, got {self.max_steps!r}"
+            raise InvalidConfigError(msg)
+        if not math.isfinite(self.damping) or not 0.0 < self.damping <= 1.0:
+            msg = f"damping must be in (0, 1], got {self.damping!r}"
+            raise InvalidConfigError(msg)
+        if not math.isfinite(self.retention) or not 0.0 <= self.retention <= 1.0:
+            msg = f"retention must be in [0, 1], got {self.retention!r}"
+            raise InvalidConfigError(msg)
+        if not math.isfinite(self.transmission) or self.transmission < 0.0:
+            msg = f"transmission must be a finite, non-negative number, got {self.transmission!r}"
+            raise InvalidConfigError(msg)
+        if not math.isfinite(self.convergence_eps) or self.convergence_eps <= 0.0:
+            msg = f"convergence_eps must be a finite, positive number, got {self.convergence_eps!r}"
+            raise InvalidConfigError(msg)
+        if not math.isfinite(self.jitter) or self.jitter < 0.0:
+            msg = f"jitter must be a finite, non-negative number, got {self.jitter!r}"
+            raise InvalidConfigError(msg)
 
 
 class ShockSimulator:
