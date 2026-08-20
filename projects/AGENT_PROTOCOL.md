@@ -43,28 +43,28 @@ evidence, decision, artifact, adversarial review.
 
 | Agent | Role | Used by |
 |-------|------|---------|
-| [`algorithm-implementer`](../.claude/agents/algorithm-implementer.md) | Writes the change under `src/amf/` once a specification has been ratified | P12, P14, P16, P18, P19, P20 +17 |
-| [`api-surface-reviewer`](../.claude/agents/api-surface-reviewer.md) | Reviews the public API: exports, `__all__` ordering, module layering and docstring accuracy | P03, P12, P25, P59, P64, P67 |
-| [`benchmark-runner`](../.claude/agents/benchmark-runner.md) | Runs reproducible measurements, sweeps and profiles, and reports them with exact reproduction commands | P04, P05, P14, P18, P19, P20 +16 |
-| [`boundary-sentinel`](../.claude/agents/boundary-sentinel.md) | Enforces the non-trading naming boundary | P11, P43, P44, P46, P47, P49 +7 |
-| [`case-study-archivist`](../.claude/agents/case-study-archivist.md) | Assembles dated, sourced structural case files under the case study protocol | P41, P42, P43, P53, P54, P55 +1 |
+| [`algorithm-implementer`](../.claude/agents/algorithm-implementer.md) | Writes the change under `src/amf/` once a specification has been ratified | P104, P12, P129, P14, P16, P18 +20 |
+| [`api-surface-reviewer`](../.claude/agents/api-surface-reviewer.md) | Reviews the public API: exports, `__all__` ordering, module layering and docstring accuracy | P03, P12, P122, P25, P59, P64 +2 |
+| [`benchmark-runner`](../.claude/agents/benchmark-runner.md) | Runs reproducible measurements, sweeps and profiles, and reports them with exact reproduction commands | P04, P05, P104, P105, P108, P109 +29 |
+| [`boundary-sentinel`](../.claude/agents/boundary-sentinel.md) | Enforces the non-trading naming boundary | P109, P11, P116, P119, P123, P43 +21 |
+| [`case-study-archivist`](../.claude/agents/case-study-archivist.md) | Assembles dated, sourced structural case files under the case study protocol | P123, P41, P42, P43, P53, P54 +3 |
 | [`citation-verifier`](../.claude/agents/citation-verifier.md) | Verifies that every citation in a document resolves to a real work of the standing claimed | *every charter (merge gate)* |
 | [`coverage-gatekeeper`](../.claude/agents/coverage-gatekeeper.md) | Guards the 100% statement and branch coverage gate and diagnoses uncovered branches | P10, P11 |
-| [`determinism-prover`](../.claude/agents/determinism-prover.md) | Proves that equal inputs produce byte-identical output, under permutation, repetition and across the supported Python versions | P12, P14, P15, P18, P30, P65 |
-| [`docs-synthesizer`](../.claude/agents/docs-synthesizer.md) | Writes and edits documentation pages under `docs/` | P05, P07, P10, P29, P32, P38 +6 |
-| [`integrity-warden`](../.claude/agents/integrity-warden.md) | Protects the checksum-protected artifacts, the licence position and the private-distribution rule | P02, P07, P08, P52, P68, P69 +3 |
-| [`literature-scout`](../.claude/agents/literature-scout.md) | Finds and ranks primary academic sources for an AMF-PSM project charter | P01, P23, P26, P27, P28, P31 +27 |
-| [`math-formalizer`](../.claude/agents/math-formalizer.md) | States definitions, derives conditions and writes the invariants a claim implies | P17, P19, P20, P21, P22, P24 +13 |
+| [`determinism-prover`](../.claude/agents/determinism-prover.md) | Proves that equal inputs produce byte-identical output, under permutation, repetition and across the supported Python versions | P12, P14, P15, P18, P30, P65 +1 |
+| [`docs-synthesizer`](../.claude/agents/docs-synthesizer.md) | Writes and edits documentation pages under `docs/` | P05, P07, P10, P29, P32, P38 +9 |
+| [`integrity-warden`](../.claude/agents/integrity-warden.md) | Protects the checksum-protected artifacts, the licence position and the private-distribution rule | P02, P07, P08, P126, P52, P68 +4 |
+| [`literature-scout`](../.claude/agents/literature-scout.md) | Finds and ranks primary academic sources for an AMF-PSM project charter | P01, P101, P102, P106, P107, P108 +67 |
+| [`math-formalizer`](../.claude/agents/math-formalizer.md) | States definitions, derives conditions and writes the invariants a claim implies | P101, P104, P105, P106, P107, P109 +47 |
 | [`mutation-hunter`](../.claude/agents/mutation-hunter.md) | Runs mutation testing and triages surviving mutants | P11 |
-| [`numerics-auditor`](../.claude/agents/numerics-auditor.md) | Audits floating-point behaviour: accumulation error, overflow, NaN paths and estimator stability | P14, P18, P22, P33 |
+| [`numerics-auditor`](../.claude/agents/numerics-auditor.md) | Audits floating-point behaviour: accumulation error, overflow, NaN paths and estimator stability | P114, P121, P14, P18, P22, P33 +2 |
 | [`property-test-author`](../.claude/agents/property-test-author.md) | Writes hypothesis property tests for claimed invariants | P15, P17, P20, P24 |
-| [`red-team-critic`](../.claude/agents/red-team-critic.md) | Adversarially attempts to falsify a project's conclusion, break its rules or misread its output | P01, P02, P05, P06, P07, P08 +39 |
-| [`regime-comparativist`](../.claude/agents/regime-comparativist.md) | Produces per-jurisdiction regulatory regime profiles from primary instruments | P40, P41, P42, P44, P45, P50 +1 |
-| [`release-marshal`](../.claude/agents/release-marshal.md) | Manages version discipline: version-string agreement, changelog entries and release gating | P04, P08, P28, P71 |
-| [`spec-drafter`](../.claude/agents/spec-drafter.md) | Turns verified findings into a written specification or decision record | P01, P02, P03, P04, P06, P09 +26 |
-| [`taxonomy-cartographer`](../.claude/agents/taxonomy-cartographer.md) | Builds classification tables, registers and mappings from published standards | P01, P47, P48, P51, P52, P55 +1 |
-| [`unit-test-author`](../.claude/agents/unit-test-author.md) | Writes deterministic unit tests, boundary cases and known-answer tests | P11, P16, P17, P19, P22, P25 +4 |
-| [`viz-designer`](../.claude/agents/viz-designer.md) | Produces deterministic figures under the visual grammar, with the mandatory footnote intact | P35, P65 |
+| [`red-team-critic`](../.claude/agents/red-team-critic.md) | Adversarially attempts to falsify a project's conclusion, break its rules or misread its output | P01, P02, P05, P06, P07, P08 +76 |
+| [`regime-comparativist`](../.claude/agents/regime-comparativist.md) | Produces per-jurisdiction regulatory regime profiles from primary instruments | P102, P103, P105, P110, P40, P41 +9 |
+| [`release-marshal`](../.claude/agents/release-marshal.md) | Manages version discipline: version-string agreement, changelog entries and release gating | P04, P08, P28, P71, P76 |
+| [`spec-drafter`](../.claude/agents/spec-drafter.md) | Turns verified findings into a written specification or decision record | P01, P02, P03, P04, P06, P09 +71 |
+| [`taxonomy-cartographer`](../.claude/agents/taxonomy-cartographer.md) | Builds classification tables, registers and mappings from published standards | P01, P100, P118, P128, P47, P48 +7 |
+| [`unit-test-author`](../.claude/agents/unit-test-author.md) | Writes deterministic unit tests, boundary cases and known-answer tests | P11, P16, P17, P19, P22, P25 +6 |
+| [`viz-designer`](../.claude/agents/viz-designer.md) | Produces deterministic figures under the visual grammar, with the mandatory footnote intact | P117, P35, P65 |
 
 ## Escalation
 
