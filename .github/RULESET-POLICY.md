@@ -101,7 +101,7 @@ This document defines the GitHub repository ruleset configuration for **AMF-PSM*
 ## 👥 Permissions Matrix
 
 | Role | Main | Develop | Release | Feature |
-|------|------|---------|---------|---------|
+|------|------|---------|---------|----------|
 | **Admin** | Can merge + bypass all rules | Can merge + bypass | Can merge + bypass | Can merge |
 | **Maintainer** | Can review + request changes | Can review + merge | Can review | Can merge |
 | **Developer** | Can open PR + review | Can open PR + merge (with approval) | Can open PR | Can commit |
