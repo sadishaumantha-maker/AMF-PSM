@@ -59,7 +59,8 @@ tests/conftest.py   fixtures: boundary, market_factory, healthy_market,
                     stressed_market; plus the importable build_market() helper
                     (hypothesis rejects function-scoped fixtures under @given)
 tests/unit/         one file per module, plus test_non_trading_boundary.py
-                    (the naming guard) and test_properties.py (hypothesis)
+                    (the naming guard), test_properties.py (hypothesis), and
+                    test_packaging.py (packaging / metadata invariants)
 tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
@@ -127,7 +128,8 @@ are easy to break by accident:
   and a finite non-negative `tolerance`. All raise `InvalidConfigError`. These
   are not cosmetic either: a negative blend weight used to yield findings scoring
   `2.0`, and `alpha >= 10` overflowed the influence series to infinity and
-  returned `NaN` for every system.
+  returned `NaN` for every system. Keeping every score inside `[0, 1]` is what
+  lets `Severity.from_score` and `WeaknessFinding` rely on that interval.
 - **Jitter needs a seed.** `SimulationConfig.jitter` has no effect unless `seed`
   is also set, so the default configuration is fully deterministic; the tests
   rely on it.
@@ -163,7 +165,9 @@ are identical. Defaults are `integrity` 1.0, `redundancy` 0.5, `load` 0.0,
 `skeleton` is "Market infrastructure" at 0.90). Because `criticality` weights the
 overall diagnostic index, omitting it is a meaningful choice rather than a
 neutral one. Any unrecognised field in a system entry is a `MarketParseError`,
-so a typo such as `integritty` fails loudly instead of being ignored.
+so a typo such as `integritty` fails loudly instead of being ignored, as is a
+`components` value that is not a list — a bare string is iterable, so accepting one
+would silently split `"abc"` into three single-character components.
 
 A `(source, target)` pair may appear more than once with different `kind`s. Each
 is kept as its own edge and survives a `to_dict`/`from_dict` round trip, while
@@ -275,7 +279,11 @@ example.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
   `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. Weakness
   scores feed it directly; resilience feeds it `1 − value`, so a resilient market
-  bands as low severity.
+  bands as low severity. The mapping is total and saturates pessimistically: a
+  score below `0` reports low, above `1` reports critical, and `NaN` — which
+  compares false against every threshold — falls through to critical, on the
+  grounds that a score which escaped `[0, 1]` means a broken upstream computation
+  and under-reporting it is the more dangerous failure.
 
 ## Developing
 
@@ -283,7 +291,7 @@ example.
 python -m pip install -e ".[dev]"
 ruff check . && ruff format --check .   # lint & format (line length 120)
 mypy                                    # strict type-check of src/ only
-pytest                                  # tests + branch coverage gate (>= 90%)
+pytest                                  # tests + branch coverage gate (100%)
 pre-commit install                      # optional: run hooks on commit
 ```
 
@@ -307,9 +315,12 @@ exposes `build_market()` as a plain importable function alongside the
 `market_factory` fixture — use the function inside `@given` and the fixture
 everywhere else.
 
-The suite currently sits at **100% statement and branch coverage** of `src/amf`,
-well above the 90% gate. Treat that as the working standard: a drop usually means
-new code arrived without tests, not that the gate needs lowering.
+The coverage gate is **100%** statement and branch coverage of `src/amf`
+(`--cov-fail-under=100` in `pyproject.toml`), so any uncovered line or branch fails
+the build outright. New code therefore ships with its tests or not at all; the fix
+for a failing gate is a test, never a lower threshold. Note that 100% coverage is
+not the same as 100% tested — `tests/unit/test_packaging.py` and the mutation-driven
+tests exist precisely because full coverage was hiding real gaps.
 
 ### Checklist for a change
 

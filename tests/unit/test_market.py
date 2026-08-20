@@ -211,6 +211,16 @@ def test_from_dict_self_loop_dependency_raises_market_parse_error(stressed_marke
         Market.from_dict(data)
 
 
+@pytest.mark.parametrize("value", ["abc", 5, {"a": 1}])
+def test_from_dict_non_list_components_raises_market_parse_error(stressed_market: Market, value):
+    # A bare string is iterable, so accepting one would split "abc" into three
+    # single-character components instead of reporting malformed input.
+    data = stressed_market.to_dict()
+    data["systems"]["skeleton"]["components"] = value
+    with pytest.raises(MarketParseError, match="components"):
+        Market.from_dict(data)
+
+
 def test_require_complete_rejects_a_system_filed_under_the_wrong_kind(healthy_market: Market):
     # `systems` is a plain mutable dict, so a caller can file a system under the
     # wrong key. Every engine reads the label from the key and the metrics from
