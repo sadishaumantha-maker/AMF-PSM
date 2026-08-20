@@ -134,6 +134,22 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `ResilienceScore.amplification_factor` could be infinite. Amplification is peak aggregate
+  stress divided by injected aggregate stress -- both criticality-weighted and both in
+  `[0, 1]` -- but the ratio still overflows when the shocked system carries almost no
+  criticality and its stress loads systems that carry a great deal: at a target criticality of
+  `1e-310` the division reaches infinity. The infinity escaped into the result, and
+  `render_json` then emitted `Infinity`, which is not valid JSON. The factor now saturates at
+  the largest finite double. No non-degenerate market's score moves, because the amplification
+  penalty already saturates at any factor of two or more. Found by the hypothesis suite via the
+  new invariant guard -- the guard's first catch.
+- Two assertions in `tests/unit/test_numeric.py` encoded CPython 3.11's summation behaviour and
+  failed on 3.12 and 3.13, which replaced the built-in `sum`'s float accumulation with Neumaier
+  compensated summation (`sum([1.0, 1e100, 1.0, -1e100])` is `0.0` on 3.11 and `2.0` on 3.12+).
+  They now assert against an explicit left-to-right accumulator, which is naive on every version.
+  A new test pins `stable_sum` to exact rational arithmetic so the reduction cannot drift between
+  interpreters — the seam mattered: sampled over 400,000 random weight sets, 102,822 produced a
+  concentration index that differed between the two summation algorithms.
 - `DependencyGraph.centrality()` no longer depends on the order the dependencies were
   added in. The influence propagation accumulated into each target while iterating the
   pair-weight dict, which is keyed in insertion order; because floating-point addition is

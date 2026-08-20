@@ -247,6 +247,32 @@ bit-identical results across platforms, and the fix is one operator. Measured bl
 radius on `examples/sample_market.json`: **zero**. Every concentration score is
 byte-identical before and after.
 
+### 3.4 The same market scored differently on Python 3.11 and 3.12+ — **fixed**
+
+Found by CI, not by inspection: two assertions in the new tests failed on 3.12/3.13 while
+passing on 3.11. The cause is a change in the interpreter, and it reaches the package.
+
+**CPython 3.12 replaced the built-in `sum`'s float accumulation with Neumaier compensated
+summation.** Measured on this machine:
+
+| | `sum([1.0, 1e100, 1.0, -1e100])` | distinct sums over the permutations of `[0.1, 0.2, 0.3]` |
+|---|---|---|
+| Python 3.11 | `0.0` | 2 |
+| Python 3.12 / 3.13 | `2.0` | 1 |
+
+Any score built on a bare `sum` therefore depended on which interpreter ran it. Sampled over
+400,000 random weight sets, **102,822** produced a Herfindahl concentration index that differed
+between naive and compensated summation — so the same market could score differently on 3.11
+than on 3.12+, while `ci.yml` runs all three versions and compares none of their outputs to each
+other.
+
+This is the sharpest illustration of the review's central point. The proposal's remedy for
+cross-platform reproducibility was Decimal arithmetic; Decimal would not have helped, because the
+problem was never precision — it was that the *reduction algorithm* changed underneath the code.
+`math.fsum` is exactly rounded on every version, so `stable_sum` has no such seam, and
+`test_stable_sum_does_not_change_between_python_versions` now pins it to exact rational
+arithmetic to keep it that way.
+
 ---
 
 ## 4. What was implemented
@@ -282,6 +308,24 @@ in `CHANGELOG.md`.
 | Provenance | wall-clock timestamp | content hash (D11–D12) |
 | Defects fixed | — | 3, all with regression tests |
 | Timeline | 8–10 weeks | 20 working days, Phases A–E |
+
+### 4.1 The guard's first catch
+
+Within a day of landing, the invariant layer paid for itself. The hypothesis suite drove
+`ShockSimulator.propagate` into a market whose shocked system carried a subnormal criticality,
+and `check_resilience_score` refused the result: `amplification_factor` was `inf`. The ratio
+overflows because the denominator is subnormal while the numerator is not — the amplification
+genuinely is astronomical, it simply is not representable.
+
+Before the guard, that infinity would have flowed into a `ResilienceScore`, and `render_json`
+would have emitted `Infinity` — which is not valid JSON, so any downstream consumer parsing the
+output strictly would have failed on a document the toolkit called well-formed. The factor now
+saturates at the largest finite double.
+
+Worth being precise about what found it: not the invariant alone and not the property suite
+alone, but the two together — a generator that reaches degenerate inputs, and a check at the
+boundary that refuses to return a value the type says is impossible. Neither half would have
+caught this. Line coverage would not have caught it either: every line involved already ran.
 
 ---
 

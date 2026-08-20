@@ -43,8 +43,9 @@ from __future__ import annotations
 
 import math
 import random
+import sys
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Final
 
 from amf.errors import InvalidConfigError, InvalidShockError
 from amf.invariants import check_simulation_trace
@@ -66,6 +67,17 @@ if TYPE_CHECKING:
     from amf.market import Market
 
 _ORDER: tuple[SystemKind, ...] = tuple(SystemKind)
+
+# Ceiling for the reported amplification factor. Amplification is a ratio of two
+# criticality-weighted aggregates, each of which is itself in ``[0, 1]`` -- yet the
+# ratio can still overflow. Shock a system that carries almost no criticality and
+# whose stress then loads systems that carry a great deal, and the denominator is
+# subnormal while the numerator is not: at a target criticality of ``1e-310`` the
+# division reaches infinity. The amplification really is astronomical there, so the
+# number is not wrong, only unrepresentable; saturating keeps it finite. An infinity
+# would fail the invariant guard and would make ``render_json`` emit ``Infinity``,
+# which is not valid JSON.
+_MAX_AMPLIFICATION: Final[float] = sys.float_info.max
 
 
 @dataclass(frozen=True, slots=True)
@@ -392,6 +404,8 @@ class ShockSimulator:
 
         absorbed = clip_unit(1.0 - (final / injected) if injected > 0.0 else 1.0)
         amplification = peak / injected if injected > 0.0 else 1.0
+        if not math.isfinite(amplification):
+            amplification = _MAX_AMPLIFICATION
 
         settling_time = self._settling_time(steps)
         amp_penalty = clip_unit(amplification - 1.0)
