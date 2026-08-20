@@ -12,6 +12,12 @@ license = { text = "LicenseRef-Proprietary-AllRightsReserved" }
 authors = [{ name = "Sadisha" }]
 keywords = ["market-structure", "anatomical-market-framework", "diagnostics", "resilience", "simulation"]
 classifiers = [
+  # PyPI refuses any upload carrying this classifier. `amf` is proprietary and
+  # all-rights-reserved, so it must never reach a public index -- publishing it
+  # there would invite the installation and use its licence forbids. Distribution
+  # is private only; see RELEASING.md. `tests/unit/test_packaging.py` keeps this
+  # line from being dropped by accident.
+  "Private :: Do Not Upload",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",

@@ -1,4 +1,4 @@
-"""Rendering of diagnostic and simulation results to text, JSON, or Markdown.
+"""Rendering of diagnostic, simulation, and sensitivity results to text, JSON, or Markdown.
 
 These functions are pure formatting helpers: they take result objects produced by
 the engines and return strings. They perform no I/O, which keeps the engines free
@@ -14,15 +14,17 @@ from amf.models import (
     DiagnosticReport,
     ResilienceDistribution,
     ResilienceScore,
+    SensitivityReport,
     SimulationTrace,
     SystemKind,
 )
 
-Renderable: TypeAlias = DiagnosticReport | SimulationTrace | dict[SystemKind, ResilienceScore]
+Renderable: TypeAlias = DiagnosticReport | SimulationTrace | SensitivityReport | dict[SystemKind, ResilienceScore]
 """Any result object the renderers accept.
 
 A :class:`~amf.models.DiagnosticReport` from the diagnostic engine, a
-:class:`~amf.models.SimulationTrace` from a single shock, or the
+:class:`~amf.models.SimulationTrace` from a single shock, a
+:class:`~amf.models.SensitivityReport` from a sensitivity sweep, or the
 system-to-:class:`~amf.models.ResilienceScore` mapping a stress test returns.
 
 A :class:`~amf.models.ResilienceDistribution` is deliberately excluded: only
@@ -38,7 +40,7 @@ def render_json(obj: Renderable | ResilienceDistribution) -> str:
 
 def _to_jsonable(obj: Any) -> Any:  # noqa: ANN401 - intentional dispatch over result types
     """Convert a result object into JSON-serialisable primitives."""
-    if isinstance(obj, (DiagnosticReport, SimulationTrace, ResilienceScore, ResilienceDistribution)):
+    if isinstance(obj, (DiagnosticReport, SimulationTrace, SensitivityReport, ResilienceScore, ResilienceDistribution)):
         return obj.to_dict()
     if isinstance(obj, dict):
         return {(k.value if isinstance(k, SystemKind) else str(k)): _to_jsonable(v) for k, v in obj.items()}
@@ -46,18 +48,22 @@ def _to_jsonable(obj: Any) -> Any:  # noqa: ANN401 - intentional dispatch over r
 
 
 def render_text(report: Renderable) -> str:
-    """Render a diagnostic report, simulation trace, or stress-test profile as plain text."""
+    """Render a diagnostic report, simulation trace, sensitivity report, or stress-test profile as text."""
     if isinstance(report, DiagnosticReport):
         return _diagnostic_text(report)
+    if isinstance(report, SensitivityReport):
+        return _sensitivity_text(report)
     if isinstance(report, dict):
         return render_stress_test(report)
     return _simulation_text(report)
 
 
 def render_markdown(report: Renderable) -> str:
-    """Render a diagnostic report, simulation trace, or stress-test profile as Markdown."""
+    """Render a diagnostic report, simulation trace, sensitivity report, or stress-test profile as Markdown."""
     if isinstance(report, DiagnosticReport):
         return _diagnostic_markdown(report)
+    if isinstance(report, SensitivityReport):
+        return _sensitivity_markdown(report)
     if isinstance(report, dict):
         return _stress_test_markdown(report)
     return _simulation_markdown(report)
@@ -205,4 +211,72 @@ def _simulation_markdown(trace: SimulationTrace) -> str:
         if r.tipped_systems:
             tipped = ", ".join(s.value for s in r.tipped_systems)
             lines.append(f"| Tipped (cascade) | {tipped} |")
+    return "\n".join(lines)
+
+
+def _sensitivity_text(report: SensitivityReport) -> str:
+    """Render a sensitivity report as plain text."""
+    b = report.boundary
+    lines = [
+        "Anatomical Market Framework - Sensitivity & Leverage",
+        f"  Market: {b.asset_class} / {b.geography} / {b.timeframe}",
+        f"  Baseline weakness index: {report.baseline_index:.3f} [{report.baseline_severity.value}]",
+        f"  Perturbation step: {report.step:.3f}",
+        "",
+        "  Most influential metrics (steepest response first):",
+    ]
+    for s in report.sensitivities:
+        direction = "raises" if s.gradient > 0 else "lowers" if s.gradient < 0 else "does not move"
+        lines.append(
+            f"    {s.system.value:<12} {s.metric.value:<12} gradient {s.gradient:+.3f}"
+            f"  (raising it {direction} weakness)"
+        )
+    if report.leverage_points:
+        lines += ["", "  Leverage points (largest improvement first):"]
+        for p in report.leverage_points:
+            lines.append(
+                f"    {p.system.value:<12} {p.metric.value:<12} "
+                f"{p.baseline_value:.2f} -> {p.adjusted_value:.2f}  "
+                f"index {p.index_before:.3f} -> {p.index_after:.3f}  "
+                f"improvement {p.improvement:+.3f}"
+            )
+    else:
+        lines += ["", "  No adjustable metric has headroom at this step size."]
+    return "\n".join(lines)
+
+
+def _sensitivity_markdown(report: SensitivityReport) -> str:
+    """Render a sensitivity report as Markdown."""
+    b = report.boundary
+    lines = [
+        "# AMF Sensitivity & Leverage",
+        "",
+        f"**Market:** {b.asset_class} / {b.geography} / {b.timeframe}  ",
+        f"**Baseline weakness index:** {report.baseline_index:.3f} (`{report.baseline_severity.value}`)  ",
+        f"**Perturbation step:** {report.step:.3f}",
+        "",
+        "## Metric sensitivity",
+        "",
+        "| System | Metric | Baseline | Span | Index delta | Gradient |",
+        "|--------|--------|----------|------|-------------|----------|",
+    ]
+    for s in report.sensitivities:
+        lines.append(
+            f"| {s.system.value} | {s.metric.value} | {s.baseline_value:.2f} "
+            f"| {s.span:.2f} | {s.index_delta:+.3f} | {s.gradient:+.3f} |"
+        )
+    lines += ["", "## Leverage points", ""]
+    if report.leverage_points:
+        lines += [
+            "| System | Metric | Adjustment | Index before | Index after | Improvement |",
+            "|--------|--------|------------|--------------|-------------|-------------|",
+        ]
+        for p in report.leverage_points:
+            lines.append(
+                f"| {p.system.value} | {p.metric.value} "
+                f"| {p.baseline_value:.2f} → {p.adjusted_value:.2f} "
+                f"| {p.index_before:.3f} | {p.index_after:.3f} | {p.improvement:+.3f} |"
+            )
+    else:
+        lines.append("No adjustable metric has headroom at this step size.")
     return "\n".join(lines)

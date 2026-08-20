@@ -17,7 +17,7 @@ from types import MappingProxyType
 from typing import TYPE_CHECKING
 
 from amf.errors import InvalidSystemError
-from amf.models import SystemKind
+from amf.models import SystemKind, SystemMetric
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Mapping
@@ -110,6 +110,45 @@ class AnatomicalSystem:
         rises: ``health = integrity * (1 - load)``.
         """
         return self.integrity * (1.0 - self.load)
+
+    def metric(self, metric: SystemMetric) -> float:
+        """Return the value of one structural metric.
+
+        Args:
+            metric: Which metric to read.
+
+        Returns:
+            The metric's value in ``[0, 1]``.
+        """
+        return float(getattr(self, metric.value))
+
+    def with_metric(self, metric: SystemMetric, value: float) -> AnatomicalSystem:
+        """Return a copy of this system with one metric set to ``value``.
+
+        Instances are immutable, so analyses that explore perturbed variants of a
+        system build new ones through this helper rather than mutating in place.
+
+        Args:
+            metric: Which metric to replace.
+            value: The replacement value, which must lie in ``[0, 1]``.
+
+        Returns:
+            A new :class:`AnatomicalSystem`; the original is untouched.
+
+        Raises:
+            InvalidSystemError: If ``value`` is outside ``[0, 1]``.
+        """
+        return AnatomicalSystem(
+            kind=self.kind,
+            name=self.name,
+            # Copied, not shared: ``components`` is a mutable list, and variants
+            # produced by an analysis must not alias the original's.
+            components=list(self.components),
+            integrity=value if metric is SystemMetric.INTEGRITY else self.integrity,
+            redundancy=value if metric is SystemMetric.REDUNDANCY else self.redundancy,
+            criticality=value if metric is SystemMetric.CRITICALITY else self.criticality,
+            load=value if metric is SystemMetric.LOAD else self.load,
+        )
 
     def absorptive_capacity(self) -> float:
         """Return the fraction of incoming stress this system dampens, in ``[0, 1]``.

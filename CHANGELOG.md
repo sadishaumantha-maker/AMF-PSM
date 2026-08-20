@@ -11,6 +11,12 @@ this file. Versions correspond to framework releases.
   non-trading / illustrative / frozen-anatomy guardrails, gives translation rules that
   map real-market asks onto structural proxies, and sequences the planned concepts.
   Documentation only — no package behaviour changes.
+- Private-distribution guard: the `Private :: Do Not Upload` classifier in
+  `pyproject.toml` makes PyPI reject any upload of this proprietary package, and
+  `tests/unit/test_packaging.py` fails if that classifier is dropped from either
+  the source config or the built wheel, if a public-index URL is added, or if the
+  package and `pyproject.toml` versions drift apart. `RELEASING.md` documents the
+  private release procedure.
 - `InvalidConfigError`, a new `AMFError` subclass raised when an engine or
   algorithm parameter is outside its documented range — `DiagnosticConfig`,
   `SimulationConfig`, and `DependencyGraph.centrality()` all validate on
@@ -23,6 +29,14 @@ this file. Versions correspond to framework releases.
   **time-scheduled / multi-wave shocks** (`Shock.at_step`); and **recovery /
   intervention** modeling (`SimulationConfig.recovery_rate`, `Intervention`). New
   CLI: `amf ensemble` plus `simulate --cascade-threshold/--recovery/--seed/...`.
+- `amf sensitivity` subcommand and `amf.sensitivity` module: comparative-statics
+  analysis that perturbs each structural metric of each system and reports (a)
+  the finite-difference gradient of the overall weakness index and (b) ranked
+  *leverage points* — the feasible adjustments that reduce the index most (AMF
+  analytical Step 5). `criticality` is reported as sensitive but excluded from
+  leverage rankings, since it describes how load-bearing a system is rather than
+  a lever an operator tunes. Supporting API: `SystemMetric`,
+  `AnatomicalSystem.metric`/`with_metric`, and `Market.with_system`.
 - `amf viz` subcommand and `amf.viz` module: dependency-free renderers that draw
   the dependency graph as Graphviz DOT, Mermaid, or a self-contained SVG
   (severity-coloured when diagnostics are available) and a shock-propagation

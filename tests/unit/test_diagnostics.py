@@ -171,6 +171,26 @@ def test_dependency_kinds_do_not_affect_scoring(market_factory):
     assert a == pytest.approx(b)
 
 
+def test_diagnosis_is_identical_whatever_order_dependencies_were_added(market_factory):
+    # The concentration HHI sums over dependencies_of, and floating-point addition
+    # is not associative, so an insertion-ordered traversal made the same market
+    # diagnose differently in the last bits depending on how it was assembled.
+    # These four weights are one of the pairs that actually diverged before
+    # dependencies_of was given a canonical order.
+    deps = [
+        Dependency(SystemKind.NERVOUS, SystemKind.ORGANS, DependencyKind.CAPITAL, 0.37),
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.891),
+        Dependency(SystemKind.NERVOUS, SystemKind.CIRCULATORY, DependencyKind.INFORMATIONAL, 0.599),
+        Dependency(SystemKind.NERVOUS, SystemKind.IMMUNE, DependencyKind.REGULATORY, 0.806),
+    ]
+    engine = DiagnosticEngine()
+    forward = engine.diagnose(market_factory(deps))
+    backward = engine.diagnose(market_factory(list(reversed(deps))))
+    # Exact equality, not approx: this is a bit-for-bit reproducibility claim, and
+    # approx would pass against precisely the drift it exists to catch.
+    assert forward.to_dict() == backward.to_dict()
+
+
 def test_splitting_one_edge_across_kinds_does_not_affect_scoring(market_factory):
     # Kind is part of edge identity, but every pair-level query aggregates across
     # kinds -- so 0.3 structural + 0.2 capital must score exactly as 0.5 structural.
