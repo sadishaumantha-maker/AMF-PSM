@@ -312,3 +312,58 @@ def test_ranking_is_independent_of_how_the_market_was_assembled(boundary: Market
     musculature = forwards_findings.index(SystemKind.MUSCULATURE)
     metabolism = forwards_findings.index(SystemKind.METABOLISM)
     assert musculature < metabolism, "ties must fall in SystemKind declaration order"
+
+
+def _concentration(market_factory, deps, **kwargs):
+    """Concentration for a market with the given dependencies, under the given config."""
+    return DiagnosticEngine(DiagnosticConfig(**kwargs)).concentration(market_factory(deps))
+
+
+def test_hhi_ignores_how_much_reliance_there_is(market_factory):
+    # HHI is share-based, so a system leaning on one trivial coupling scores the
+    # same maximum as one wholly dependent on a full-weight coupling. This is
+    # what `scale_concentration_by_reliance` exists to address; pinning it here
+    # keeps the default behaviour honest rather than accidental.
+    trivial = [Dependency(SystemKind.ORGANS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.01)]
+    total = [Dependency(SystemKind.ORGANS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 1.0)]
+    assert _concentration(market_factory, trivial)[SystemKind.ORGANS] == pytest.approx(1.0)
+    assert _concentration(market_factory, total)[SystemKind.ORGANS] == pytest.approx(1.0)
+
+
+def test_scaling_by_reliance_separates_them(market_factory):
+    trivial = [Dependency(SystemKind.ORGANS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.01)]
+    total = [Dependency(SystemKind.ORGANS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 1.0)]
+    on = {"scale_concentration_by_reliance": True}
+    assert _concentration(market_factory, trivial, **on)[SystemKind.ORGANS] == pytest.approx(0.01)
+    assert _concentration(market_factory, total, **on)[SystemKind.ORGANS] == pytest.approx(1.0)
+
+
+def test_scaling_by_reliance_removes_the_discontinuity_at_zero(market_factory):
+    # Unscaled, adding one trivial coupling to an isolated system jumps it from
+    # the best concentration score to the worst.
+    trivial = [Dependency(SystemKind.ORGANS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.01)]
+    on = {"scale_concentration_by_reliance": True}
+    assert _concentration(market_factory, [])[SystemKind.ORGANS] == pytest.approx(0.0)
+    assert _concentration(market_factory, trivial)[SystemKind.ORGANS] == pytest.approx(1.0)
+    assert _concentration(market_factory, [], **on)[SystemKind.ORGANS] == pytest.approx(0.0)
+    assert _concentration(market_factory, trivial, **on)[SystemKind.ORGANS] == pytest.approx(0.01)
+
+
+def test_scaling_is_off_by_default_so_published_scores_do_not_move(stressed_market: Market):
+    # The opt-in must not change what the engine reports unless it is asked for.
+    assert DiagnosticConfig().scale_concentration_by_reliance is False
+    default = DiagnosticEngine().diagnose(stressed_market)
+    explicit = DiagnosticEngine(DiagnosticConfig(scale_concentration_by_reliance=False)).diagnose(stressed_market)
+    assert default.to_dict() == explicit.to_dict()
+
+
+def test_concentration_driver_reports_reliance_not_just_the_index(market_factory):
+    # The index alone cannot distinguish a real concentration risk from a single
+    # trivial coupling, so the driver carries the coupling count and the total.
+    market = market_factory([Dependency(SystemKind.ORGANS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.3)])
+    report = DiagnosticEngine().diagnose(market)
+    finding = next(f for f in report.findings if f.system is SystemKind.ORGANS)
+    driver = next(d for d in finding.drivers if d.startswith("reliance concentrated"))
+    assert "1 coupling(s)" in driver
+    assert "HHI 1.00" in driver
+    assert "total reliance 0.30" in driver

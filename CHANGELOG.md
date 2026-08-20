@@ -6,6 +6,16 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `DiagnosticConfig.scale_concentration_by_reliance` (default `False`), which
+  multiplies the concentration index by `min(1, total outgoing weight)`. The
+  index is share-based, so it measures how unevenly a system's reliance is spread
+  and not how much of it there is: a system leaning on a single `0.01` coupling
+  scores the same maximum `1.0` as one wholly dependent on a `1.0` coupling, and
+  four of the seven systems in `examples/sample_market.json` score `1.00` on that
+  basis. It also makes the measure discontinuous at zero — an isolated system
+  scores `0.00`, and giving it one trivial coupling scores `1.00`. Enabling the
+  flag fixes both. It is opt-in because it moves every concentration score the
+  engine reports; the default output is unchanged.
 - `docs/roadmap.md` — a Phase 2 roadmap that triages the open issue backlog into
   charter-compliant, structural work: it proposes an expansion for "PSM", restates the
   non-trading / illustrative / frozen-anatomy guardrails, gives translation rules that
@@ -112,6 +122,15 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- The diagnostic concentration driver now reports the coupling count and total
+  reliance alongside the index (`reliance concentrated in 1 coupling(s) (HHI 1.00,
+  total reliance 0.30)`). The index alone cannot distinguish a genuine
+  concentration risk from a single trivial coupling, both of which score `1.00`.
+  Scores are unchanged; only the explanatory text differs.
+- CI now pins the third-party `markdown-link-check` action to a full commit SHA
+  rather than the mutable `v1` tag, and moves the GitHub-owned actions to
+  `checkout@v5`, `setup-python@v6`, and `upload-artifact@v6`, which clears the
+  Node 20 deprecation warning the runner emitted for the previous majors.
 - The coverage gate rose from 90% to 100% branch coverage. A suite already at
   100% cannot fail a 90% gate, so the gate was rejecting nothing.
 - `amf.report` now exports a `Renderable` type alias for the result types the

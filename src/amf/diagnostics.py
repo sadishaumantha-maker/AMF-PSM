@@ -55,11 +55,16 @@ class DiagnosticConfig:
         fragility_weight: Weight on intrinsic fragility.
         concentration_weight: Weight on dependency concentration.
         feedback_weight: Weight on feedback amplification.
+        scale_concentration_by_reliance: Opt in to scaling the concentration
+            component by how much reliance a system actually carries. Off by
+            default, because it changes every published concentration score; see
+            :meth:`DiagnosticEngine.concentration` for what it fixes.
     """
 
     fragility_weight: float = 0.4
     concentration_weight: float = 0.3
     feedback_weight: float = 0.3
+    scale_concentration_by_reliance: bool = False
 
     def __post_init__(self) -> None:
         """Validate the blend weights on construction.
@@ -103,10 +108,24 @@ class DiagnosticEngine:
         """Return per-system dependency concentration in ``[0, 1]``.
 
         Uses a Herfindahl-Hirschman-style index over the weights of a system's
-        *outgoing* dependencies (the things it relies on). A system that leans on
-        one strong coupling scores near ``1`` (brittle); one that spreads its
-        reliance across many balanced couplings scores low (diversified). A system
-        with no dependencies scores ``0``.
+        *outgoing* dependencies (the things it relies on). A system that spreads
+        its reliance across many balanced couplings scores low (diversified); one
+        whose reliance sits in a single coupling scores ``1``.
+
+        HHI measures the *shape* of a system's reliance, not how much of it there
+        is: it is computed from each coupling's share of the total, so it is
+        invariant to the total. A system with one coupling therefore scores
+        exactly ``1.0`` whatever that coupling weighs -- a system leaning on a
+        single ``0.01`` coupling scores the same as one wholly dependent on a
+        ``1.0`` coupling. A system with no dependencies at all scores ``0``, so
+        adding one trivial coupling to an isolated system moves it from the best
+        score to the worst. That discontinuity is inherent to a share-based index.
+
+        Setting :attr:`DiagnosticConfig.scale_concentration_by_reliance` multiplies
+        the index by ``min(1, total outgoing weight)`` so the score reflects how
+        much reliance is concentrated as well as how unevenly it is spread. That
+        makes the measure continuous at zero, and is off by default because it
+        changes every concentration score the engine reports.
         """
         graph = market.graph
         result: dict[SystemKind, float] = {}
@@ -116,7 +135,10 @@ class DiagnosticEngine:
             if total <= 0.0:
                 result[kind] = 0.0
                 continue
-            result[kind] = sum((w / total) ** 2 for w in weights)
+            index = sum((w / total) ** 2 for w in weights)
+            if self.config.scale_concentration_by_reliance:
+                index *= min(1.0, total)
+            result[kind] = index
         return result
 
     def feedback_amplification(self, market: Market) -> dict[SystemKind, float]:
@@ -172,6 +194,7 @@ class DiagnosticEngine:
         feedback = self.feedback_amplification(market)
         ranked_spofs = self.single_points_of_failure(market)
         spofs = set(ranked_spofs)
+        reliance = _reliance(market)
 
         w_total = self.config.fragility_weight + self.config.concentration_weight + self.config.feedback_weight
         if w_total <= 0.0:
@@ -195,7 +218,14 @@ class DiagnosticEngine:
                     concentration=concentration[kind],
                     feedback=feedback[kind],
                     is_single_point_of_failure=kind in spofs,
-                    drivers=_drivers(system, fragility[kind], concentration[kind], feedback[kind], kind in spofs),
+                    drivers=_drivers(
+                        system,
+                        fragility[kind],
+                        concentration[kind],
+                        feedback[kind],
+                        kind in spofs,
+                        reliance[kind],
+                    ),
                 )
             )
             weighted_sum += score * system.criticality
@@ -226,12 +256,28 @@ def _loop_weight_product(graph: DependencyGraph, loop: tuple[SystemKind, ...]) -
     return product
 
 
+def _reliance(market: Market) -> dict[SystemKind, tuple[int, float]]:
+    """Return each system's ``(coupling count, total outgoing weight)``.
+
+    The concentration index is share-based and so says nothing about how much
+    reliance a system actually carries; the drivers quote both so a reader can
+    tell a genuine concentration risk from a single trivial coupling.
+    """
+    graph = market.graph
+    result: dict[SystemKind, tuple[int, float]] = {}
+    for kind in market.systems:
+        targets = graph.dependencies_of(kind)
+        result[kind] = (len(targets), sum(graph.edge_weight(kind, t) for t in targets))
+    return result
+
+
 def _drivers(
     system: AnatomicalSystem,
     fragility: float,
     concentration: float,
     feedback: float,
     is_spof: bool,
+    reliance: tuple[int, float] = (0, 0.0),
 ) -> tuple[str, ...]:
     """Return human-readable explanations of a system's weakness drivers."""
     drivers: list[str] = []
@@ -241,7 +287,10 @@ def _drivers(
             f"redundancy {system.redundancy:.2f}"
         )
     if concentration >= 0.5:
-        drivers.append(f"reliance concentrated in few couplings (HHI {concentration:.2f})")
+        couplings, total = reliance
+        drivers.append(
+            f"reliance concentrated in {couplings} coupling(s) (HHI {concentration:.2f}, total reliance {total:.2f})"
+        )
     if feedback >= 0.25:
         drivers.append(f"participates in amplifying feedback loops (score {feedback:.2f})")
     if is_spof:
