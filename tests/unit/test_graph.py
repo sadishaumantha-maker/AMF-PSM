@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from amf.errors import InvalidDependencyError
+from amf.errors import InvalidConfigError, InvalidDependencyError
 from amf.graph import DependencyGraph
 from amf.models import Dependency, DependencyKind, SystemKind
 
@@ -372,3 +372,27 @@ def test_centrality_default_alpha_is_pinned():
     )
     assert graph.centrality() == pytest.approx(graph.centrality(alpha=0.4))
     assert graph.centrality() != pytest.approx(graph.centrality(alpha=0.9))
+
+
+@pytest.mark.parametrize("alpha", [0.0, 1.0, 1.5, 10.0, -0.4, float("nan"), float("inf")])
+def test_centrality_rejects_out_of_range_alpha(alpha: float):
+    # At alpha >= 1 the influence series grows without bound; by alpha = 10 it
+    # overflows to infinity and max-normalisation turns every result into NaN,
+    # which used to be returned silently. At alpha <= 0 the series is dead and
+    # every system scores 0, indistinguishable from a graph with no edges.
+    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
+    with pytest.raises(InvalidConfigError, match="alpha must be in"):
+        graph.centrality(alpha=alpha)
+
+
+def test_centrality_rejects_a_non_positive_iteration_budget():
+    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
+    with pytest.raises(InvalidConfigError, match="iterations must be at least 1"):
+        graph.centrality(iterations=0)
+
+
+@pytest.mark.parametrize("tolerance", [-1e-12, float("nan"), float("inf")])
+def test_centrality_rejects_an_invalid_tolerance(tolerance: float):
+    graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
+    with pytest.raises(InvalidConfigError, match="tolerance must be"):
+        graph.centrality(tolerance=tolerance)

@@ -216,21 +216,56 @@ class DiagnosticReport:
 
 @dataclass(frozen=True, slots=True)
 class Shock:
-    """An initial structural stress injected into one system.
+    """A structural stress injected into one system.
 
     Attributes:
-        target: The system that receives the initial stress.
-        magnitude: Initial stress in ``(0, 1]`` (a dimensionless load, not a price).
+        target: The system that receives the stress.
+        magnitude: Injected stress in ``(0, 1]`` (a dimensionless load, not a price).
         label: Optional human-readable label for the scenario.
+        at_step: Timestep at which the shock is injected (``0`` = the start). Use a
+            later step to model a second wave hitting a still-stressed market.
     """
 
     target: SystemKind
     magnitude: float = 0.8
     label: str = ""
+    at_step: int = 0
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable representation of the shock."""
-        return {"target": self.target.value, "magnitude": self.magnitude, "label": self.label}
+        return {
+            "target": self.target.value,
+            "magnitude": self.magnitude,
+            "label": self.label,
+            "at_step": self.at_step,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class Intervention:
+    """A containment measure that boosts one system's absorptive capacity.
+
+    From ``at_step`` onward, the target system dampens more of the incoming stress,
+    modelling a structural intervention (e.g. a backstop or circuit breaker).
+
+    Attributes:
+        target: The system whose absorptive capacity is boosted.
+        absorptive_boost: Amount added to the target's absorption, in ``[0, 1]``
+            (the effective capacity is clipped to ``1``).
+        at_step: Timestep from which the intervention is active (``0`` = the start).
+    """
+
+    target: SystemKind
+    absorptive_boost: float = 0.3
+    at_step: int = 0
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the intervention."""
+        return {
+            "target": self.target.value,
+            "absorptive_boost": self.absorptive_boost,
+            "at_step": self.at_step,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,6 +282,8 @@ class ResilienceScore:
         settling_time: Steps until the trajectory settled (``-1`` if it never did).
         absorbed_fraction: Fraction of injected stress dissipated, in ``[0, 1]``.
         amplification_factor: Peak aggregate stress divided by injected stress.
+        tipped_systems: Systems that crossed the cascade threshold during the run
+            (empty unless nonlinear cascade dynamics were enabled).
     """
 
     target: SystemKind
@@ -256,6 +293,7 @@ class ResilienceScore:
     settling_time: int
     absorbed_fraction: float
     amplification_factor: float
+    tipped_systems: tuple[SystemKind, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable representation of the score."""
@@ -267,6 +305,71 @@ class ResilienceScore:
             "settling_time": self.settling_time,
             "absorbed_fraction": self.absorbed_fraction,
             "amplification_factor": self.amplification_factor,
+            "tipped_systems": [s.value for s in self.tipped_systems],
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class MetricStats:
+    """Summary statistics for one metric across an ensemble of runs.
+
+    Attributes:
+        mean: Arithmetic mean across runs.
+        minimum: Smallest observed value.
+        maximum: Largest observed value.
+        p10: 10th percentile.
+        p50: Median (50th percentile).
+        p90: 90th percentile.
+    """
+
+    mean: float
+    minimum: float
+    maximum: float
+    p10: float
+    p50: float
+    p90: float
+
+    def to_dict(self) -> dict[str, float]:
+        """Return a JSON-serialisable representation of the statistics."""
+        return {
+            "mean": self.mean,
+            "minimum": self.minimum,
+            "maximum": self.maximum,
+            "p10": self.p10,
+            "p50": self.p50,
+            "p90": self.p90,
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ResilienceDistribution:
+    """Distribution of resilience metrics over a Monte Carlo ensemble.
+
+    Attributes:
+        target: The shocked system.
+        runs: Number of stochastic replications summarised.
+        value: Statistics of the composite resilience value.
+        amplification_factor: Statistics of the amplification factor.
+        peak_stress: Statistics of the peak systemic stress.
+        absorbed_fraction: Statistics of the absorbed fraction.
+    """
+
+    target: SystemKind
+    runs: int
+    value: MetricStats
+    amplification_factor: MetricStats
+    peak_stress: MetricStats
+    absorbed_fraction: MetricStats
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the distribution."""
+        return {
+            "target": self.target.value,
+            "runs": self.runs,
+            "value": self.value.to_dict(),
+            "amplification_factor": self.amplification_factor.to_dict(),
+            "peak_stress": self.peak_stress.to_dict(),
+            "absorbed_fraction": self.absorbed_fraction.to_dict(),
         }
 
 

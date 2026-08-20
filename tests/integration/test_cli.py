@@ -79,6 +79,29 @@ def test_simulate(capsys: pytest.CaptureFixture[str]):
     assert "Shock Propagation" in capsys.readouterr().out
 
 
+def test_simulate_cascade_and_recovery(capsys: pytest.CaptureFixture[str]):
+    code = main(
+        ["simulate", str(SAMPLE), "--target", "circulatory", "--cascade-threshold", "0.2", "--recovery", "0.05"]
+    )
+    assert code == 0
+    assert "Shock Propagation" in capsys.readouterr().out
+
+
+def test_ensemble_text(capsys: pytest.CaptureFixture[str]):
+    assert main(["ensemble", str(SAMPLE), "--target", "circulatory", "--runs", "10"]) == 0
+    captured = capsys.readouterr()
+    assert "Resilience Ensemble" in captured.out
+    assert "illustrative" in captured.err.lower()
+
+
+def test_ensemble_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["ensemble", str(SAMPLE), "--target", "skeleton", "--runs", "10", "--format", "json"]) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["runs"] == 10
+    assert "illustrative" in captured.err.lower()
+
+
 def test_simulate_json_is_valid(capsys: pytest.CaptureFixture[str]):
     assert main(["simulate", str(SAMPLE), "--target", "circulatory", "--format", "json"]) == 0
     captured = capsys.readouterr()
@@ -309,3 +332,20 @@ def test_malformed_market_never_raises_out_of_main(tmp_path: Path, command: str)
     bad = tmp_path / "junk.json"
     bad.write_text(json.dumps({"boundary": [], "systems": "nope"}), encoding="utf-8")
     assert main([command, str(bad)]) == 2
+
+
+def test_non_utf8_market_file_is_a_handled_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    # `Path.read_text` raises UnicodeDecodeError, which is a ValueError and not
+    # an OSError, so pointing the CLI at a binary file escaped the AMFError
+    # contract in `main` and printed a raw traceback instead of exiting 2.
+    binary = tmp_path / "market.json"
+    binary.write_bytes(b"\xff\xfe{}")
+    assert main(["diagnose", str(binary)]) == 2
+    assert "not valid UTF-8" in capsys.readouterr().err
+
+
+def test_load_market_wraps_a_decoding_failure(tmp_path: Path):
+    binary = tmp_path / "market.json"
+    binary.write_bytes(b"\x80\x81")
+    with pytest.raises(MarketParseError, match="not valid UTF-8"):
+        _load_market(binary)

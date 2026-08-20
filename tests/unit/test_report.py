@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import get_args
 
 from amf.diagnostics import DiagnosticEngine
 from amf.market import Market
@@ -18,13 +19,15 @@ from amf.models import (
     WeaknessFinding,
 )
 from amf.report import (
+    Renderable,
     _to_jsonable,
+    render_distribution,
     render_json,
     render_markdown,
     render_stress_test,
     render_text,
 )
-from amf.simulation import ShockSimulator
+from amf.simulation import ShockSimulator, SimulationConfig
 
 
 def _score(target: SystemKind, value: float) -> ResilienceScore:
@@ -256,3 +259,39 @@ def test_stress_test_renderers_rank_weakest_first(stressed_market: Market):
     ranked = [k.value for k, _ in sorted(profile.items(), key=lambda kv: kv[1].value)]
     text_order = [line.split()[0] for line in render_stress_test(profile).splitlines()[2:] if line.strip()]
     assert text_order == ranked
+
+
+def test_renderable_alias_covers_every_renderer_input(healthy_market: Market):
+    # The `Renderable` alias is what types the CLI's `_format`. If a new result
+    # type joins the renderers' dispatch without being added to the alias, the
+    # CLI stops type-checking against reality -- so pin the alias to the set of
+    # things all three renderers actually accept.
+    engine_report = DiagnosticEngine().diagnose(healthy_market)
+    simulator = ShockSimulator(healthy_market)
+    trace = simulator.propagate(Shock(target=SystemKind.CIRCULATORY, magnitude=0.6))
+    profile = simulator.stress_test(magnitude=0.6)
+
+    members = get_args(Renderable)
+    assert set(members) == {DiagnosticReport, SimulationTrace, dict[SystemKind, ResilienceScore]}
+
+    for result in (engine_report, trace, profile):
+        assert render_text(result)
+        assert render_markdown(result)
+        assert json.loads(render_json(result))
+
+
+def test_render_cascade_trace_shows_tipped_systems(stressed_market: Market):
+    config = SimulationConfig(cascade_threshold=0.2, cascade_gain=1.0)
+    trace = ShockSimulator(stressed_market, config).propagate(Shock(SystemKind.CIRCULATORY, 0.9))
+    assert "Tipped (cascade)" in render_text(trace)
+    assert "Tipped (cascade)" in render_markdown(trace)
+
+
+def test_render_distribution_text_and_json(stressed_market: Market):
+    dist = ShockSimulator(stressed_market).ensemble(Shock(SystemKind.CIRCULATORY, 0.8), runs=20, base_seed=1)
+    text = render_distribution(dist)
+    assert "Resilience Ensemble" in text
+    assert "runs: 20" in text
+    payload = json.loads(render_json(dist))
+    assert payload["runs"] == 20
+    assert set(payload["value"]) == {"mean", "minimum", "maximum", "p10", "p50", "p90"}

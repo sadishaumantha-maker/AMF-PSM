@@ -71,11 +71,13 @@ python -m pip install -e ".[dev]"
 amf describe                                            # the 7 systems & method
 amf diagnose examples/sample_market.json                # structural weaknesses
 amf simulate examples/sample_market.json --target circulatory --magnitude 0.8
+amf simulate examples/sample_market.json --target circulatory --cascade-threshold 0.2
 amf stress-test examples/sample_market.json             # shock each system in turn
+amf ensemble examples/sample_market.json --target circulatory --runs 200
 ```
 
-`diagnose`, `simulate`, and `stress-test` all accept `--format json` or
-`--format md`.
+`diagnose`, `simulate`, and `stress-test` accept `--format json` or `--format md`;
+`ensemble` accepts `--format json`.
 
 Render the dependency graph or a shock timeline (no extra dependencies needed —
 the SVG output is drawn with the standard library alone):
@@ -86,6 +88,27 @@ amf viz examples/sample_market.json --format dot | dot -Tpng ...  # via Graphviz
 amf viz examples/sample_market.json --format mermaid              # for Markdown/Mermaid renderers
 amf viz examples/sample_market.json --timeline circulatory -o timeline.svg
 ```
+
+### Extended simulation
+
+The shock-propagation simulation is a damped linear diffusion by default. Damping
+and absorptive capacity pull the trajectory down, but they do not make the step map
+a contraction for every market, so settling is reported against the `max_steps`
+budget rather than guaranteed. Four **opt-in** extensions add richer, still-bounded
+and reproducible behaviour:
+
+- **Threshold / cascade dynamics** (`SimulationConfig(cascade_threshold=…)`): systems
+  that cross the threshold become impaired — they amplify onward stress and absorb
+  less — producing tipping and self-reinforcing cascades, reported as `tipped_systems`.
+- **Monte Carlo ensemble** (`ShockSimulator.ensemble`): summarise resilience across
+  many seeded, jittered replications as a `ResilienceDistribution`.
+- **Time-scheduled / multi-wave shocks** (`Shock(at_step=…)`): inject a second wave at
+  a later timestep.
+- **Recovery / intervention** (`SimulationConfig(recovery_rate=…)`, `Intervention`):
+  active healing and time-gated containment that boosts a system's absorptive capacity.
+
+See `examples/cascade_scenario.py`. The nonlinear cascade regime can settle at a
+persistent non-zero state, and pushes the per-step gain higher still.
 
 ### Use it from Python
 

@@ -51,7 +51,7 @@ src/amf/            the Python package (see table below); ships py.typed
 tests/unit/         one file per module
 tests/integration/  test_cli.py, test_end_to_end.py
 tests/conftest.py   shared fixtures: boundary, healthy_market, stressed_market
-examples/           sample_market.json + two runnable scripts
+examples/           sample_market.json + three runnable scripts
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
 .pre-commit-config.yaml   ruff, ruff-format, mypy (src only), yamllint,
@@ -65,14 +65,14 @@ SHA256SUMS          the four protected artifacts and their digests
 
 | Module | Responsibility |
 |--------|----------------|
-| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `MarketParseError`, `InvalidConfigError`). Has no internal dependencies. |
-| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `SimulationTrace`, `ResilienceScore`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
+| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` and the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`). Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`. |
 | `graph.py` | `DependencyGraph`: feedback-loop (simple-cycle) enumeration, articulation points, Katz-style centrality, and the stress-transmission `CouplingMatrix`. Dependency-free. |
-| `market.py` | `Market` aggregate root; `assemble`, `require_complete` (which also re-validates each system, catching post-construction mutation at the engine boundary), `system`, and the JSON `from_dict`/`to_dict` schema. |
+| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
-| `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn. |
-| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
+| `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn; `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
+| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept. |
 | `viz.py` | Pure visual renderers: dependency graph as DOT / Mermaid / SVG, stress timeline as SVG. Dependency-free. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
@@ -123,18 +123,23 @@ kinds never changes a score.
 ## Using the CLI
 
 The `amf` console script prints the `_DISCLAIMER` to stderr (so `--format json`
-stdout stays machine-parseable) after every analytical command, and offers five
+stdout stays machine-parseable) after every analytical command, and offers six
 subcommands:
 
 ```sh
 amf diagnose    examples/sample_market.json [--format text|json|md]
-amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.8] [--format ...]
+amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.8] \
+                [--cascade-threshold 0.2] [--cascade-gain 0.5] [--recovery 0.0] \
+                [--seed N] [--jitter 0.0] [--format ...]
 amf stress-test examples/sample_market.json [--magnitude 0.8] [--format ...]  # shocks each system in turn
+amf ensemble    examples/sample_market.json --target circulatory [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
 amf describe                                                    # explains the 7 systems & method
 amf version
 ```
 
-`--target` accepts any `SystemKind` value; `--magnitude` is in `(0, 1]`.
+Multi-wave (`Shock.at_step`) and `Intervention`s are exposed through the Python API
+and `examples/cascade_scenario.py`, not the CLI. `--target` accepts any
+`SystemKind` value; `--magnitude` is in `(0, 1]`.
 `main(argv)` returns an exit code rather than calling `sys.exit`, so it is unit
 tested in-process: `0` on success, `2` on a handled `AMFError`, `1` on bad usage
 (no subcommand). Runnable scripts live in `examples/` (`equity_market.py`
@@ -176,10 +181,45 @@ builder and runs a shock + stress test).
   `1.0` clip. `converged` therefore reports whether the trajectory settled within
   `max_steps`, not whether it is stable — a slowly-settling market can exhaust the
   budget, which yields a settling time of `-1` and the full settling penalty.
+- **Simulation extensions** (all opt-in; defaults reproduce the linear model above
+  exactly, so existing tests stay green): `cascade_threshold` enables nonlinear
+  cascade dynamics — a system above the threshold amplifies outgoing stress by
+  `1 + cascade_gain` and has its absorption cut by `cascade_absorption_drop`,
+  reported as `ResilienceScore.tipped_systems` (convergence is *not* guaranteed
+  here — the trajectory may settle at a persistent non-zero state); `recovery_rate`
+  subtracts an active healing term each step; `Shock.at_step` injects a shock at a
+  later timestep (multi-wave); `Intervention` boosts a system's absorptive capacity
+  from its `at_step`; and `ShockSimulator.ensemble(...)` runs seeded, jittered
+  replications into a `ResilienceDistribution` (percentiles computed in-house, no
+  numpy). Amplification/absorption use total injected load as a timing-independent
+  denominator.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
   `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. The mapping is
   total and saturating: input below `0` reports low, above `1` reports critical, and
   `NaN` falls through to critical.
+
+## Determinism and parameter validation
+
+Two cross-cutting invariants that any change must preserve:
+
+- **Equal markets produce equal output.** Nothing user-visible may depend on the
+  order a market was assembled in. `DependencyGraph` canonicalises its own
+  orderings (`dependencies`, `dependencies_of`, `dependents_of`); `Market.assemble`
+  stores the seven systems in `SystemKind` declaration order and `to_dict` emits
+  them in that order; `DiagnosticEngine.diagnose` breaks ties in both the findings
+  ranking and the SPOF ranking by declaration order. A dict-insertion-order tie-break
+  is a bug, not a detail — `tests/unit/test_properties.py` asserts a market and any
+  permutation of it diagnose identically.
+- **Tuning knobs are validated on construction, never normalised into nonsense.**
+  `DiagnosticConfig` requires finite, non-negative weights (an all-zero triple is
+  still allowed and yields zero scores); `SimulationConfig` requires
+  `max_steps >= 1`, `damping` in `(0, 1]`, `retention` in `[0, 1]`, finite
+  non-negative `transmission` and `jitter`, and `convergence_eps > 0`;
+  `DependencyGraph.centrality` requires `alpha` in `(0, 1)`, `iterations >= 1`, and
+  a finite non-negative `tolerance`. All raise `InvalidConfigError`. These are not
+  cosmetic: a negative blend weight used to yield findings scoring `2.0`, and
+  `alpha >= 10` overflowed the influence series to infinity and returned `NaN` for
+  every system.
 
 ## Developing
 
