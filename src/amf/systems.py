@@ -13,9 +13,14 @@ market anatomy quickly.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from types import MappingProxyType
+from typing import TYPE_CHECKING
 
 from amf.errors import InvalidSystemError
 from amf.models import SystemKind
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Mapping
 
 # Default load-bearing importance (criticality) per system, reflecting how much
 # the rest of the market structurally depends on it. Infrastructure and capital
@@ -48,9 +53,14 @@ def _check_unit(name: str, value: float) -> None:
         raise InvalidSystemError(msg)
 
 
-@dataclass(slots=True)
+@dataclass(frozen=True, slots=True)
 class AnatomicalSystem:
     """One of the seven anatomical systems of a market.
+
+    Instances are immutable: the metrics are validated once on construction, so
+    freezing keeps the documented ``[0, 1]`` guarantees true for the lifetime of
+    the object. (Freezing prevents rebinding a field, not in-place mutation of
+    the ``components`` list.)
 
     Attributes:
         kind: Which anatomical system this is.
@@ -76,6 +86,10 @@ class AnatomicalSystem:
 
     def validate(self) -> None:
         """Validate that all metrics are in range and the name is non-empty.
+
+        Called automatically on construction. Because instances are immutable,
+        re-validating an existing system can never fail; the method is kept for
+        callers that build systems by other means.
 
         Raises:
             InvalidSystemError: If any metric is out of ``[0, 1]`` or the name is
@@ -109,15 +123,29 @@ class AnatomicalSystem:
 
 
 def _make(kind: SystemKind, name: str | None, components: list[str] | None, **metrics: float) -> AnatomicalSystem:
-    """Build a system of ``kind`` with AMF-aligned defaults."""
+    """Build a system of ``kind`` with AMF-aligned defaults.
+
+    Raises:
+        InvalidSystemError: If any metric name is not one of ``integrity``,
+            ``redundancy``, ``criticality``, or ``load``.
+    """
+    criticality = metrics.pop("criticality", _DEFAULT_CRITICALITY[kind])
+    integrity = metrics.pop("integrity", 1.0)
+    redundancy = metrics.pop("redundancy", 0.5)
+    load = metrics.pop("load", 0.0)
+    if metrics:
+        # Without this, a misspelled metric (or a trading term such as `price`)
+        # would be silently discarded and the default used instead.
+        msg = f"unknown system metric(s): {', '.join(sorted(metrics))}"
+        raise InvalidSystemError(msg)
     return AnatomicalSystem(
         kind=kind,
         name=name if name is not None else _DEFAULT_NAME[kind],
         components=list(components) if components is not None else [],
-        criticality=metrics.pop("criticality", _DEFAULT_CRITICALITY[kind]),
-        integrity=metrics.pop("integrity", 1.0),
-        redundancy=metrics.pop("redundancy", 0.5),
-        load=metrics.pop("load", 0.0),
+        criticality=criticality,
+        integrity=integrity,
+        redundancy=redundancy,
+        load=load,
     )
 
 
@@ -154,3 +182,19 @@ def immune(name: str | None = None, components: list[str] | None = None, **metri
 def metabolism(name: str | None = None, components: list[str] | None = None, **metrics: float) -> AnatomicalSystem:
     """Build the metabolism (value creation & destruction) system."""
     return _make(SystemKind.METABOLISM, name, components, **metrics)
+
+
+# The factories keyed by kind, so callers that build systems from data (such as
+# ``Market.from_dict``) get exactly the same defaults as callers using the
+# factories directly.
+SYSTEM_FACTORIES: Mapping[SystemKind, Callable[..., AnatomicalSystem]] = MappingProxyType(
+    {
+        SystemKind.SKELETON: skeleton,
+        SystemKind.CIRCULATORY: circulatory,
+        SystemKind.NERVOUS: nervous,
+        SystemKind.MUSCULATURE: musculature,
+        SystemKind.ORGANS: organs,
+        SystemKind.IMMUNE: immune,
+        SystemKind.METABOLISM: metabolism,
+    }
+)

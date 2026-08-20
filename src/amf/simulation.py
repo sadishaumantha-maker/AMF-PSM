@@ -5,23 +5,30 @@ system cascades through the dependency graph and whether the market's anatomy
 absorbs or amplifies it. The single state variable is **stress** -- a
 dimensionless load in ``[0, 1]`` -- not a price, return, or order.
 
-By default the dynamics are a damped, capacity-gated **linear diffusion** that is
-a contraction and therefore always converges. For a stress vector ``x_t`` over the
-seven systems, coupling matrix ``W`` (entry ``W[i][j]`` is the stress transmitted
-from ``i`` to ``j``) and per-system absorptive capacity ``a_j``::
+By default the dynamics are a damped, capacity-gated **linear diffusion**. For a
+stress vector ``x_t`` over the seven systems, coupling matrix ``W`` (entry
+``W[i][j]`` is the stress transmitted from ``i`` to ``j``) and per-system
+absorptive capacity ``a_j``::
 
     incoming_j  = sum_i  x_t[i] * W[i][j] * transmission
     x_{t+1}[j]  = clip( damping * (x_t[j] * retention + incoming_j * (1 - a_j)), 0, 1 )
+
+Damping and absorptive capacity pull the trajectory down, but they do not make
+the step map a contraction for every market: where a system has enough incoming
+weight and little capacity to absorb it, the per-step gain exceeds one and stress
+grows until it saturates at the ``1.0`` clip. Settling is therefore reported
+against the step budget rather than promised in advance -- see
+:attr:`SimulationConfig.max_steps` and :attr:`~amf.models.SimulationTrace.converged`.
 
 Four **opt-in** extensions enrich this (all off by default, so the linear model
 above is reproduced exactly unless configured):
 
 * **Threshold / cascade dynamics** (``cascade_threshold``): a system whose stress
   exceeds the threshold becomes *impaired* -- it transmits amplified stress and
-  absorbs less -- producing tipping and self-reinforcing cascades. In this
-  nonlinear regime the trajectory may settle at a persistent non-zero fixed point;
-  the ``max_steps`` budget and ``[0, 1]`` clipping keep it bounded. Convergence is
-  only guaranteed in the default linear regime.
+  absorbs less -- producing tipping and self-reinforcing cascades. This nonlinear
+  regime can settle at a persistent non-zero fixed point and pushes the per-step
+  gain higher still; the ``max_steps`` budget and ``[0, 1]`` clipping keep it
+  bounded.
 * **Recovery** (``recovery_rate``): an active per-step healing term.
 * **Time-scheduled shocks** (:attr:`~amf.models.Shock.at_step`): inject a shock at a
   later timestep to model a second wave.
@@ -64,13 +71,19 @@ class SimulationConfig:
     """Parameters controlling the shock-propagation dynamics.
 
     Attributes:
-        max_steps: Maximum number of timesteps to simulate.
+        max_steps: Maximum number of timesteps to simulate. A trajectory that is
+            still decaying when the budget runs out is reported as not converged,
+            with a settling time of ``-1``; a market can be perfectly stable and
+            still exhaust the budget if it settles slowly.
         damping: Global per-step decay in ``(0, 1]``; lower means faster dissipation.
         retention: Fraction of a system's own stress carried to the next step.
         transmission: Global scaler on stress transmitted along couplings.
         convergence_eps: L-infinity change below which the trajectory is settled.
         seed: If set, enables small deterministic Gaussian jitter on transmission.
-        jitter: Standard deviation of the optional transmission jitter.
+        jitter: Standard deviation of the optional transmission jitter. Has no
+            effect unless ``seed`` is also set: a diagnostic tool stays
+            reproducible by default, so jitter is only applied when a seed makes
+            it deterministic.
         cascade_threshold: If set (in ``(0, 1)``), enables nonlinear cascade
             dynamics: a system whose stress exceeds this value is impaired.
         cascade_gain: Extra fractional transmission from an impaired system.

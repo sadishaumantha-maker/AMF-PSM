@@ -73,13 +73,15 @@ SHA256SUMS          the four protected artifacts and their digests
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn; `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
 | `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
+| `viz.py` | Pure visual renderers: dependency graph as DOT / Mermaid / SVG, stress timeline as SVG. Dependency-free. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
 The public API is re-exported from `amf/__init__.py` (`__all__`); import types and
 engines from `amf`, not submodules. The renderers are the exception — they live
-in `amf.report` and are imported from there (as `cli.py` and `examples/` do).
-Dependencies flow one way: `errors`/`models` ← `systems`/`graph` ← `market` ←
-`diagnostics`/`simulation` ← `report`/`cli`. Keep it acyclic.
+in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
+`examples/` do). Dependencies flow one way: `errors`/`models` ←
+`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `report`/`viz`/`cli`.
+Keep it acyclic.
 
 ## Market JSON schema (CLI input)
 
@@ -101,6 +103,22 @@ All seven systems must be present. A dependency means `source` relies on
 `target`; `kind` is one of `structural | informational | capital | regulatory`;
 `weight` is in `(0, 1]`. `to_dict`/`from_dict` round-trips losslessly (including
 each dependency's `kind`) — keep it that way. See `examples/sample_market.json`.
+
+Within a system entry every field is optional, and an omitted one takes the same
+default as the corresponding factory in `systems.py` — parsing goes through
+`SYSTEM_FACTORIES`, so a market built from JSON and one built from the factories
+are identical. Defaults are `integrity` 1.0, `redundancy` 0.5, `load` 0.0,
+`components` empty, and a per-system `name` and `criticality` (0.60–0.90; e.g.
+`skeleton` is "Market infrastructure" at 0.90). Because `criticality` weights the
+overall diagnostic index, omitting it is a meaningful choice rather than a
+neutral one. Any unrecognised field in a system entry is a `MarketParseError`,
+so a typo such as `integritty` fails loudly instead of being ignored.
+
+A `(source, target)` pair may appear more than once with different `kind`s. Each
+is kept as its own edge and survives a `to_dict`/`from_dict` round trip, while
+every structural query (`edge_weight`, feedback loops, centrality, articulation
+points) aggregates across kinds, capped at 1.0 — so splitting one coupling across
+kinds never changes a score.
 
 ## Using the CLI
 
@@ -147,13 +165,18 @@ builder and runs a shock + stress test).
 - **Simulation**: a stress vector `x_t ∈ [0,1]^7` evolves by
   `x_{t+1}[j] = clip(damping·(x_t[j]·retention + Σ_i x_t[i]·W[i][j]·transmission·(1−a_j)), 0, 1)`,
   where `W` is the coupling matrix (stress flows target → source, the reverse of
-  the dependency edge) and `a_j` is absorptive capacity. Damping makes this a
-  contraction, so it converges; metrics are peak stress, settling time, absorbed
-  fraction, and amplification factor. `SimulationConfig` defaults:
-  `max_steps=50, damping=0.85, retention=0.5, transmission=1.0,
+  the dependency edge) and `a_j` is absorptive capacity. Metrics are peak stress,
+  settling time, absorbed fraction, and amplification factor. `SimulationConfig`
+  defaults: `max_steps=50, damping=0.85, retention=0.5, transmission=1.0,
   convergence_eps=1e-4, seed=None, jitter=0.0` — with `jitter=0.0` the simulation
-  is fully deterministic, which the tests rely on; only set `jitter` together with
-  `seed`.
+  is fully deterministic, which the tests rely on; `jitter` has no effect unless
+  `seed` is also set.
+  Damping and absorptive capacity damp the trajectory, but the step map is *not* a
+  contraction for every market: with enough incoming weight and little absorptive
+  capacity the per-step gain exceeds one and stress grows until it saturates at the
+  `1.0` clip. `converged` therefore reports whether the trajectory settled within
+  `max_steps`, not whether it is stable — a slowly-settling market can exhaust the
+  budget, which yields a settling time of `-1` and the full settling penalty.
 - **Simulation extensions** (all opt-in; defaults reproduce the linear model above
   exactly, so existing tests stay green): `cascade_threshold` enables nonlinear
   cascade dynamics — a system above the threshold amplifies outgoing stress by

@@ -79,10 +79,22 @@ amf ensemble examples/sample_market.json --target circulatory --runs 200
 `diagnose`, `simulate`, and `stress-test` accept `--format json` or `--format md`;
 `ensemble` accepts `--format json`.
 
+Render the dependency graph or a shock timeline (no extra dependencies needed —
+the SVG output is drawn with the standard library alone):
+
+```sh
+amf viz examples/sample_market.json -o market.svg                 # severity-coloured graph (SVG)
+amf viz examples/sample_market.json --format dot | dot -Tpng ...  # via Graphviz
+amf viz examples/sample_market.json --format mermaid              # for Markdown/Mermaid renderers
+amf viz examples/sample_market.json --timeline circulatory -o timeline.svg
+```
+
 ### Extended simulation
 
-The shock-propagation simulation is a damped linear diffusion by default (it always
-converges and never amplifies). Four **opt-in** extensions add richer, still-bounded
+The shock-propagation simulation is a damped linear diffusion by default. Damping
+and absorptive capacity pull the trajectory down, but they do not make the step map
+a contraction for every market, so settling is reported against the `max_steps`
+budget rather than guaranteed. Four **opt-in** extensions add richer, still-bounded
 and reproducible behaviour:
 
 - **Threshold / cascade dynamics** (`SimulationConfig(cascade_threshold=…)`): systems
@@ -95,9 +107,8 @@ and reproducible behaviour:
 - **Recovery / intervention** (`SimulationConfig(recovery_rate=…)`, `Intervention`):
   active healing and time-gated containment that boosts a system's absorptive capacity.
 
-See `examples/cascade_scenario.py`. In the nonlinear cascade regime the trajectory may
-settle at a persistent non-zero state; convergence is only guaranteed in the default
-linear regime.
+See `examples/cascade_scenario.py`. The nonlinear cascade regime can settle at a
+persistent non-zero state, and pushes the per-step gain higher still.
 
 ### Use it from Python
 

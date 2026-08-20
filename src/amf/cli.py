@@ -1,7 +1,7 @@
 """Command-line interface for the :mod:`amf` toolkit.
 
-Exposes ``diagnose``, ``simulate``, ``stress-test``, ``describe``, and
-``version`` subcommands. ``main`` returns a process exit code so it can be unit
+Exposes ``diagnose``, ``simulate``, ``stress-test``, ``viz``, ``describe``,
+and ``version`` subcommands. ``main`` returns a process exit code so it can be unit
 tested without spawning a subprocess.
 
 The ``describe`` text is generated from the paraphrased constants below rather
@@ -19,14 +19,17 @@ from typing import TYPE_CHECKING
 
 from amf import __version__
 from amf.diagnostics import DiagnosticEngine
-from amf.errors import AMFError
+from amf.errors import AMFError, MarketParseError
 from amf.market import Market
 from amf.models import Shock, SystemKind
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Callable, Sequence
+
+    from amf.models import DiagnosticReport
 from amf.report import render_distribution, render_json, render_markdown, render_text
 from amf.simulation import ShockSimulator, SimulationConfig
+from amf.viz import render_dot, render_graph_svg, render_mermaid, render_timeline_svg
 
 # Paraphrased, general descriptions of the seven systems and the analytical
 # method. These are summaries written for this tool; the authoritative framework
@@ -128,6 +131,25 @@ def _build_parser() -> argparse.ArgumentParser:
     ens.add_argument("--format", choices=["text", "json"], default="text", help="Output format.")
     ens.set_defaults(handler=_cmd_ensemble)
 
+    viz = sub.add_parser("viz", help="Render the dependency graph or a shock timeline.")
+    viz.add_argument("market", type=Path, help="Path to a market JSON file.")
+    viz.add_argument(
+        "--format",
+        choices=["svg", "dot", "mermaid"],
+        default="svg",
+        help="Dependency-graph output format.",
+    )
+    viz.add_argument(
+        "--timeline",
+        choices=[k.value for k in SystemKind],
+        default=None,
+        metavar="SYSTEM",
+        help="Render a stress-timeline SVG for a shock to SYSTEM instead of the dependency graph.",
+    )
+    viz.add_argument("--magnitude", type=float, default=0.8, help="Shock magnitude for --timeline in (0, 1].")
+    viz.add_argument("--output", "-o", type=Path, default=None, help="Write to a file instead of stdout.")
+    viz.set_defaults(handler=_cmd_viz)
+
     desc = sub.add_parser("describe", help="Describe the seven systems and the method.")
     desc.set_defaults(handler=_cmd_describe)
 
@@ -152,9 +174,9 @@ def _load_market(path: Path) -> Market:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
-        raise AMFError(f"cannot read {path}: {exc}") from exc
+        raise MarketParseError(f"cannot read {path}: {exc}") from exc
     except json.JSONDecodeError as exc:
-        raise AMFError(f"invalid JSON in {path}: {exc}") from exc
+        raise MarketParseError(f"invalid JSON in {path}: {exc}") from exc
     return Market.from_dict(data)
 
 
@@ -199,6 +221,33 @@ def _cmd_stress_test(args: argparse.Namespace) -> int:
     market = _load_market(args.market)
     profile = ShockSimulator(market).stress_test(magnitude=args.magnitude)
     print(_format(profile, args.format))
+    _print_disclaimer()
+    return 0
+
+
+def _cmd_viz(args: argparse.Namespace) -> int:
+    """Handle the ``viz`` subcommand."""
+    market = _load_market(args.market)
+    if args.timeline is not None:
+        shock = Shock(target=SystemKind(args.timeline), magnitude=args.magnitude)
+        trace = ShockSimulator(market).propagate(shock)
+        rendered = render_timeline_svg(trace)
+    else:
+        report = DiagnosticEngine().diagnose(market)
+        renderers: dict[str, Callable[[Market, DiagnosticReport | None], str]] = {
+            "svg": render_graph_svg,
+            "dot": render_dot,
+            "mermaid": render_mermaid,
+        }
+        rendered = renderers[args.format](market, report)
+    if args.output is None:
+        print(rendered)
+    else:
+        try:
+            args.output.write_text(rendered + "\n", encoding="utf-8")
+        except OSError as exc:
+            raise AMFError(f"cannot write {args.output}: {exc}") from exc
+        print(f"wrote {args.output}", file=sys.stderr)
     _print_disclaimer()
     return 0
 

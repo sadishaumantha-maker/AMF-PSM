@@ -44,6 +44,7 @@ from amf.models import (
 )
 from amf.simulation import ShockSimulator, SimulationConfig
 from amf.systems import (
+    SYSTEM_FACTORIES,
     AnatomicalSystem,
     circulatory,
     immune,
@@ -57,6 +58,7 @@ from amf.systems import (
 __version__ = "0.1.0"
 
 __all__ = [
+    "SYSTEM_FACTORIES",
     "AMFError",
     "AnatomicalSystem",
     "CouplingMatrix",
