@@ -79,6 +79,29 @@ def test_simulate(capsys: pytest.CaptureFixture[str]):
     assert "Shock Propagation" in capsys.readouterr().out
 
 
+def test_simulate_cascade_and_recovery(capsys: pytest.CaptureFixture[str]):
+    code = main(
+        ["simulate", str(SAMPLE), "--target", "circulatory", "--cascade-threshold", "0.2", "--recovery", "0.05"]
+    )
+    assert code == 0
+    assert "Shock Propagation" in capsys.readouterr().out
+
+
+def test_ensemble_text(capsys: pytest.CaptureFixture[str]):
+    assert main(["ensemble", str(SAMPLE), "--target", "circulatory", "--runs", "10"]) == 0
+    captured = capsys.readouterr()
+    assert "Resilience Ensemble" in captured.out
+    assert "illustrative" in captured.err.lower()
+
+
+def test_ensemble_json_is_valid(capsys: pytest.CaptureFixture[str]):
+    assert main(["ensemble", str(SAMPLE), "--target", "skeleton", "--runs", "10", "--format", "json"]) == 0
+    captured = capsys.readouterr()
+    payload = json.loads(captured.out)
+    assert payload["runs"] == 10
+    assert "illustrative" in captured.err.lower()
+
+
 def test_simulate_json_is_valid(capsys: pytest.CaptureFixture[str]):
     assert main(["simulate", str(SAMPLE), "--target", "circulatory", "--format", "json"]) == 0
     captured = capsys.readouterr()

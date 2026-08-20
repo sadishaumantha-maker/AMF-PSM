@@ -6,6 +6,13 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- Extended the shock-propagation simulation with four opt-in, backward-compatible
+  capabilities (the default dynamics are unchanged): nonlinear **threshold /
+  cascade** dynamics with a `tipped_systems` signal; a seeded **Monte Carlo
+  ensemble** (`ShockSimulator.ensemble` → `ResilienceDistribution`);
+  **time-scheduled / multi-wave shocks** (`Shock.at_step`); and **recovery /
+  intervention** modeling (`SimulationConfig.recovery_rate`, `Intervention`). New
+  CLI: `amf ensemble` plus `simulate --cascade-threshold/--recovery/--seed/...`.
 - `amf viz` subcommand and `amf.viz` module: dependency-free renderers that draw
   the dependency graph as Graphviz DOT, Mermaid, or a self-contained SVG
   (severity-coloured when diagnostics are available) and a shock-propagation
