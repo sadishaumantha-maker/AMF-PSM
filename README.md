@@ -127,6 +127,11 @@ score = ShockSimulator(market).resilience(Shock(SystemKind.CIRCULATORY, 0.8))
 See `examples/equity_market.py` and `examples/liquidity_shock.py` for complete
 runnable scripts, and `CLAUDE.md` for the design and contributor guide.
 
+### Roadmap
+
+Planned Phase 2 work and the triage of the open issue backlog into
+charter-compliant, structural tickets live in [`docs/roadmap.md`](docs/roadmap.md).
+
 ### Develop
 
 ```sh

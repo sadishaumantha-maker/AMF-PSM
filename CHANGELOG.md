@@ -6,6 +6,11 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `docs/roadmap.md` — a Phase 2 roadmap that triages the open issue backlog into
+  charter-compliant, structural work: it proposes an expansion for "PSM", restates the
+  non-trading / illustrative / frozen-anatomy guardrails, gives translation rules that
+  map real-market asks onto structural proxies, and sequences the planned concepts.
+  Documentation only — no package behaviour changes.
 - Extended the shock-propagation simulation with four opt-in, backward-compatible
   capabilities (the default dynamics are unchanged): nonlinear **threshold /
   cascade** dynamics with a `tipped_systems` signal; a seeded **Monte Carlo
