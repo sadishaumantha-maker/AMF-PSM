@@ -11,6 +11,11 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Resolved on `main` while this charter was in review.** `9f3a5f8` (*fix(tests): contrast stable_sum against naive summation, not the built-in sum*) replaces the expired foil with a local left-to-right `_naive_sum`, and `main` is green on 3.11, 3.12 and 3.13 again. The specific defect in section 1 is closed; do not re-fix it.
+>
+> What survives, and is the reason this charter is not simply deleted: the landed fix chose one of the three options section 4 asks you to choose between - replace the foil - without writing down why that beats version-gating or dropping the control, and without an inventory of the repository's other assertions about interpreter behaviour. Reduce this charter to that inventory and that rationale, and hand the recurrence question to P77.
+
 ---
 
 ## 1. The dispute this project settles

@@ -11,6 +11,11 @@
 
 > **Illustrative, not validated.** AMF-PSM models market *structure and resilience* only. Nothing in this project may introduce orders, prices, P&L, trading signals or backtests, and no output of this work is financial advice, a diagnosis, or a forecast of any real market. See `CLAUDE.md` -> *Hard rules*.
 
+> [!IMPORTANT]
+> **Status against `main`.** **Partly resolved on `main` while this charter was in review.** `docs/discussions/README.md` now renders the eleven module names as plain filenames rather than links, with a status callout saying the files are not committed yet, so `Validate metadata` passes without pretending the modules exist. That is exactly the immediate change section 3 asked for, and task 3 is done.
+>
+> The rest of the charter stands unchanged: the per-module write-or-retire ruling, the link-is-a-claim rule in the conventions, and the module-to-charter mapping. The mapping now has a concrete answer - Track T (P113-P123) writes all eleven, one charter per module - so record it in the index and turn each filename back into a link in the same pull request that adds its file.
+
 ---
 
 ## 1. The dispute this project settles
