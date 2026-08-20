@@ -6,6 +6,12 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- Private-distribution guard: the `Private :: Do Not Upload` classifier in
+  `pyproject.toml` makes PyPI reject any upload of this proprietary package, and
+  `tests/unit/test_packaging.py` fails if that classifier is dropped from either
+  the source config or the built wheel, if a public-index URL is added, or if the
+  package and `pyproject.toml` versions drift apart. `RELEASING.md` documents the
+  private release procedure.
 - `InvalidConfigError`, a new `AMFError` subclass raised when an engine or
   algorithm parameter is outside its documented range — `DiagnosticConfig`,
   `SimulationConfig`, and `DependencyGraph.centrality()` all validate on

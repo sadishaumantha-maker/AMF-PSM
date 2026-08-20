@@ -174,6 +174,12 @@ This work is proprietary. No part of this framework or its associated documents 
 
 See [`LICENSE.txt`](LICENSE.txt) for the full notice.
 
+**The `amf` package is distributed privately only.** It is never published to
+PyPI or any other public index: the packaging metadata carries the
+`Private :: Do Not Upload` classifier, which makes PyPI reject the upload, and
+a test enforces that the guard stays in place. See [`RELEASING.md`](RELEASING.md)
+for the release and distribution procedure.
+
 ---
 
 ## Contact and Permissions

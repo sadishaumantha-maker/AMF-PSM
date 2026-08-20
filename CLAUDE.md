@@ -39,6 +39,14 @@ Two things live side by side:
   financial advice and not a diagnosis or forecast of any real market. Keep the
   disclaimers (package docstring, README, and the CLI's `_DISCLAIMER`) in place,
   and do not add language that claims predictive power or validated performance.
+- **Private distribution only.** `amf` is proprietary and all-rights-reserved, so
+  it must never be published to PyPI or any other public index — doing so would
+  invite the use its licence forbids. `pyproject.toml` carries the
+  `Private :: Do Not Upload` classifier (PyPI rejects such uploads) and
+  `tests/unit/test_packaging.py` fails if it is removed from the config or the
+  built wheel. Do not add a publish workflow. Note the repository is public, so a
+  GitHub Release asset or Actions artifact is *not* a private channel. See
+  `RELEASING.md`.
 - **Never read the framework document to generate output.** The CLI's `describe`
   text comes from paraphrased constants in `cli.py` (`_SYSTEM_SUMMARY`,
   `_METHOD_STEPS`), deliberately so the software never touches the protected
@@ -59,6 +67,7 @@ examples/           sample_market.json + three runnable scripts
 .yamllint.yml       yamllint config (line length 140, `on:` truthy allowed)
 .gitattributes      binary / EOL rules that keep the IP checksums stable
 SHA256SUMS          the four protected artifacts and their digests
+RELEASING.md        private-only release procedure and what enforces it
 ```
 
 ## Package architecture (`src/amf/`)
