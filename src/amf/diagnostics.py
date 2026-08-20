@@ -30,8 +30,12 @@ if TYPE_CHECKING:
 _LOW_REDUNDANCY = 0.5
 
 # Declaration order of the seven systems, used to break ranking ties so that two
-# markets with equal content rank identically however they were assembled.
-_INDEX: dict[SystemKind, int] = {kind: i for i, kind in enumerate(SystemKind)}
+# markets with equal content rank identically however they were assembled. The
+# annotated tuple comes first because mypy types the members of a bare
+# ``enumerate(SystemKind)`` as ``str`` (the StrEnum's own base) rather than as
+# ``SystemKind``; graph.py and simulation.py hold the same constant the same way.
+_ORDER: tuple[SystemKind, ...] = tuple(SystemKind)
+_INDEX: dict[SystemKind, int] = {kind: i for i, kind in enumerate(_ORDER)}
 
 
 @dataclass(frozen=True, slots=True)
