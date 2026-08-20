@@ -79,14 +79,14 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 
 | Module | Responsibility |
 |--------|----------------|
-| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `MarketParseError`). Has no internal dependencies. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
 | `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Dependency-free. |
-| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
-| `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (`fragility`, `concentration`, `feedback_amplification`, `single_points_of_failure`) → `DiagnosticReport`. |
-| `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics; `propagate()` → `SimulationTrace`, `resilience()` → `ResilienceScore`, `stress_test()` shocks every system in turn, `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
-| `report.py` | Pure textual renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`. No I/O. |
+| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
+| `diagnostics.py` | `DiagnosticEngine` (+ tunable, validated `DiagnosticConfig`): deterministic structural-weakness scoring (`fragility`, `concentration`, `feedback_amplification`, `single_points_of_failure`) → `DiagnosticReport`. Both the findings ranking and the SPOF ranking break ties by `SystemKind` declaration order. |
+| `simulation.py` | `ShockSimulator` (+ tunable, validated `SimulationConfig`): damped, capacity-gated shock-propagation dynamics; `propagate()` → `SimulationTrace`, `resilience()` → `ResilienceScore`, `stress_test()` shocks every system in turn, `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
+| `report.py` | Pure textual renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept (`ResilienceDistribution` is deliberately excluded — only `render_json` serialises one). No I/O. |
 | `viz.py` | Pure visual renderers: `render_dot`, `render_mermaid`, `render_graph_svg` (dependency graph, severity-coloured when given a `DiagnosticReport`), `render_timeline_svg` (stress timeline). SVG is drawn with the standard library alone — no Graphviz, no matplotlib. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
@@ -97,20 +97,37 @@ in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
 `systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `report`/`viz`/`cli`.
 Keep it acyclic.
 
-## Determinism
+## Determinism and parameter validation
 
 The toolkit is a diagnostic instrument, so identical inputs must give identical
-output — bit for bit. Several design choices exist only to protect that, and are
-easy to break by accident:
+output — bit for bit — and a nonsensical knob must fail rather than produce a
+plausible-looking number. Several design choices exist only to protect that, and
+are easy to break by accident:
 
-- **Canonical ordering.** `DependencyGraph.dependencies()` sorts by
-  `(source, target, kind)` declaration order, and `dependencies_of` /
-  `dependents_of` sort by system declaration order. This is not cosmetic:
-  the diagnostic HHI sums over those lists and floating-point addition is not
-  associative, so insertion-ordered traversal made a market's diagnosis differ in
-  the last bits depending on the order its dependencies happened to be added.
-  Never iterate a dict or set where a score or a serialised document depends on
-  the order.
+- **Equal markets produce equal output.** Nothing user-visible may depend on the
+  order a market was assembled in. `DependencyGraph` canonicalises its own
+  orderings (`dependencies` by `(source, target, kind)` declaration order,
+  `dependencies_of` / `dependents_of` by system declaration order);
+  `Market.assemble` stores the seven systems in `SystemKind` declaration order
+  and `to_dict` emits them in it; `DiagnosticEngine.diagnose` breaks ties in both
+  the findings ranking and the SPOF ranking by declaration order. This is not
+  cosmetic on either count: the diagnostic HHI sums over those lists and
+  floating-point addition is not associative, so insertion-ordered traversal made
+  a diagnosis differ in the last bits; and `musculature` and `metabolism` share a
+  criticality of 0.60, so ranking ties are routine. A dict-insertion-order
+  tie-break is a bug, not a detail — `tests/unit/test_properties.py` asserts that
+  a market and any permutation of it diagnose identically.
+- **Tuning knobs are validated on construction, never normalised into nonsense.**
+  `DiagnosticConfig` requires finite, non-negative weights (an all-zero triple is
+  still allowed and yields zero scores); `SimulationConfig` validates every
+  dynamics parameter (`max_steps >= 1`, `damping` in `(0, 1]`, `retention` in
+  `[0, 1]`, finite non-negative `transmission` and `jitter`,
+  `convergence_eps > 0`, `cascade_threshold` `None` or in `(0, 1)`, and so on);
+  `DependencyGraph.centrality` requires `alpha` in `(0, 1)`, `iterations >= 1`,
+  and a finite non-negative `tolerance`. All raise `InvalidConfigError`. These
+  are not cosmetic either: a negative blend weight used to yield findings scoring
+  `2.0`, and `alpha >= 10` overflowed the influence series to infinity and
+  returned `NaN` for every system.
 - **Jitter needs a seed.** `SimulationConfig.jitter` has no effect unless `seed`
   is also set, so the default configuration is fully deterministic; the tests
   rely on it.
@@ -157,7 +174,10 @@ kinds never changes a score.
 Every parse failure — malformed structure, a non-numeric metric, an unknown kind,
 an out-of-range value — surfaces as `MarketParseError`. `Market.from_dict` wraps
 `KeyError`/`TypeError`/`ValueError` and re-raises domain `AMFError`s as parse
-errors, so no raw exception escapes the schema boundary.
+errors, and the CLI's `_load_market` additionally maps `OSError`,
+`UnicodeDecodeError` (a `ValueError`, so it does not fall under `OSError`), and
+`json.JSONDecodeError` onto it — so no raw exception escapes the schema
+boundary.
 
 ## Using the CLI
 
@@ -216,8 +236,10 @@ example.
   findings are sorted by score descending, and the report's overall index is the
   criticality-weighted mean of those scores. A single point of failure is an
   articulation point with redundancy below `_LOW_REDUNDANCY` (0.5); SPOFs are
-  ranked by criticality. Each finding also carries `drivers`, plain-language
-  strings emitted when a component crosses its explanation threshold.
+  ranked by criticality. Both rankings break ties by `SystemKind` declaration
+  order, so equal markets rank identically. Each finding also carries `drivers`,
+  plain-language strings emitted when a component crosses its explanation
+  threshold.
 - **Centrality**: Katz-style "being depended upon" influence, max-normalised to
   `[0, 1]`, attenuated by `alpha` (default 0.4) per hop. Chosen over eigenvector
   centrality because it is well defined on acyclic graphs.
@@ -277,8 +299,9 @@ marker for cross-module tests (`--strict-markers` is on).
 The only dev-time test dependency beyond pytest is `hypothesis`, used by
 `tests/unit/test_properties.py` to check the invariants the docstrings promise:
 stress stays in `[0, 1]` at every step, diagnostic scores stay in `[0, 1]` for any
-blend of config weights, `to_dict`/`from_dict` is a fixed point, and feedback-loop
-enumeration matches a brute-force search of every simple cycle. Because
+blend of config weights, `to_dict`/`from_dict` is a fixed point, feedback-loop
+enumeration matches a brute-force search of every simple cycle, and a market
+diagnoses identically under any permutation of its assembly order. Because
 hypothesis cannot use function-scoped fixtures under `@given`, `conftest.py`
 exposes `build_market()` as a plain importable function alongside the
 `market_factory` fixture — use the function inside `@given` and the fixture
@@ -297,7 +320,8 @@ new code arrived without tests, not that the gate needs lowering.
 3. New result types are frozen, slotted dataclasses with a `to_dict()`; if they
    are serialised, extend `report._to_jsonable` and the text/Markdown renderers.
 4. Raise a typed `AMFError` subclass, never a bare `ValueError`, across the
-   public API — and wrap anything the standard library raises at a parse boundary.
+   public API — `InvalidConfigError` for an out-of-range tuning parameter — and
+   wrap anything the standard library raises at a parse boundary.
 5. Keep output deterministic: iterate in canonical order, and do not introduce
    randomness that is not gated behind an explicit seed.
 6. Add unit tests in the matching `tests/unit/test_<module>.py`, plus an

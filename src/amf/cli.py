@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
     from amf.models import DiagnosticReport
+    from amf.report import Renderable
 from amf.report import render_distribution, render_json, render_markdown, render_text
 from amf.simulation import ShockSimulator, SimulationConfig
 from amf.viz import render_dot, render_graph_svg, render_mermaid, render_timeline_svg
@@ -175,6 +176,10 @@ def _load_market(path: Path) -> Market:
         data = json.loads(path.read_text(encoding="utf-8"))
     except OSError as exc:
         raise MarketParseError(f"cannot read {path}: {exc}") from exc
+    except UnicodeDecodeError as exc:
+        # Not an OSError: pointing the CLI at a binary or non-UTF-8 file would
+        # otherwise escape the AMFError contract and print a raw traceback.
+        raise MarketParseError(f"{path} is not valid UTF-8 text: {exc}") from exc
     except json.JSONDecodeError as exc:
         raise MarketParseError(f"invalid JSON in {path}: {exc}") from exc
     return Market.from_dict(data)
@@ -270,13 +275,13 @@ def _cmd_version(_: argparse.Namespace) -> int:
     return 0
 
 
-def _format(obj: object, fmt: str) -> str:
+def _format(obj: Renderable, fmt: str) -> str:
     """Render a result object in the requested format."""
     if fmt == "json":
-        return render_json(obj)  # type: ignore[arg-type]
+        return render_json(obj)
     if fmt == "md":
-        return render_markdown(obj)  # type: ignore[arg-type]
-    return render_text(obj)  # type: ignore[arg-type]
+        return render_markdown(obj)
+    return render_text(obj)
 
 
 if __name__ == "__main__":  # pragma: no cover

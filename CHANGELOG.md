@@ -6,6 +6,11 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `InvalidConfigError`, a new `AMFError` subclass raised when an engine or
+  algorithm parameter is outside its documented range — `DiagnosticConfig`,
+  `SimulationConfig`, and `DependencyGraph.centrality()` all validate on
+  construction rather than normalising an out-of-range knob into a plausible but
+  meaningless result.
 - Extended the shock-propagation simulation with four opt-in, backward-compatible
   capabilities (the default dynamics are unchanged): nonlinear **threshold /
   cascade** dynamics with a `tipped_systems` signal; a seeded **Monte Carlo
@@ -42,6 +47,36 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- Diagnostic output no longer depends on the order a market was assembled in.
+  Both the per-system findings ranking and the single-point-of-failure ranking
+  fell back on `dict` insertion order whenever two systems tied, so two markets
+  that compare equal produced differently ordered reports — `musculature` and
+  `metabolism` share a criticality of 0.60 and tie routinely. Ties now break by
+  `SystemKind` declaration order, `Market.assemble` stores the seven systems in
+  that order, and `Market.to_dict()` emits them in it.
+- `DependencyGraph.centrality()` no longer returns `NaN` for every system. The
+  `alpha`, `iterations`, and `tolerance` arguments were unvalidated; an `alpha`
+  of 10 or more overflowed the influence series to infinity, and max-normalising
+  by an infinite peak produced `NaN` throughout. They are now checked against the
+  ranges the docstring already documented.
+- `DiagnosticConfig` now rejects negative and non-finite blend weights. A
+  negative weight was normalised like any other and pushed scores outside the
+  `[0, 1]` interval that `WeaknessFinding` documents and `Severity.from_score`
+  assumes — a fragility weight of `-2` produced findings scoring `2.0`, banded
+  `critical`. An all-zero triple remains supported and still yields zero scores.
+- `SimulationConfig` now validates every dynamics parameter. `max_steps=0`
+  reported a market as never settling without simulating a step, `damping=5.0`
+  amplified every step globally, and a negative `transmission` inverted the
+  direction of stress flow — each silently produced a plausible-looking but
+  meaningless trajectory.
+- `Market.require_complete()` now rejects a system filed under a key that is not
+  its own `kind`. `systems` is a plain mutable dict and every engine reads a
+  finding's label from the key and its metrics from the value, so a mismatch
+  silently attributed one system's weaknesses to another.
+- The CLI no longer aborts with an unhandled `UnicodeDecodeError` traceback when
+  pointed at a binary or non-UTF-8 file. `UnicodeDecodeError` is a `ValueError`,
+  not an `OSError`, so it escaped the `AMFError` contract in `main`; it is now
+  reported as a `MarketParseError` with exit code 2 like every other bad input.
 - `Market.to_dict()` now preserves each dependency's `kind` instead of
   serialising every coupling as `structural`, so a market survives a
   `to_dict`/`from_dict` round trip intact — five of the eight edges in
@@ -55,6 +90,11 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- `amf.report` now exports a `Renderable` type alias for the result types the
+  renderers accept, and `cli._format` is annotated with it instead of `object`.
+  This removes three `# type: ignore[arg-type]` comments that were suppressing
+  every argument check on the CLI's formatting path — mypy now rejects a wrong
+  result type there. Runtime behaviour is unchanged.
 - The `stress-test` CLI subcommand now accepts `--format {text,json,md}`, matching
   `diagnose` and `simulate`. JSON output for the stress-test profile was already
   supported by `render_json`; this adds a Markdown table renderer and routes the
