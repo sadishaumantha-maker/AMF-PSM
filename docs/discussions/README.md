@@ -17,15 +17,15 @@ reproduced here verbatim so that nothing from the source note is lost in the spl
 ```markdown
 # Advanced Computational & Quantum Research Discussions
 
-**Generated**: August 20, 2026  
+**Generated**: August 20, 2026
 **Purpose**: Explore cutting-edge computational approaches (quantum, neural, information-theoretic) to enhance AMF predictions and systemic risk detection
 ```
 
 And its footer, likewise verbatim:
 
 ```markdown
-**Created**: August 20, 2026  
-**Maintained by**: Quantum-Neural Research Initiative  
+**Created**: August 20, 2026
+**Maintained by**: Quantum-Neural Research Initiative
 **Contact**: Open discussions in repository
 ```
 
@@ -43,8 +43,14 @@ exactly as they appear:
 
 ## 1. Module index
 
-Eleven discussions, one file each. Every file is a complete GitHub Discussion body: paste it
-whole into the category named in the table.
+Eleven discussions are planned, one file each. **None of the module files has been written
+yet** — this section is the specification for them, not an index of existing documents. The
+`Module` column names the filename each module will take when it lands in this directory;
+the names are deliberately shown as plain filenames rather than links, because a link to a
+file that does not exist fails the repository's Markdown link check.
+
+When a module is written, add it to this directory and turn its filename into a link in the
+same pull request.
 
 > **Status: the module files are not committed yet.** This index landed ahead of the eleven
 > files it describes, so the codes below are plain filenames rather than links — a link to a
@@ -234,6 +240,6 @@ concludes:
 
 ---
 
-**Created**: August 20, 2026 · **Source**: `docs/QUANTUM_NEURAL_RESEARCH.md`  
-**Maintained by**: Quantum-Neural Research Initiative  
+**Created**: August 20, 2026 · **Source**: `docs/QUANTUM_NEURAL_RESEARCH.md`
+**Maintained by**: Quantum-Neural Research Initiative
 **Contact**: Open discussions in repository

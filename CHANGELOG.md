@@ -31,6 +31,32 @@ this file. Versions correspond to framework releases.
   `.github/workflows/milestones.yml` — the delivery milestones as a checked-in,
   idempotent manifest, so the repository's Milestones section is reproducible rather than
   hand-maintained. `tests/unit/test_milestones_manifest.py` validates the manifest offline.
+- `tools/docsync` — a deterministic, offline drift detector that checks `CLAUDE.md`
+  against the repository it describes. It extracts the real facts with `ast` (never
+  importing or executing `amf`), extracts the document's claims, and reports every
+  disagreement in canonical order as canonical JSON, so the same commit always yields
+  byte-identical output and a checked-in baseline can act as a regression gate. Most
+  checks are bidirectional: roughly half the drift found here consisted of *omissions*,
+  on which forward-only checking passes silently. Includes an offline dead-relative-link
+  scan that needs neither Node nor the network. Not part of the shipped wheel.
+- `tools/chronos` — a time attestation with a proven uncertainty bound, hard-gated to
+  Ratnapura, Sri Lanka (`Asia/Colombo`, UTC+05:30, no daylight saving). Sources are a
+  standard-library RFC 5905 NTP client, a `chronyd` reader, plug-in interfaces for
+  GNSS/PPS and PTP hardware, and a local-clock fallback that can never narrow an
+  interval. Agreement is decided by Marzullo interval intersection rather than
+  averaging, so the result is an interval every surviving source vouches for and
+  falsetickers are discarded rather than averaged in. An attestation is always written;
+  only `VERIFIED` authorises downstream work, and `UNVERIFIED` and `FAILED` carry
+  distinct exit codes. Nothing is added to the `amf` package.
+- `.github/workflows/claude-md-drift.yml` and `.github/workflows/claude-md-sync.yml` —
+  the event-triggered and daily halves of `CLAUDE.md` maintenance. The scheduled run
+  attests the clock before doing anything and records its own schedule slip, since
+  GitHub's cron is best-effort.
+- `.claude/` — agents, a POSIX-shell session hook and slash commands for the
+  maintenance run, including an adversarial verifier that tries to refute each proposed
+  documentation edit and a sentinel that blocks any diff eroding a hard rule.
+- Time and locale, and automated maintenance, are now documented as first-class sections
+  of `CLAUDE.md`, including the honest accuracy ceilings for each class of time source.
 
 - `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
   program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
@@ -134,6 +160,19 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `docs/discussions/README.md` linked eleven research modules that were never committed;
+  the directory contains only the index itself. Those dead relative links failed the
+  `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
+  `main`. The index now names the unwritten modules as plain text rather than links.
+- Ten factual errors in `CLAUDE.md`, found by the new detector: a stale test total, a
+  miscounted number of `yamllint disable-line` directives in `codeql.yml`, `__all__`
+  described as `sorted()` when it is in ruff `RUF022` natural order, `tests/unit/`
+  described as one file per module, an undocumented `amf ensemble --magnitude`, a missing
+  `AttributeError` in the `Market.from_dict` wrap list, `graph.py` described as
+  "dependency-free", and two `docs/` files named nowhere in the guide.
+- `src/amf/cli.py`'s module docstring omitted the `ensemble` subcommand it defines. Here
+  the guide was correct and the source was stale, which is why the detector checks both
+  directions.
 - `DependencyGraph.centrality()` no longer depends on the order the dependencies were
   added in. The influence propagation accumulated into each target while iterating the
   pair-weight dict, which is keyed in insertion order; because floating-point addition is
