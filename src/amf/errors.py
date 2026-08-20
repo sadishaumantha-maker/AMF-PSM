@@ -29,7 +29,13 @@ class IncompleteMarketError(AMFError):
 
 
 class InvalidDependencyError(AMFError):
-    """Raised when a dependency references unknown systems or an invalid weight."""
+    """Raised when the dependency structure itself is unusable.
+
+    Covers a dependency with an invalid weight or a self-loop, and a graph whose
+    shape admits no well-defined answer -- notably
+    :meth:`~amf.graph.DependencyGraph.centrality` on a graph with no single
+    dominant mode, where the ranking cycles instead of settling.
+    """
 
 
 class InvalidShockError(AMFError):
