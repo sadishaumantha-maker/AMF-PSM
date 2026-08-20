@@ -543,3 +543,159 @@ class SensitivityReport:
             "sensitivities": [s.to_dict() for s in self.sensitivities],
             "leverage_points": [p.to_dict() for p in self.leverage_points],
         }
+
+
+class PolicyTier(StrEnum):
+    """The layers of a regulatory stack, ordered from hardest to softest to amend.
+
+    The names follow the vocabulary of financial regulation. ``STATUTORY``,
+    ``DELEGATED``, and ``SUPERVISORY`` correspond to the three Lamfalussy levels
+    used in EU financial-services rulemaking -- Level 1 basic acts, Level 2
+    delegated and implementing acts (including the technical standards drafted by
+    the European Supervisory Authorities), and Level 3 supervisory guidelines and
+    Q&A. ``CONSTITUTIVE`` sits above them for entrenched, non-derogable
+    provisions; ``SELF_REGULATORY`` and ``INTERNAL`` sit below for
+    self-regulatory-organisation and venue rulebooks and for firm-level policy.
+    """
+
+    CONSTITUTIVE = "constitutive"
+    """Entrenched, non-derogable provisions; amendable only by extraordinary process."""
+    STATUTORY = "statutory"
+    """Primary legislation (Lamfalussy Level 1 basic acts)."""
+    DELEGATED = "delegated"
+    """Delegated and implementing acts, and technical standards (Level 2)."""
+    SUPERVISORY = "supervisory"
+    """Supervisory guidelines, Q&A, and letters (Level 3); often comply-or-explain."""
+    SELF_REGULATORY = "self_regulatory"
+    """Self-regulatory-organisation and venue rulebooks."""
+    INTERNAL = "internal"
+    """Firm-level policy: internal limits, mandates, and controls."""
+
+    def amending_authority(self) -> str:
+        """Return who can amend this tier, as a short descriptive phrase."""
+        return _AMENDING_AUTHORITY[self]
+
+
+_AMENDING_AUTHORITY: dict[PolicyTier, str] = {
+    PolicyTier.CONSTITUTIVE: "extraordinary process (supermajority, referendum, or treaty)",
+    PolicyTier.STATUTORY: "legislature",
+    PolicyTier.DELEGATED: "authorised agency under a statutory empowerment",
+    PolicyTier.SUPERVISORY: "supervisor, without a formal rulemaking process",
+    PolicyTier.SELF_REGULATORY: "self-regulatory organisation or venue, often subject to approval",
+    PolicyTier.INTERNAL: "the firm itself",
+}
+
+
+class ChangeMode(StrEnum):
+    """The four modes of gradual institutional change (Streeck & Thelen, 2005).
+
+    Named exactly as in *Beyond Continuity: Institutional Change in Advanced
+    Political Economies*. The modes describe how a rule regime changes without a
+    single critical juncture; incremental change in any of them can still be
+    transformative.
+    """
+
+    DISPLACEMENT = "displacement"
+    """Existing rules are discredited and pushed aside by new ones."""
+    LAYERING = "layering"
+    """New rules are added on top of old ones, which remain in place."""
+    DRIFT = "drift"
+    """Rules are unchanged, but their effect erodes as conditions move around them."""
+    CONVERSION = "conversion"
+    """Rules are unchanged but strategically reinterpreted and redeployed to new ends."""
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyLayer:
+    """One tier of a regulatory stack.
+
+    Every quantity is a dimensionless structural measure in ``[0, 1]``; none of
+    them is calibrated against any real rulebook.
+
+    Attributes:
+        tier: Which layer of the stack this is.
+        name: The concrete counterpart (e.g. ``"MiFID II"``).
+        entrenchment: Resistance to amendment. ``1`` is non-derogable (an
+            entrenchment or eternity clause); ``0`` is freely revisable.
+        coverage: Share of the regulatory perimeter this layer addresses.
+        binding_force: ``1`` for hard law, lower for comply-or-explain guidance.
+        amendment_latency: Steps between deciding on a revision and its taking
+            effect. Distinct from ``entrenchment``: a layer can be easy to amend
+            in principle yet slow in practice.
+    """
+
+    tier: PolicyTier
+    name: str
+    entrenchment: float = 0.5
+    coverage: float = 0.5
+    binding_force: float = 1.0
+    amendment_latency: int = 0
+
+    def responsiveness(self) -> float:
+        """Return how readily this layer actually adapts, in ``[0, 1]``.
+
+        Combines the two independent frictions: a layer is responsive only when
+        it is both permitted to change (low ``entrenchment``) and quick to do so
+        (low ``amendment_latency``).
+        """
+        return (1.0 - self.entrenchment) / (1.0 + self.amendment_latency)
+
+    def effective_coverage(self) -> float:
+        """Return coverage weighted by binding force, in ``[0, 1]``.
+
+        Non-binding guidance that nominally spans the perimeter constrains less
+        than hard law over the same ground, so coverage alone overstates reach.
+        """
+        return self.coverage * self.binding_force
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the layer."""
+        return {
+            "tier": self.tier.value,
+            "name": self.name,
+            "amending_authority": self.tier.amending_authority(),
+            "entrenchment": self.entrenchment,
+            "coverage": self.coverage,
+            "binding_force": self.binding_force,
+            "amendment_latency": self.amendment_latency,
+            "responsiveness": self.responsiveness(),
+            "effective_coverage": self.effective_coverage(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PolicyProfile:
+    """The structural summary of a regulatory stack.
+
+    Attributes:
+        layers: The stack's layers, ordered hardest-to-amend first.
+        depth: How many of the tiers are populated (defence in depth).
+        aggregate_coverage: Perimeter covered by at least one binding layer.
+        drift_exposure: Share of binding coverage carried by layers that cannot
+            readily adapt -- the exposure to :attr:`ChangeMode.DRIFT`.
+        entrenched_core: Layers at or above the entrenchment threshold; these are
+            the provisions that do not move with time, personnel, or a change of
+            decision-maker.
+        dominant_mode: The change mode the stack's shape most invites.
+        mode_rationale: Why that mode was inferred.
+    """
+
+    layers: tuple[PolicyLayer, ...]
+    depth: int
+    aggregate_coverage: float
+    drift_exposure: float
+    entrenched_core: tuple[PolicyLayer, ...]
+    dominant_mode: ChangeMode
+    mode_rationale: str
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serialisable representation of the profile."""
+        return {
+            "layers": [layer.to_dict() for layer in self.layers],
+            "depth": self.depth,
+            "aggregate_coverage": self.aggregate_coverage,
+            "drift_exposure": self.drift_exposure,
+            "entrenched_core": [layer.tier.value for layer in self.entrenched_core],
+            "dominant_mode": self.dominant_mode.value,
+            "mode_rationale": self.mode_rationale,
+        }

@@ -125,9 +125,23 @@ report = DiagnosticEngine().diagnose(market)
 score = ShockSimulator(market).resilience(Shock(SystemKind.CIRCULATORY, 0.8))
 ```
 
-See `examples/equity_market.py`, `examples/liquidity_shock.py`, and
-`examples/where_to_intervene.py` for complete runnable scripts, and `CLAUDE.md`
-for the design and contributor guide.
+The immune system can also be built from a layered regulatory stack rather than
+asserted directly:
+
+```python
+from amf import PolicyLayer, PolicyStack, PolicyTier
+
+stack = PolicyStack([
+    PolicyLayer(PolicyTier.STATUTORY, "Primary act", entrenchment=0.7, coverage=0.55, amendment_latency=6),
+    PolicyLayer(PolicyTier.SUPERVISORY, "Guidelines", entrenchment=0.15, coverage=0.4, binding_force=0.4),
+])
+profile = stack.profile()          # coverage, drift exposure, entrenched core, change mode
+system = stack.to_immune_system()  # an AnatomicalSystem derived from the stack
+```
+
+See `examples/equity_market.py`, `examples/liquidity_shock.py`,
+`examples/where_to_intervene.py`, and `examples/policy_layers.py` for complete
+runnable scripts, and `CLAUDE.md` for the design and contributor guide.
 
 ### Roadmap
 

@@ -6,6 +6,19 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `amf.policy`: the immune system modelled as a layered regulatory stack.
+  `PolicyTier` names the layers using established vocabulary — the `STATUTORY` /
+  `DELEGATED` / `SUPERVISORY` tiers follow the three Lamfalussy levels of EU
+  financial-services rulemaking — and each tier reports its amending authority.
+  `PolicyLayer` carries entrenchment, coverage, binding force, and amendment
+  latency; `PolicyStack` derives binding coverage, drift exposure, the entrenched
+  core (the provisions that do not move with time, personnel, or decision-maker),
+  and a dominant `ChangeMode` drawn from Streeck & Thelen's four modes of gradual
+  institutional change (displacement, layering, drift, conversion).
+  `PolicyStack.to_immune_system()` derives the immune `AnatomicalSystem` from the
+  stack instead of asserting its metrics. Rendered by `render_text`/`_markdown`/
+  `_json`; see `examples/policy_layers.py`. Thresholds and weights are
+  interpretable choices, not calibrated estimates.
 - `docs/roadmap.md` — a Phase 2 roadmap that triages the open issue backlog into
   charter-compliant, structural work: it proposes an expansion for "PSM", restates the
   non-trading / illustrative / frozen-anatomy guardrails, gives translation rules that

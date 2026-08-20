@@ -72,7 +72,7 @@ tests/unit/         one file per module, plus test_non_trading_boundary.py
 tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
-examples/           sample_market.json + three runnable scripts
+examples/           sample_market.json + runnable scripts
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
@@ -93,11 +93,12 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
 | `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Dependency-free. |
+| `policy.py` | `PolicyStack`: the immune system's layered regulatory regime (`PolicyTier`, `PolicyLayer`) → `PolicyProfile`, with `aggregate_coverage`, `drift_exposure`, `entrenched_core`, and a Streeck-Thelen `dominant_mode`; `to_immune_system()` derives the immune `AnatomicalSystem` from the stack. Depends on `systems` only. |
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, `with_system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable, validated `DiagnosticConfig`): deterministic structural-weakness scoring (`fragility`, `concentration`, `feedback_amplification`, `single_points_of_failure`) → `DiagnosticReport`. Both the findings ranking and the SPOF ranking break ties by `SystemKind` declaration order. |
 | `sensitivity.py` | `SensitivityAnalyzer` (+ tunable, validated `SensitivityConfig`): perturbs each `SystemMetric` of each system and re-diagnoses → `SensitivityReport` (gradients + ranked `LeveragePoint`s). Builds on `diagnostics`. |
 | `simulation.py` | `ShockSimulator` (+ tunable, validated `SimulationConfig`): damped, capacity-gated shock-propagation dynamics; `propagate()` → `SimulationTrace`, `resilience()` → `ResilienceScore`, `stress_test()` shocks every system in turn, `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
-| `report.py` | Pure textual renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept, including `SensitivityReport` (`ResilienceDistribution` is deliberately excluded — only `render_json` serialises one). No I/O. |
+| `report.py` | Pure textual renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept, including `SensitivityReport` and `PolicyProfile` (`ResilienceDistribution` is deliberately excluded — only `render_json` serialises one). No I/O. |
 | `viz.py` | Pure visual renderers: `render_dot`, `render_mermaid`, `render_graph_svg` (dependency graph, severity-coloured when given a `DiagnosticReport`), `render_timeline_svg` (stress timeline). SVG is drawn with the standard library alone — no Graphviz, no matplotlib. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
@@ -105,8 +106,8 @@ The public API is re-exported from `amf/__init__.py` (`__all__`); import types a
 engines from `amf`, not submodules. The renderers are the exception — they live
 in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
 `examples/` do). Dependencies flow one way: `errors`/`models` ←
-`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`.
-Keep it acyclic.
+`systems`/`graph` ← `policy`/`market` ← `diagnostics`/`simulation` ← `sensitivity` ←
+`report`/`viz`/`cli`. Keep it acyclic.
 
 ## Determinism and parameter validation
 
@@ -303,6 +304,17 @@ example.
   headroom in its improving direction yields no leverage point. Criticality is
   never a leverage point — it describes how load-bearing a system *is*, not a
   lever — but it is still reported as a sensitivity.
+- **Policy layers** (`policy.py`): a `PolicyStack` of at most one `PolicyLayer` per
+  `PolicyTier`. `aggregate_coverage` treats layers as independently leaky
+  (`1 − Π(1 − coverage·binding_force)`); `nominal_coverage` is the same without the
+  binding weight. `responsiveness = (1 − entrenchment)/(1 + amendment_latency)`, so
+  entrenchment and slowness are independent frictions. `drift_exposure` is the
+  binding-coverage-weighted mean of `1 − responsiveness`. `to_immune_system()` maps
+  coverage → `integrity`, populated-tier share → `redundancy`, drift → `load`, and
+  leaves `criticality` at the immune default. `dominant_mode()` picks a
+  `ChangeMode`; conversion is tested against *nominal* coverage on purpose, since
+  binding-weighted coverage would contradict the weak-binding half of the condition
+  and make that mode unreachable.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
   `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. Weakness
   scores feed it directly; resilience feeds it `1 − value`, so a resilient market
