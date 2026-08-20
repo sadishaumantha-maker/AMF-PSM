@@ -142,6 +142,45 @@ def test_stress_test_markdown(capsys: pytest.CaptureFixture[str]):
     assert capsys.readouterr().out.startswith("# AMF Systemic Stress Test")
 
 
+def test_viz_svg_to_stdout(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE)]) == 0
+    captured = capsys.readouterr()
+    assert captured.out.startswith("<svg")
+    assert "illustrative" in captured.err.lower()
+
+
+def test_viz_dot(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE), "--format", "dot"]) == 0
+    assert capsys.readouterr().out.startswith("digraph")
+
+
+def test_viz_mermaid(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE), "--format", "mermaid"]) == 0
+    assert capsys.readouterr().out.startswith("graph LR")
+
+
+def test_viz_writes_output_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    out = tmp_path / "market.svg"
+    assert main(["viz", str(SAMPLE), "--output", str(out)]) == 0
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "wrote" in captured.err
+    assert out.read_text(encoding="utf-8").startswith("<svg")
+
+
+def test_viz_timeline(capsys: pytest.CaptureFixture[str]):
+    assert main(["viz", str(SAMPLE), "--timeline", "circulatory", "--magnitude", "0.6"]) == 0
+    out = capsys.readouterr().out
+    assert out.startswith("<svg")
+    assert "Stress propagation" in out
+
+
+def test_viz_unwritable_output_returns_error_code(tmp_path: Path, capsys: pytest.CaptureFixture[str]):
+    missing_dir = tmp_path / "no-such-dir" / "market.svg"
+    assert main(["viz", str(SAMPLE), "--output", str(missing_dir)]) == 2
+    assert "cannot write" in capsys.readouterr().err
+
+
 def test_missing_file_returns_error_code(capsys: pytest.CaptureFixture[str]):
     assert main(["diagnose", "does-not-exist.json"]) == 2
     assert "error:" in capsys.readouterr().err

@@ -73,13 +73,15 @@ SHA256SUMS          the four protected artifacts and their digests
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn. |
 | `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`. |
+| `viz.py` | Pure visual renderers: dependency graph as DOT / Mermaid / SVG, stress timeline as SVG. Dependency-free. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
 The public API is re-exported from `amf/__init__.py` (`__all__`); import types and
 engines from `amf`, not submodules. The renderers are the exception — they live
-in `amf.report` and are imported from there (as `cli.py` and `examples/` do).
-Dependencies flow one way: `errors`/`models` ← `systems`/`graph` ← `market` ←
-`diagnostics`/`simulation` ← `report`/`cli`. Keep it acyclic.
+in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
+`examples/` do). Dependencies flow one way: `errors`/`models` ←
+`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `report`/`viz`/`cli`.
+Keep it acyclic.
 
 ## Market JSON schema (CLI input)
 

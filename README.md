@@ -77,6 +77,16 @@ amf stress-test examples/sample_market.json             # shock each system in t
 `diagnose`, `simulate`, and `stress-test` all accept `--format json` or
 `--format md`.
 
+Render the dependency graph or a shock timeline (no extra dependencies needed —
+the SVG output is drawn with the standard library alone):
+
+```sh
+amf viz examples/sample_market.json -o market.svg                 # severity-coloured graph (SVG)
+amf viz examples/sample_market.json --format dot | dot -Tpng ...  # via Graphviz
+amf viz examples/sample_market.json --format mermaid              # for Markdown/Mermaid renderers
+amf viz examples/sample_market.json --timeline circulatory -o timeline.svg
+```
+
 ### Use it from Python
 
 ```python
