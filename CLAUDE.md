@@ -77,7 +77,7 @@ docs/               prose only — planning and research notes, no code and no
                     authority over the package (see *Prose docs* below)
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
-                    codeql.yml, python-package-conda.yml (broken — see CI)
+                    codeql.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
 .github/pull_request_template.md   PR checklist rendered on every new PR
 .github/RULESET-POLICY.md          branch-protection rules and rationale
@@ -411,64 +411,64 @@ and is validated by `cffconvert` in CI.
 
 ## CI
 
-Four workflows are configured. Two of them gate the work that matters, one is a
-security scan, and one is broken:
+Three workflows gate every push and pull request:
 
-- `.github/workflows/ci.yml` — the real gate, on every push and pull request.
-  Four jobs: **lint** (`ruff check` + `ruff format --check`), **typecheck**
-  (`mypy`), **test** (`pytest` on the 3.11/3.12/3.13 matrix, uploading
-  `coverage.xml` from 3.12), and **validate** (`yamllint .`,
-  `cffconvert --validate -i CITATION.cff`, and a Markdown link check). `cffconvert`
-  is installed standalone in that job rather than in the `dev` extra, because a
-  transitive dependency fails to build under some patched local setuptools.
+- `.github/workflows/ci.yml` — the main gate. Four jobs: **lint** (`ruff check` +
+  `ruff format --check`), **typecheck** (`mypy`), **test** (`pytest` on the
+  3.11/3.12/3.13 matrix, uploading `coverage.xml` from 3.12), and **validate**
+  (`yamllint .`, `cffconvert --validate -i CITATION.cff`, and a Markdown link
+  check). `cffconvert` is installed standalone in that job rather than in the
+  `dev` extra, because a transitive dependency fails to build under some patched
+  local setuptools.
 - `.github/workflows/integrity.yml` — verifies the `SHA256SUMS` artifacts are
   untouched.
-- `.github/workflows/codeql.yml` — GitHub's stock CodeQL Advanced scan of the
-  `python` and `actions` languages, on pushes and PRs to `main` plus a weekly
-  schedule. `build-mode: none`, so it needs no project setup. Committed
-  unmodified, so it does not satisfy this project's own `yamllint` rules — see
-  the known-red note below.
-- `.github/workflows/python-package-conda.yml` — **broken, and not your fault.**
-  It is GitHub's stock conda starter workflow, committed unmodified: it runs
-  `conda env update --file environment.yml`, but there is no `environment.yml`
-  in this repository, so the job fails on every push. It also contradicts the
-  project on three counts — Python 3.10 (below the `requires-python = ">=3.11"`
-  floor), `flake8` (the project lints with `ruff`), and a bare `pytest` with no
-  install step (so `amf` is not importable). Treat a red check from this
-  workflow as pre-existing: do not "fix" it by adding an `environment.yml` or a
-  flake8 config, which would entrench tooling the project does not use. The
-  clean resolution is to delete the workflow, but that is a maintainer's call —
-  raise it rather than doing it as a side effect of unrelated work.
+- `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
+  and `actions` languages, on pushes and PRs to `main` plus a weekly schedule.
+  `build-mode: none`, so it needs no project setup.
 
-### Known-red: `Validate metadata` fails on `main`
+### The validate job runs in order, and yamllint is first
 
-The **validate** job of `ci.yml` is currently failing on `main`, and therefore on
-every branch cut from it. The cause is its first step, `yamllint .`, which rejects
-the two stock workflows that were added without being reformatted to the project's
-`.yamllint.yml` (line length 140):
+`yamllint .` runs ahead of `cffconvert` and the link check, so **a YAML formatting
+error silently disables both of them**. That is not hypothetical: it happened.
+Two workflows were committed as unmodified GitHub templates, `yamllint` rejected
+them, and for as long as that lasted the metadata validation and link checking the
+job exists to perform never executed on any branch — while the job still *looked*
+like it was doing its work. When `validate` fails, read far enough down the log to
+see which step actually failed; and if you make `yamllint` pass, expect the steps
+behind it to start reporting problems of their own that were never visible before.
 
-- `.github/workflows/codeql.yml` — 10 errors: `too many spaces inside brackets`
-  on the `branches: [ "main" ]` lines (16 and 18), `wrong indentation` at 46 and
-  59, and four lines over 140 characters (50, 55, 57, 78), all of them comments
-  carrying long documentation URLs.
-- `.github/workflows/python-package-conda.yml` — 1 error: `wrong indentation` at
-  line 12.
+Two consequences are baked into the tree, and undoing either re-breaks the job:
 
-Reproduce it in one command, and confirm the fix the same way:
+- **`codeql.yml` carries two `# yamllint disable-line rule:line-length`
+  directives.** They sit above comments that are a single GitHub documentation
+  URL, too long for the 140-character limit at any indentation and not shortenable
+  without breaking the link. Keep the directives if you touch that file, and keep
+  the rest of it formatted to `.yamllint.yml` (bracket spacing, sequence
+  indentation) — it is a vendored template, so a careless re-copy from GitHub will
+  reintroduce every violation at once.
+- **There is deliberately no conda workflow.** `python-package-conda.yml` was
+  removed: it was the stock conda starter, running on every push against an
+  `environment.yml` that does not exist, and it contradicted the project on three
+  counts — Python 3.10 (below the `requires-python = ">=3.11"` floor), `flake8`
+  (the project lints with `ruff`), and a bare `pytest` with no install step, so
+  `amf` was not importable. Do not re-add it, and do not add an `environment.yml`
+  or a flake8 config to revive it; `ci.yml` already tests 3.11/3.12/3.13 and
+  CodeQL already scans.
+
+### Links in Markdown are checked, including relative ones
+
+The link check covers every `.md` file in the tree, relative paths included, so a
+link to a file that does not exist fails the build. Mind the directory a document
+lives in: from `.github/RULESET-POLICY.md`, `./CONTRIBUTING.md` resolves to
+`.github/CONTRIBUTING.md` and fails — root-level documents need `../`. Check a
+change the way CI does before pushing:
 
 ```sh
-yamllint .    # exits 1 until both files are reformatted
+npx markdown-link-check --config .github/mlc-config.json <file>.md
 ```
 
-This is a formatting-only failure — no job logic is involved, and `cffconvert` and
-the Markdown link check never get to run because `yamllint` exits first. **A red
-`Validate metadata` on your PR is almost certainly this, not your change**;
-confirm by checking whether your diff touches any YAML at all before investigating
-further. Fixing it means reformatting the two files (collapsing
-`[ "main" ]` to `["main"]`, correcting the `steps:` indentation, and wrapping or
-shortening the long comment lines) — or, for the conda workflow, deleting it
-outright per the note above. Either is a real change to CI configuration, so do it
-as its own change with the maintainer's agreement, not folded into unrelated work.
+`.github/mlc-config.json` holds the ignore patterns (shields.io badges,
+opentimestamps.org) and the accepted status codes.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
 
