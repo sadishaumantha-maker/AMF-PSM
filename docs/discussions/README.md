@@ -52,6 +52,11 @@ file that does not exist fails the repository's Markdown link check.
 When a module is written, add it to this directory and turn its filename into a link in the
 same pull request.
 
+> **Status: the module files are not committed yet.** This index landed ahead of the eleven
+> files it describes, so the codes below are plain filenames rather than links — a link to a
+> file that does not exist fails the Markdown link check in CI, and with it the whole
+> `validate` job. Restore each entry to a link in the same pull request that adds its file.
+
 ### 🔬 Quantum Computing in Finance
 
 | Code | Module | Discussion title to use | Suggested category | Core theory |
