@@ -72,16 +72,22 @@ tests/unit/         one file per module, plus test_non_trading_boundary.py
 tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
-examples/           sample_market.json + three runnable scripts
+examples/           sample_market.json + four runnable scripts
+docs/               prose only — planning and research notes, no code and no
+                    authority over the package (see *Prose docs* below)
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
-.github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml
+.github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
+                    codeql.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
+.github/pull_request_template.md   PR checklist rendered on every new PR
+.github/RULESET-POLICY.md          branch-protection rules and rationale
 .pre-commit-config.yaml   ruff, ruff-format, mypy (src only), yamllint,
                           hygiene hooks, protect-ip-artifacts
 .yamllint.yml       yamllint config (line length 140, `on:` truthy allowed)
 .gitattributes      binary / EOL rules that keep the IP checksums stable
 SHA256SUMS          the four protected artifacts and their digests
 RELEASING.md        private-only release procedure and what enforces it
+CONTRIBUTING.md     workflow guide — its tooling section is stale, see below
 README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 ```
 
@@ -349,6 +355,13 @@ pytest                                  # tests + branch coverage gate (100%)
 pre-commit install                      # optional: run hooks on commit
 ```
 
+This block is the authoritative dev setup — there is no `requirements.txt`, and
+the project does not use `black`, `flake8`, or `pylint` despite what
+`CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
+the whole suite is currently 513 tests passing at 100% statement and branch
+coverage, with `ruff` and `mypy` both silent; that is the bar a change has to
+clear.
+
 Conventions: Python 3.11+ (CI tests 3.11/3.12/3.13), full type annotations,
 Google-style docstrings on public API. Ruff selects
 `E,F,W,I,N,UP,B,C4,SIM,TC,PTH,RUF,ANN,D` (ignoring `D203`, `D213`), with `ANN`/`D`
@@ -404,15 +417,107 @@ and is validated by `cffconvert` in CI.
 
 ## CI
 
-Two workflows gate every push and pull request:
+Three workflows gate every push and pull request:
 
-- `.github/workflows/ci.yml` — four jobs: **lint** (`ruff check` + `ruff format
-  --check`), **typecheck** (`mypy`), **test** (`pytest` on the 3.11/3.12/3.13
-  matrix, uploading `coverage.xml` from 3.12), and **validate** (`yamllint .`,
-  `cffconvert --validate -i CITATION.cff`, and a Markdown link check). `cffconvert`
-  is installed standalone in that job rather than in the `dev` extra, because a
-  transitive dependency fails to build under some patched local setuptools.
+- `.github/workflows/ci.yml` — the main gate. Four jobs: **lint** (`ruff check` +
+  `ruff format --check`), **typecheck** (`mypy`), **test** (`pytest` on the
+  3.11/3.12/3.13 matrix, uploading `coverage.xml` from 3.12), and **validate**
+  (`yamllint .`, `cffconvert --validate -i CITATION.cff`, and a Markdown link
+  check). `cffconvert` is installed standalone in that job rather than in the
+  `dev` extra, because a transitive dependency fails to build under some patched
+  local setuptools.
 - `.github/workflows/integrity.yml` — verifies the `SHA256SUMS` artifacts are
   untouched.
+- `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
+  and `actions` languages, on pushes and PRs to `main` plus a weekly schedule.
+  `build-mode: none`, so it needs no project setup.
+
+### The validate job runs in order, and yamllint is first
+
+`yamllint .` runs ahead of `cffconvert` and the link check, so **a YAML formatting
+error silently disables both of them**. That is not hypothetical: it happened.
+Two workflows were committed as unmodified GitHub templates, `yamllint` rejected
+them, and for as long as that lasted the metadata validation and link checking the
+job exists to perform never executed on any branch — while the job still *looked*
+like it was doing its work. When `validate` fails, read far enough down the log to
+see which step actually failed; and if you make `yamllint` pass, expect the steps
+behind it to start reporting problems of their own that were never visible before.
+
+Two consequences are baked into the tree, and undoing either re-breaks the job:
+
+- **`codeql.yml` carries two `# yamllint disable-line rule:line-length`
+  directives.** They sit above comments that are a single GitHub documentation
+  URL, too long for the 140-character limit at any indentation and not shortenable
+  without breaking the link. Keep the directives if you touch that file, and keep
+  the rest of it formatted to `.yamllint.yml` (bracket spacing, sequence
+  indentation) — it is a vendored template, so a careless re-copy from GitHub will
+  reintroduce every violation at once.
+- **There is deliberately no conda workflow.** `python-package-conda.yml` was
+  removed: it was the stock conda starter, running on every push against an
+  `environment.yml` that does not exist, and it contradicted the project on three
+  counts — Python 3.10 (below the `requires-python = ">=3.11"` floor), `flake8`
+  (the project lints with `ruff`), and a bare `pytest` with no install step, so
+  `amf` was not importable. Do not re-add it, and do not add an `environment.yml`
+  or a flake8 config to revive it; `ci.yml` already tests 3.11/3.12/3.13 and
+  CodeQL already scans.
+
+### Links in Markdown are checked, including relative ones
+
+The link check covers every `.md` file in the tree, relative paths included, so a
+link to a file that does not exist fails the build. Mind the directory a document
+lives in: from `.github/RULESET-POLICY.md`, `./CONTRIBUTING.md` resolves to
+`.github/CONTRIBUTING.md` and fails — root-level documents need `../`. Check a
+change the way CI does before pushing:
+
+```sh
+npx markdown-link-check --config .github/mlc-config.json <file>.md
+```
+
+`.github/mlc-config.json` holds the ignore patterns (shields.io badges,
+opentimestamps.org) and the accepted status codes.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
+
+## Prose docs, governance, and what is authoritative
+
+Several Markdown files describe intentions rather than the code as it stands.
+They are useful background, but none of them overrides this file, `pyproject.toml`,
+or the test suite. When a prose document and the code disagree, the code wins and
+the document is the thing that is out of date.
+
+- **`CONTRIBUTING.md`** — the workflow half (branch naming, Conventional Commits,
+  PR and review etiquette) is worth following. Its **tooling half is wrong for this
+  repository**: it names `pylint`, `black`, `flake8`, `requirements.txt`,
+  `requirements-dev.txt`, a `develop` branch, and an 80% coverage floor. None of
+  those exist here. The real setup is `pip install -e ".[dev]"`, `ruff` (lint *and*
+  format), `mypy --strict`, `pytest` at a **100%** coverage gate, and a single
+  long-lived branch, `main`. Follow the *Developing* section above, not that list,
+  and do not add those tools or files to make the document true.
+- **`.github/RULESET-POLICY.md`** and the branch-protection tables in
+  `CONTRIBUTING.md` — the *intended* ruleset (2 approvals on `main`, signed
+  commits, protected `develop` and `release/*` branches). They describe a policy
+  target, not necessarily what GitHub currently enforces, and they reference
+  branches this repository does not have. Do not infer the live configuration from
+  them; check the repository settings if it matters.
+- **`.github/pull_request_template.md`** — a long checklist (description, linked
+  issues, testing, security, type of change, priority). Fill in the sections that
+  apply to the diff and skip the rest; it is a layout to populate, not a set of
+  instructions to obey.
+- **`docs/roadmap.md`** — Phase 2 planning and issue triage. Explicitly marked a
+  *proposal for ratification*, and it restates the hard rules above rather than
+  relaxing them.
+- **`docs/ANALYSIS_AND_ROADMAP.md`** — a governance and delivery-pipeline audit
+  with a 90-day plan. A snapshot of one moment's issue and PR backlog; its counts
+  go stale immediately.
+- **`docs/RESEARCH_DISCUSSIONS.md`** and **`docs/QUANTUM_NEURAL_RESEARCH.md`** —
+  open-ended research prompts for a hypothetical v1.1 (regulatory architecture,
+  quantum and neural formulations of market state, information-theoretic
+  measures). These are speculative discussion material. **Nothing in them is
+  implemented, agreed, or scheduled**, and several sketches would collide with the
+  hard rules if taken literally — a request to "implement the roadmap" or "add the
+  quantum model" needs the specific item confirmed with the user first, and still
+  has to clear the non-trading naming guard, the determinism rules, and the 100%
+  coverage gate like any other change.
+
+The `docs/` tree is prose only. No code imports from it, no test reads it, and
+adding a document there changes nothing about the package's behaviour.
