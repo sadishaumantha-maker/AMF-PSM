@@ -18,6 +18,14 @@ this file. Versions correspond to framework releases.
   **time-scheduled / multi-wave shocks** (`Shock.at_step`); and **recovery /
   intervention** modeling (`SimulationConfig.recovery_rate`, `Intervention`). New
   CLI: `amf ensemble` plus `simulate --cascade-threshold/--recovery/--seed/...`.
+- `amf sensitivity` subcommand and `amf.sensitivity` module: comparative-statics
+  analysis that perturbs each structural metric of each system and reports (a)
+  the finite-difference gradient of the overall weakness index and (b) ranked
+  *leverage points* — the feasible adjustments that reduce the index most (AMF
+  analytical Step 5). `criticality` is reported as sensitive but excluded from
+  leverage rankings, since it describes how load-bearing a system is rather than
+  a lever an operator tunes. Supporting API: `SystemMetric`,
+  `AnatomicalSystem.metric`/`with_metric`, and `Market.with_system`.
 - `amf viz` subcommand and `amf.viz` module: dependency-free renderers that draw
   the dependency graph as Graphviz DOT, Mermaid, or a self-contained SVG
   (severity-coloured when diagnostics are available) and a shock-propagation

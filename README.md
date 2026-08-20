@@ -73,11 +73,12 @@ amf diagnose examples/sample_market.json                # structural weaknesses
 amf simulate examples/sample_market.json --target circulatory --magnitude 0.8
 amf simulate examples/sample_market.json --target circulatory --cascade-threshold 0.2
 amf stress-test examples/sample_market.json             # shock each system in turn
+amf sensitivity examples/sample_market.json --top 5      # what matters most, & where to intervene
 amf ensemble examples/sample_market.json --target circulatory --runs 200
 ```
 
-`diagnose`, `simulate`, and `stress-test` accept `--format json` or `--format md`;
-`ensemble` accepts `--format json`.
+`diagnose`, `simulate`, `stress-test`, and `sensitivity` accept `--format json`
+or `--format md`; `ensemble` accepts `--format json`.
 
 Render the dependency graph or a shock timeline (no extra dependencies needed —
 the SVG output is drawn with the standard library alone):
@@ -124,8 +125,9 @@ report = DiagnosticEngine().diagnose(market)
 score = ShockSimulator(market).resilience(Shock(SystemKind.CIRCULATORY, 0.8))
 ```
 
-See `examples/equity_market.py` and `examples/liquidity_shock.py` for complete
-runnable scripts, and `CLAUDE.md` for the design and contributor guide.
+See `examples/equity_market.py`, `examples/liquidity_shock.py`, and
+`examples/where_to_intervene.py` for complete runnable scripts, and `CLAUDE.md`
+for the design and contributor guide.
 
 ### Develop
 

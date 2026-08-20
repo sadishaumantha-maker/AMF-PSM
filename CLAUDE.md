@@ -66,13 +66,14 @@ SHA256SUMS          the four protected artifacts and their digests
 | Module | Responsibility |
 |--------|----------------|
 | `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
-| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
-| `systems.py` | `AnatomicalSystem` and the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`). Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`. |
+| `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
+| `systems.py` | `AnatomicalSystem` and the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`). Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. |
 | `graph.py` | `DependencyGraph`: feedback-loop (simple-cycle) enumeration, articulation points, Katz-style centrality, and the stress-transmission `CouplingMatrix`. Dependency-free. |
-| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. |
+| `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, `with_system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable `DiagnosticConfig`): deterministic structural-weakness scoring (fragility, concentration, feedback) → `DiagnosticReport`. |
+| `sensitivity.py` | `SensitivityAnalyzer` (+ tunable `SensitivityConfig`): perturbs each `SystemMetric` of each system and re-diagnoses → `SensitivityReport` (gradients + ranked `LeveragePoint`s). Builds on `diagnostics`. |
 | `simulation.py` | `ShockSimulator` (+ tunable `SimulationConfig`): damped, capacity-gated shock-propagation dynamics → `SimulationTrace` / `ResilienceScore`; `stress_test()` shocks every system in turn; `ensemble()` runs a seeded Monte Carlo → `ResilienceDistribution`. Opt-in extensions: cascade/threshold dynamics, recovery, multi-wave shocks (`Shock.at_step`), and `Intervention`s. |
-| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept. |
+| `report.py` | Pure renderers: `render_text`, `render_json`, `render_markdown`, `render_stress_test`, `render_distribution`, plus the `Renderable` type alias naming the result types the text/Markdown/JSON renderers accept (including `SensitivityReport`). |
 | `viz.py` | Pure visual renderers: dependency graph as DOT / Mermaid / SVG, stress timeline as SVG. Dependency-free. |
 | `cli.py` | `argparse` CLI exposed as the `amf` console script. |
 
@@ -80,7 +81,7 @@ The public API is re-exported from `amf/__init__.py` (`__all__`); import types a
 engines from `amf`, not submodules. The renderers are the exception — they live
 in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
 `examples/` do). Dependencies flow one way: `errors`/`models` ←
-`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `report`/`viz`/`cli`.
+`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`.
 Keep it acyclic.
 
 ## Market JSON schema (CLI input)
@@ -123,7 +124,7 @@ kinds never changes a score.
 ## Using the CLI
 
 The `amf` console script prints the `_DISCLAIMER` to stderr (so `--format json`
-stdout stays machine-parseable) after every analytical command, and offers six
+stdout stays machine-parseable) after every analytical command, and offers eight
 subcommands:
 
 ```sh
@@ -133,18 +134,24 @@ amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.
                 [--seed N] [--jitter 0.0] [--format ...]
 amf stress-test examples/sample_market.json [--magnitude 0.8] [--format ...]  # shocks each system in turn
 amf ensemble    examples/sample_market.json --target circulatory [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
+amf sensitivity examples/sample_market.json [--step 0.05] [--top N] [--format ...]
+amf viz         examples/sample_market.json [--format svg|dot|mermaid] [--timeline SYSTEM] [-o FILE]
 amf describe                                                    # explains the 7 systems & method
 amf version
 ```
 
 Multi-wave (`Shock.at_step`) and `Intervention`s are exposed through the Python API
 and `examples/cascade_scenario.py`, not the CLI. `--target` accepts any
-`SystemKind` value; `--magnitude` is in `(0, 1]`.
+`SystemKind` value; `--magnitude` and `--step` are in `(0, 1]`. `viz` has its own
+`--format` (image formats, not text/json/md) and writes to stdout unless `-o` is
+given. `--top` truncates both rankings in the sensitivity report.
+
 `main(argv)` returns an exit code rather than calling `sys.exit`, so it is unit
 tested in-process: `0` on success, `2` on a handled `AMFError`, `1` on bad usage
 (no subcommand). Runnable scripts live in `examples/` (`equity_market.py`
 builds a market in code and diagnoses it; `liquidity_shock.py` imports that
-builder and runs a shock + stress test).
+builder and runs a shock + stress test; `where_to_intervene.py` ranks metric
+sensitivities and leverage points).
 
 ## The maths, briefly
 
@@ -193,6 +200,18 @@ builder and runs a shock + stress test).
   replications into a `ResilienceDistribution` (percentiles computed in-house, no
   numpy). Amplification/absorption use total injected load as a timing-independent
   denominator.
+- **Sensitivity**: for each system and each `SystemMetric`, the overall index is
+  re-evaluated at `baseline ± step` (clipped to `[0, 1]`), giving
+  `gradient = index_delta / span`. The difference is central where the metric has
+  room on both sides and one-sided near a bound, so `span` — the interval actually
+  explored — is reported alongside the gradient. `SensitivityConfig` defaults:
+  `step=0.05, include_criticality=True`.
+- **Leverage points**: the same perturbation restricted to
+  `SystemMetric.improving_direction()` (+1 for integrity/redundancy, −1 for load,
+  0 for criticality), ranked by `index_before − index_after`. A metric with no
+  headroom in its improving direction yields no leverage point. Criticality is
+  never a leverage point — it describes how load-bearing a system *is*, not a
+  lever — but it is still reported as a sensitivity.
 - **Severity bands** (`Severity.from_score`, on a normalised `[0, 1]` score):
   `< 0.25` low, `< 0.50` moderate, `< 0.75` elevated, else critical. The mapping is
   total and saturating: input below `0` reports low, above `1` reports critical, and
