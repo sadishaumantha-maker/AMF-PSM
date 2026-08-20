@@ -38,6 +38,32 @@ this file. Versions correspond to framework releases.
   the three points where the source analysis was reconciled against the repository as it
   actually stands. Documentation only — the issues remain the source of truth and no
   package behaviour changes.
+- `projects/` — a project section holding 73 charters that decompose the open
+  backlog and the research discussions into bounded, individually executable
+  units of work. Each charter states the dispute it settles, its purpose, ordered
+  instructions, a task board, the autonomous agents that execute it (mandate,
+  inputs, output artifact and stop condition each), the skills those agents
+  invoke, objectively checkable acceptance criteria, a required-reading list of
+  primary literature, and the exact commit subjects it produces. Charters are
+  grouped into twelve tracks from governance and CI through numerical
+  correctness, graph theory, diagnostics, simulation, policy architecture, market
+  taxonomy, case studies, advanced methods, communication and IP protection.
+  Supporting pages: `projects/AGENT_PROTOCOL.md`, `projects/SKILL_CATALOG.md`,
+  `projects/COMMIT_PROTOCOL.md` and `projects/REFERENCES.md` (a 248-entry vetted
+  bibliography of peer-reviewed articles, scholarly monographs, official
+  instrument texts and standards specifications). Documentation only — no package
+  behaviour changes.
+- `.claude/agents/` — 22 autonomous agent definitions used by the project
+  charters, each with a single mandate and a hard stop condition, and each bound
+  by the repository's hard rules (non-trading naming, illustrative-not-validated
+  output, protected-artifact integrity, zero runtime dependencies, determinism).
+- `.claude/skills/` — 25 repeatable procedures the agents invoke, covering source
+  vetting, determinism and floating-point auditing, invariant and property
+  authoring, mutation and coverage gates, the non-trading boundary and module
+  layering checks, config validation and schema round-tripping, graph, centrality,
+  cascade, ensemble and sensitivity analysis, taxonomy, regime and case-study
+  construction, figure rendering, documentation and changelog conventions,
+  integrity verification, and adversarial red-teaming.
 - `DiagnosticConfig.scale_concentration_by_reliance` (default `False`), which
   multiplies the concentration index by `min(1, total outgoing weight)`. The
   index is share-based, so it measures how unevenly a system's reliance is spread
