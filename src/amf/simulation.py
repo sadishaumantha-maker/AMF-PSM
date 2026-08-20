@@ -47,6 +47,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from amf.errors import InvalidConfigError, InvalidShockError
+from amf.invariants import check_simulation_trace
 from amf.models import (
     Intervention,
     MetricStats,
@@ -57,6 +58,7 @@ from amf.models import (
     SimulationTrace,
     SystemKind,
 )
+from amf.numeric import clip_unit, stable_sum
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -170,7 +172,7 @@ class ShockSimulator:
         self._coupling = market.graph.coupling_matrix()
         self._absorption = {k: market.system(k).absorptive_capacity() for k in _ORDER}
         self._criticality = {k: market.system(k).criticality for k in _ORDER}
-        self._crit_total = sum(self._criticality.values()) or 1.0
+        self._crit_total = stable_sum(self._criticality.values()) or 1.0
 
     def propagate(
         self,
@@ -241,12 +243,14 @@ class ShockSimulator:
                 break
 
         tipped_systems = tuple(k for k in _ORDER if k in tipped)
-        resilience = self._score(shocks, steps, injected, tipped_systems)
-        return SimulationTrace(
-            shocks=tuple(shocks),
-            steps=tuple(steps),
-            converged=converged,
-            resilience=resilience,
+        resilience = self._score(shocks, steps, injected, tipped_systems, horizon)
+        return check_simulation_trace(
+            SimulationTrace(
+                shocks=tuple(shocks),
+                steps=tuple(steps),
+                converged=converged,
+                resilience=resilience,
+            )
         )
 
     def resilience(self, shock: Shock) -> ResilienceScore:
@@ -333,7 +337,11 @@ class ShockSimulator:
             recv_abs = a_eff[receiver]
             if threshold is not None and state[receiver] > threshold:
                 recv_abs *= 1.0 - cfg.cascade_absorption_drop
-            incoming = 0.0
+            # Terms are collected and reduced with ``stable_sum`` rather than
+            # accumulated with ``+=``. Iteration stays in declaration order and
+            # still draws jitter only for live couplings, so a seeded run
+            # consumes exactly the same random stream as before.
+            terms: list[float] = []
             for transmitter in _ORDER:
                 weight = self._coupling.get(transmitter, receiver)
                 if weight <= 0.0:
@@ -343,16 +351,17 @@ class ShockSimulator:
                     factor = max(0.0, factor + rng.gauss(0.0, cfg.jitter))
                 if threshold is not None and state[transmitter] > threshold:
                     factor *= 1.0 + cfg.cascade_gain
-                incoming += state[transmitter] * weight * factor
+                terms.append(state[transmitter] * weight * factor)
+            incoming = stable_sum(terms)
             value = cfg.damping * (state[receiver] * cfg.retention + incoming * (1.0 - recv_abs))
             if cfg.recovery_rate > 0.0:
                 value -= cfg.recovery_rate
-            nxt[receiver] = min(1.0, max(0.0, value))
+            nxt[receiver] = clip_unit(value)
         return nxt
 
     def _aggregate(self, state: dict[SystemKind, float]) -> float:
         """Return the criticality-weighted aggregate stress in ``[0, 1]``."""
-        return sum(self._criticality[k] * state[k] for k in _ORDER) / self._crit_total
+        return stable_sum(self._criticality[k] * state[k] for k in _ORDER) / self._crit_total
 
     def _score(
         self,
@@ -360,23 +369,34 @@ class ShockSimulator:
         steps: list[dict[SystemKind, float]],
         injected: float,
         tipped_systems: tuple[SystemKind, ...],
+        horizon: int,
     ) -> ResilienceScore:
-        """Derive resilience metrics from a completed trajectory."""
+        """Derive resilience metrics from a completed trajectory.
+
+        Args:
+            shocks: The shocks that were applied.
+            steps: The recorded stress vectors, one per timestep.
+            injected: Total injected load, used as the timing-independent
+                denominator for absorption and amplification.
+            tipped_systems: Systems that crossed the cascade threshold.
+            horizon: The number of steps the run was actually allowed, which is
+                ``max(max_steps, last injection step)``. The settling penalty is
+                measured against this rather than against ``max_steps``: a
+                multi-wave run extends the horizon past the budget, and dividing
+                by the shorter one produced a penalty above ``1`` and drove the
+                settling term of the composite negative.
+        """
         aggregates = [self._aggregate(s) for s in steps]
         peak = max(aggregates)
         final = aggregates[-1]
 
-        absorbed = 1.0 - (final / injected) if injected > 0.0 else 1.0
-        absorbed = min(1.0, max(0.0, absorbed))
+        absorbed = clip_unit(1.0 - (final / injected) if injected > 0.0 else 1.0)
         amplification = peak / injected if injected > 0.0 else 1.0
 
         settling_time = self._settling_time(steps)
-        amp_penalty = min(1.0, max(0.0, amplification - 1.0))
-        settle_penalty = settling_time / self.config.max_steps if settling_time >= 0 else 1.0
-        value = min(
-            1.0,
-            max(0.0, 0.6 * absorbed + 0.25 * (1.0 - amp_penalty) + 0.15 * (1.0 - settle_penalty)),
-        )
+        amp_penalty = clip_unit(amplification - 1.0)
+        settle_penalty = clip_unit(settling_time / horizon) if settling_time >= 0 else 1.0
+        value = clip_unit(0.6 * absorbed + 0.25 * (1.0 - amp_penalty) + 0.15 * (1.0 - settle_penalty))
 
         # Pick the dominant shock target for labelling the score.
         target = max(shocks, key=lambda s: s.magnitude).target

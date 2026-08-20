@@ -72,16 +72,26 @@ tests/unit/         one file per module, plus test_non_trading_boundary.py
 tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
-examples/           sample_market.json + three runnable scripts
+examples/           sample_market.json + four runnable scripts
+docs/               prose only — planning and research notes, no code and no
+                    authority over the package (see *Prose docs* below)
+tools/              sync_milestones.py -- reconciles the repository's Milestones
+                    section with .github/milestones.json (stdlib only, idempotent,
+                    never deletes); validated offline by test_milestones_manifest.py
+.github/milestones.json   the 20-working-day delivery schedule as code
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
-.github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml
+.github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
+                    codeql.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
+.github/pull_request_template.md   PR checklist rendered on every new PR
+.github/RULESET-POLICY.md          branch-protection rules and rationale
 .pre-commit-config.yaml   ruff, ruff-format, mypy (src only), yamllint,
                           hygiene hooks, protect-ip-artifacts
 .yamllint.yml       yamllint config (line length 140, `on:` truthy allowed)
 .gitattributes      binary / EOL rules that keep the IP checksums stable
 SHA256SUMS          the four protected artifacts and their digests
 RELEASING.md        private-only release procedure and what enforces it
+CONTRIBUTING.md     workflow guide — its tooling section is stale, see below
 README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 ```
 
@@ -89,7 +99,9 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 
 | Module | Responsibility |
 |--------|----------------|
-| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `InvariantError`, `MarketParseError`). Has no internal dependencies. |
+| `numeric.py` | Deterministic floating-point primitives: `stable_sum` (`math.fsum`; exactly rounded, so a reduction cannot depend on the order its terms arrive in), `square` (a multiplication -- IEEE 754 requires that to be correctly rounded, whereas `x ** 2` routes to the platform's `libm` `pow` and does not have to be), and `clip_unit`. Every scoring path reduces through these. No internal dependencies. |
+| `invariants.py` | The guard each engine runs over its own result before returning it: `require_unit` / `require_non_negative` / `require_finite`, plus `check_diagnostic_report`, `check_simulation_trace`, `check_resilience_score`, `check_sensitivity_report`, `check_centrality`. Each `check_*` returns its argument unchanged, so an engine adopts it by wrapping its return value. Always on -- there is no flag to forget. Raises `InvariantError`, never `assert` (assertions vanish under `python -O`). Depends only on `errors`/`models`. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
 | `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Dependency-free. |
@@ -104,9 +116,10 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 The public API is re-exported from `amf/__init__.py` (`__all__`); import types and
 engines from `amf`, not submodules. The renderers are the exception — they live
 in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
-`examples/` do). Dependencies flow one way: `errors`/`models` ←
-`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`.
-Keep it acyclic.
+`examples/` do). `amf.numeric` and `amf.invariants` follow the same rule as the renderers: import
+them from their own modules. Dependencies flow one way:
+`errors`/`models`/`numeric` ← `invariants` ← `systems`/`graph` ← `market` ←
+`diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`. Keep it acyclic.
 
 ## Determinism and parameter validation
 
@@ -146,6 +159,29 @@ are easy to break by accident:
   rely on it.
 - **Renderers are pure.** Nothing in `report.py` or `viz.py` performs I/O, reads
   the clock, or uses randomness; `viz` tests assert byte-identical repeat renders.
+- **Reductions go through `stable_sum`, squaring through `square`.** Canonical
+  traversal order alone is a workaround, not a guarantee: it removes the
+  *observable* variation only where the engine controls the order. Two operations
+  broke that in practice. `DependencyGraph.centrality` accumulated influence while
+  iterating a dict keyed in *insertion* order, so 265 of 400 random permutations of
+  `examples/sample_market.json`'s eight dependencies produced a different
+  centrality vector; and `diagnostics.concentration` squared with `** 2`, which
+  dispatches to the platform's `libm` `pow` and disagrees with `x * x` for about 1
+  double in 1,200. Both are fixed, and the rule now is: reduce with
+  `amf.numeric.stable_sum` (exactly rounded, so order cannot matter), square with
+  `amf.numeric.square` (correctly rounded on every conforming platform), and clamp
+  with `amf.numeric.clip_unit`. Do not write a bare `sum(...)` or `** 2` on a path
+  that feeds a published score.
+- **Every engine checks its own result.** `DiagnosticEngine.diagnose`,
+  `ShockSimulator.propagate`, `SensitivityAnalyzer.analyse`, and
+  `DependencyGraph.centrality` each wrap their return value in the matching
+  `amf.invariants.check_*`, which raises `InvariantError` if a score has escaped
+  `[0, 1]`, gone non-finite, or lost its normalisation. Note 100% coverage does not
+  substitute for this: the settling-penalty defect — `_score` dividing by
+  `max_steps` while `propagate` had extended the horizon past it, so a multi-wave
+  run scored its settling term at `-1.8` against a documented `[0, 1]` — executed
+  every line involved and was invisible to the gate. A new engine method that
+  returns a result type adds the corresponding check.
 
 ## Market JSON schema (CLI input)
 
@@ -277,12 +313,18 @@ example.
   threshold.
 - **Centrality**: Katz-style "being depended upon" influence, max-normalised to
   `[0, 1]`, attenuated by `alpha` (default 0.4) per hop. Chosen over eigenvector
-  centrality because it is well defined on acyclic graphs. The series only
-  converges while `alpha` stays below the inverse of the graph's spectral radius;
-  the default `0.4` satisfies that on a sparse market but not on a densely coupled
-  one, where the influence series diverges before being max-normalised — so treat
-  a dense graph's centrality with suspicion and pass a smaller `alpha`. Nothing in
-  the scoring pipeline consumes `centrality`; it is a standalone query.
+  centrality because it is well defined on acyclic graphs. Below
+  `alpha = 1/spectral radius` this is the Katz sum proper; above it the series
+  grows without bound but the *max-normalised* result still settles, on the
+  dominant-eigenvector direction. Both rank "how much is depended upon", so
+  divergence alone is not treated as an error — a densely coupled market returns a
+  perfectly usable answer. What is rejected (`InvalidDependencyError`) is a graph
+  with no single dominant mode, where the normalised ranking cycles forever and the
+  answer would be decided by whichever step the iteration budget stopped on; a
+  complete bipartite market with unequal sides does this. Exhausting `iterations`
+  on a still-settling run returns the partial result, since a truncated run is what
+  the caller asked for. Nothing in the scoring pipeline consumes `centrality`; it
+  is a standalone query.
 - **Simulation**: a stress vector `x_t ∈ [0,1]^7` evolves by
   `x_{t+1}[j] = clip(damping·(x_t[j]·retention + Σ_i x_t[i]·W[i][j]·transmission·(1−a_j)), 0, 1)`,
   where `W` is the coupling matrix (stress flows target → source, the reverse of
@@ -343,6 +385,13 @@ pytest                                  # tests + branch coverage gate (100%)
 pre-commit install                      # optional: run hooks on commit
 ```
 
+This block is the authoritative dev setup — there is no `requirements.txt`, and
+the project does not use `black`, `flake8`, or `pylint` despite what
+`CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
+the whole suite is currently 600 tests passing at 100% statement and branch
+coverage, with `ruff` and `mypy` both silent; that is the bar a change has to
+clear.
+
 Conventions: Python 3.11+ (CI tests 3.11/3.12/3.13), full type annotations,
 Google-style docstrings on public API. Ruff selects
 `E,F,W,I,N,UP,B,C4,SIM,TC,PTH,RUF,ANN,D` (ignoring `D203`, `D213`), with `ANN`/`D`
@@ -398,15 +447,110 @@ and is validated by `cffconvert` in CI.
 
 ## CI
 
-Two workflows gate every push and pull request:
+Three workflows gate every push and pull request:
 
-- `.github/workflows/ci.yml` — four jobs: **lint** (`ruff check` + `ruff format
-  --check`), **typecheck** (`mypy`), **test** (`pytest` on the 3.11/3.12/3.13
-  matrix, uploading `coverage.xml` from 3.12), and **validate** (`yamllint .`,
-  `cffconvert --validate -i CITATION.cff`, and a Markdown link check). `cffconvert`
-  is installed standalone in that job rather than in the `dev` extra, because a
-  transitive dependency fails to build under some patched local setuptools.
+- `.github/workflows/ci.yml` — the main gate. Four jobs: **lint** (`ruff check` +
+  `ruff format --check`), **typecheck** (`mypy`), **test** (`pytest` on the
+  3.11/3.12/3.13 matrix, uploading `coverage.xml` from 3.12), and **validate**
+  (`yamllint .`, `cffconvert --validate -i CITATION.cff`, and a Markdown link
+  check). `cffconvert` is installed standalone in that job rather than in the
+  `dev` extra, because a transitive dependency fails to build under some patched
+  local setuptools.
 - `.github/workflows/integrity.yml` — verifies the `SHA256SUMS` artifacts are
   untouched.
+- `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
+  and `actions` languages, on pushes and PRs to `main` plus a weekly schedule.
+  `build-mode: none`, so it needs no project setup.
+
+### The validate job runs in order, and yamllint is first
+
+`yamllint .` runs ahead of `cffconvert` and the link check, so **a YAML formatting
+error silently disables both of them**. That is not hypothetical: it happened.
+Two workflows were committed as unmodified GitHub templates, `yamllint` rejected
+them, and for as long as that lasted the metadata validation and link checking the
+job exists to perform never executed on any branch — while the job still *looked*
+like it was doing its work. When `validate` fails, read far enough down the log to
+see which step actually failed; and if you make `yamllint` pass, expect the steps
+behind it to start reporting problems of their own that were never visible before.
+
+Two consequences are baked into the tree, and undoing either re-breaks the job:
+
+- **`codeql.yml` carries two `# yamllint disable-line rule:line-length`
+  directives.** They sit above comments that are a single GitHub documentation
+  URL, too long for the 140-character limit at any indentation and not shortenable
+  without breaking the link. Keep the directives if you touch that file, and keep
+  the rest of it formatted to `.yamllint.yml` (bracket spacing, sequence
+  indentation) — it is a vendored template, so a careless re-copy from GitHub will
+  reintroduce every violation at once.
+- **There is deliberately no conda workflow.** `python-package-conda.yml` was
+  removed: it was the stock conda starter, running on every push against an
+  `environment.yml` that does not exist, and it contradicted the project on three
+  counts — Python 3.10 (below the `requires-python = ">=3.11"` floor), `flake8`
+  (the project lints with `ruff`), and a bare `pytest` with no install step, so
+  `amf` was not importable. Do not re-add it, and do not add an `environment.yml`
+  or a flake8 config to revive it; `ci.yml` already tests 3.11/3.12/3.13 and
+  CodeQL already scans.
+
+### Links in Markdown are checked, including relative ones
+
+The link check covers every `.md` file in the tree, relative paths included, so a
+link to a file that does not exist fails the build. Mind the directory a document
+lives in: from `.github/RULESET-POLICY.md`, `./CONTRIBUTING.md` resolves to
+`.github/CONTRIBUTING.md` and fails — root-level documents need `../`. Check a
+change the way CI does before pushing:
+
+```sh
+npx markdown-link-check --config .github/mlc-config.json <file>.md
+```
+
+`.github/mlc-config.json` holds the ignore patterns and the accepted status codes.
+Three patterns are ignored: shields.io badges, opentimestamps.org, and a
+repository's `/milestones` page — GitHub answers that one `403` to an
+unauthenticated request (verified by `curl`), while `/issues/<n>` answers `200`,
+so the link is good but unverifiable from CI.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
+
+## Prose docs, governance, and what is authoritative
+
+Several Markdown files describe intentions rather than the code as it stands.
+They are useful background, but none of them overrides this file, `pyproject.toml`,
+or the test suite. When a prose document and the code disagree, the code wins and
+the document is the thing that is out of date.
+
+- **`CONTRIBUTING.md`** — the workflow half (branch naming, Conventional Commits,
+  PR and review etiquette) is worth following. Its **tooling half is wrong for this
+  repository**: it names `pylint`, `black`, `flake8`, `requirements.txt`,
+  `requirements-dev.txt`, a `develop` branch, and an 80% coverage floor. None of
+  those exist here. The real setup is `pip install -e ".[dev]"`, `ruff` (lint *and*
+  format), `mypy --strict`, `pytest` at a **100%** coverage gate, and a single
+  long-lived branch, `main`. Follow the *Developing* section above, not that list,
+  and do not add those tools or files to make the document true.
+- **`.github/RULESET-POLICY.md`** and the branch-protection tables in
+  `CONTRIBUTING.md` — the *intended* ruleset (2 approvals on `main`, signed
+  commits, protected `develop` and `release/*` branches). They describe a policy
+  target, not necessarily what GitHub currently enforces, and they reference
+  branches this repository does not have. Do not infer the live configuration from
+  them; check the repository settings if it matters.
+- **`.github/pull_request_template.md`** — a long checklist (description, linked
+  issues, testing, security, type of change, priority). Fill in the sections that
+  apply to the diff and skip the rest; it is a layout to populate, not a set of
+  instructions to obey.
+- **`docs/roadmap.md`** — Phase 2 planning and issue triage. Explicitly marked a
+  *proposal for ratification*, and it restates the hard rules above rather than
+  relaxing them.
+- **`docs/ANALYSIS_AND_ROADMAP.md`** — a governance and delivery-pipeline audit
+  with a 90-day plan. A snapshot of one moment's issue and PR backlog; its counts
+  go stale immediately.
+- **`docs/RESEARCH_DISCUSSIONS.md`** and **`docs/QUANTUM_NEURAL_RESEARCH.md`** —
+  open-ended research prompts for a hypothetical v1.1 (regulatory architecture,
+  quantum and neural formulations of market state, information-theoretic
+  measures). These are speculative discussion material. **Nothing in them is
+  implemented, agreed, or scheduled**, and several sketches would collide with the
+  hard rules if taken literally — a request to "implement the roadmap" or "add the
+  quantum model" needs the specific item confirmed with the user first, and still
+  has to clear the non-trading naming guard, the determinism rules, and the 100%
+  coverage gate like any other change.
+
+The `docs/` tree is prose only. No code imports from it, no test reads it, and
+adding a document there changes nothing about the package's behaviour.

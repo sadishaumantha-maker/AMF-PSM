@@ -6,6 +6,38 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `amf.numeric` — deterministic floating-point primitives (`stable_sum`, `square`,
+  `clip_unit`) now used by every scoring path. `stable_sum` is exactly rounded, so a
+  reduction no longer depends on the order its terms arrive in; `square` is written as a
+  multiplication because IEEE 754 requires that to be correctly rounded, while `x ** 2`
+  routes to the platform's `libm` `pow`, which does not have to be and measurably is not
+  (`x ** 2` and `x * x` disagree for roughly 1 double in 1,200 on CPython 3.11/x86-64).
+  Imported from `amf.numeric`, like the renderers in `amf.report` and `amf.viz`.
+- `amf.invariants` — a guard every engine runs over its own result before returning it
+  (`check_diagnostic_report`, `check_simulation_trace`, `check_resilience_score`,
+  `check_sensitivity_report`, `check_centrality`, plus the `require_*` primitives). It
+  enforces the properties the result types document: scores and stress levels finite and
+  inside `[0, 1]`, a finite non-negative amplification factor, a settling time that is a
+  step index or the `-1` sentinel, a strictly positive sensitivity span, and a
+  max-normalised centrality vector. The checks are always on — there is no flag to forget.
+- `InvariantError`, a new `AMFError` subclass raised when a computed result breaks one of
+  those properties. It is an exception and not an `assert` deliberately: assertions are
+  stripped under `python -O`, which would disable the guard exactly where a deployment
+  most wants it.
+- `docs/ROBUSTNESS_REVIEW.md` — a technical assessment of an external "advanced
+  robustness" proposal, with the measurements behind each verdict and the counter-proposal
+  actually implemented here. Documentation only.
+- `.github/milestones.json`, `tools/sync_milestones.py`, and
+  `.github/workflows/milestones.yml` — the delivery milestones as a checked-in,
+  idempotent manifest, so the repository's Milestones section is reproducible rather than
+  hand-maintained. `tests/unit/test_milestones_manifest.py` validates the manifest offline.
+
+- `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
+  program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
+  with the phase calendar, the metric ledger, the guardrails every issue inherits, and
+  the three points where the source analysis was reconciled against the repository as it
+  actually stands. Documentation only — the issues remain the source of truth and no
+  package behaviour changes.
 - `projects/` — a project section holding 73 charters that decompose the open
   backlog and the research discussions into bounded, individually executable
   units of work. Each charter states the dispute it settles, its purpose, ordered
@@ -102,6 +134,43 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `DependencyGraph.centrality()` no longer depends on the order the dependencies were
+  added in. The influence propagation accumulated into each target while iterating the
+  pair-weight dict, which is keyed in insertion order; because floating-point addition is
+  not associative, listing the same couplings in a different order shifted the published
+  centralities by an ulp. Measured on `examples/sample_market.json`: **265 of 400** random
+  permutations of its eight dependencies produced a different vector before the fix, and
+  **0 of 1,000** after. This was a live breach of the project's rule that nothing
+  user-visible may depend on assembly order.
+- The resilience composite no longer drives its settling term negative on a multi-wave
+  run. `propagate` extends the horizon to `max(max_steps, last injection step)`, but the
+  score divided the settling time by `max_steps` regardless, so a shock scheduled past the
+  budget produced a settling penalty above `1`. Measured: `max_steps=5` with a shock at
+  `at_step=40` gave a settling time of 14, a penalty of 2.8, and a settling term of −1.8
+  against a documented range of `[0, 1]`. The penalty is now measured against the horizon
+  actually run and clipped. Single-shock runs are provably unaffected, since their horizon
+  equals `max_steps`.
+
+- `DependencyGraph` no longer lets the order dependencies were listed in change a
+  market's scores. A pair coupled by several kinds had its aggregate weight summed
+  in dict-insertion order, and floating-point addition is not associative, so the
+  same market described with its couplings in a different order produced
+  `edge_weight` values differing in the last bits — and with them different
+  concentration scores. Kinds are now summed in `DependencyKind` declaration order,
+  matching the canonical ordering every other graph query already used. Found by
+  the existing order-independence property test, which had been passing only
+  because the generator had not yet drawn a multi-kind pair with weights that
+  expose it.
+- `DependencyGraph.centrality()` no longer returns a ranking decided by where the
+  iteration budget happened to stop. On a graph with no single dominant mode — a
+  complete bipartite market with unequal sides, for instance — the normalised
+  ranking cycles between two states forever, and at 200 iterations four of the six
+  coupled systems scored `0.7222` while at 199 or 201 they scored `0.6923`. That
+  case now raises `InvalidDependencyError`. Convergence is also now tested on the
+  max-normalised vector rather than on raw influence added, which is scale-free and
+  so settles correctly whether the underlying series converges or grows; the
+  previous absolute threshold was unreachable within the default budget on densely
+  coupled graphs and silently returned an under-converged result.
 - `Market.from_dict()` now rejects a `components` value that is not a list. A
   bare string is iterable, so it was previously split into single-character
   components rather than reported as malformed.
@@ -148,6 +217,19 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- The diagnostic overall index is now reduced with `stable_sum` rather than a running
+  `+=`. The result is the correctly rounded value rather than an accumulation-order
+  artefact, which moves it by one unit in the last place — on `examples/sample_market.json`
+  from `0.27963855632147405` to `0.279638556321474`. Every per-system concentration score
+  is unchanged, and no severity band moves.
+
+- `DependencyGraph.centrality()` treats a diverging series as valid rather than as
+  an error. Above `alpha = 1/spectral radius` the max-normalised result settles on
+  the dominant-eigenvector direction, which is still a meaningful "most depended
+  upon" ranking, so a densely coupled market now returns an answer instead of being
+  refused. Only a genuinely unstable ranking is rejected. Every graph that returned
+  a stable answer before returns exactly that answer; nothing in the diagnostic or
+  simulation pipeline consumes `centrality`, so no published score moves.
 - The diagnostic concentration driver now reports the coupling count and total
   reliance alongside the index (`reliance concentrated in 1 coupling(s) (HHI 1.00,
   total reliance 0.30)`). The index alone cannot distinguish a genuine

@@ -1,0 +1,36 @@
+name: Milestones
+
+# Reconcile the repository's Milestones section with .github/milestones.json.
+# The manifest is the source of truth: this workflow creates milestones it
+# describes and updates ones that have drifted, and never deletes anything.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - .github/milestones.json
+      - tools/sync_milestones.py
+      - .github/workflows/milestones.yml
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: milestones-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    name: Sync milestones from manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Reconcile the Milestones section
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python tools/sync_milestones.py

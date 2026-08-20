@@ -24,6 +24,7 @@ from amf.errors import (
     InvalidDependencyError,
     InvalidShockError,
     InvalidSystemError,
+    InvariantError,
     MarketParseError,
 )
 from amf.graph import CouplingMatrix, DependencyGraph
@@ -80,6 +81,7 @@ __all__ = [
     "InvalidDependencyError",
     "InvalidShockError",
     "InvalidSystemError",
+    "InvariantError",
     "LeveragePoint",
     "Market",
     "MarketBoundary",
