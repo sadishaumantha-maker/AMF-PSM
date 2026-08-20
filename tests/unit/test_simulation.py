@@ -585,3 +585,43 @@ def test_simulation_config_accepts_its_documented_boundaries():
     # all meaningful settings.
     config = SimulationConfig(max_steps=1, damping=1.0, retention=0.0, transmission=0.0, jitter=0.0)
     assert config.damping == 1.0
+
+
+def test_late_scheduled_shock_keeps_the_settling_penalty_inside_its_range(stressed_market):
+    # Regression. `propagate` extends the horizon to cover the last injection,
+    # so a shock scheduled beyond `max_steps` runs for more steps than the
+    # budget. The score divided the settling time by `max_steps` regardless,
+    # which produced a penalty above 1 and made the settling term of the
+    # composite -- documented as 0.15 * (1 - penalty), each term in [0, 1] --
+    # contribute a negative number. Measured before the fix: settling_time 14
+    # against max_steps 5 gave a penalty of 2.8 and a term of -1.8.
+    config = SimulationConfig(max_steps=5)
+    trace = ShockSimulator(stressed_market, config).propagate(
+        [
+            Shock(target=SystemKind.CIRCULATORY, magnitude=0.8),
+            Shock(target=SystemKind.NERVOUS, magnitude=0.9, at_step=40),
+        ]
+    )
+    score = trace.resilience
+    assert score is not None
+    horizon = 40
+    assert len(trace.steps) == horizon + 1
+    # The trajectory settles well after the nominal budget, which is the trigger.
+    assert score.settling_time > config.max_steps
+    penalty = score.settling_time / horizon
+    assert 0.0 <= penalty <= 1.0
+    # And the composite reflects the corrected term rather than a clipped floor.
+    assert score.value == pytest.approx(
+        0.6 * score.absorbed_fraction
+        + 0.25 * (1.0 - min(1.0, max(0.0, score.amplification_factor - 1.0)))
+        + 0.15 * (1.0 - penalty)
+    )
+
+
+def test_single_shock_settling_penalty_is_unchanged_by_the_horizon_fix(stressed_market):
+    # The horizon equals max_steps whenever every shock lands at step 0, so the
+    # correction cannot move any score a single-shock caller has ever seen.
+    config = SimulationConfig(max_steps=50)
+    score = ShockSimulator(stressed_market, config).resilience(Shock(target=SystemKind.CIRCULATORY))
+    assert 0 <= score.settling_time <= config.max_steps
+    assert 0.0 <= score.value <= 1.0

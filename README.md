@@ -147,6 +147,23 @@ Markdown-link validation) on every push and pull request.
 
 ---
 
+## Milestones
+
+Delivery is tracked in this repository's
+[Milestones section](https://github.com/sadishaumantha-maker/AMF-PSM/milestones): one
+milestone per working day, **Thu 20 Aug – Wed 16 Sep 2026**, grouped into five phases
+(numerical determinism and invariants; stress-scenario corpus; provenance and operator
+surface; institutional controls; validation and review).
+
+The schedule is kept as code in [`.github/milestones.json`](.github/milestones.json) and
+reconciled with GitHub by [`tools/sync_milestones.py`](tools/sync_milestones.py), which
+creates and updates but never deletes. Edit the manifest rather than the GitHub UI — the
+next sync overwrites any drift. `tests/unit/test_milestones_manifest.py` validates the
+manifest offline, and the reasoning behind the programme is in
+[`docs/ROBUSTNESS_REVIEW.md`](docs/ROBUSTNESS_REVIEW.md).
+
+---
+
 ## Integrity, Provenance & Rights
 
 This repository uses three independent, layered mechanisms to establish and protect authorship of the AMF:

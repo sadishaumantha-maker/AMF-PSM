@@ -6,6 +6,31 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `amf.numeric` — deterministic floating-point primitives (`stable_sum`, `square`,
+  `clip_unit`) now used by every scoring path. `stable_sum` is exactly rounded, so a
+  reduction no longer depends on the order its terms arrive in; `square` is written as a
+  multiplication because IEEE 754 requires that to be correctly rounded, while `x ** 2`
+  routes to the platform's `libm` `pow`, which does not have to be and measurably is not
+  (`x ** 2` and `x * x` disagree for roughly 1 double in 1,200 on CPython 3.11/x86-64).
+  Imported from `amf.numeric`, like the renderers in `amf.report` and `amf.viz`.
+- `amf.invariants` — a guard every engine runs over its own result before returning it
+  (`check_diagnostic_report`, `check_simulation_trace`, `check_resilience_score`,
+  `check_sensitivity_report`, `check_centrality`, plus the `require_*` primitives). It
+  enforces the properties the result types document: scores and stress levels finite and
+  inside `[0, 1]`, a finite non-negative amplification factor, a settling time that is a
+  step index or the `-1` sentinel, a strictly positive sensitivity span, and a
+  max-normalised centrality vector. The checks are always on — there is no flag to forget.
+- `InvariantError`, a new `AMFError` subclass raised when a computed result breaks one of
+  those properties. It is an exception and not an `assert` deliberately: assertions are
+  stripped under `python -O`, which would disable the guard exactly where a deployment
+  most wants it.
+- `docs/ROBUSTNESS_REVIEW.md` — a technical assessment of an external "advanced
+  robustness" proposal, with the measurements behind each verdict and the counter-proposal
+  actually implemented here. Documentation only.
+- `.github/milestones.json`, `tools/sync_milestones.py`, and
+  `.github/workflows/milestones.yml` — the delivery milestones as a checked-in,
+  idempotent manifest, so the repository's Milestones section is reproducible rather than
+  hand-maintained. `tests/unit/test_milestones_manifest.py` validates the manifest offline.
 - `tools/docsync` — a deterministic, offline drift detector that checks `CLAUDE.md`
   against the repository it describes. It extracts the real facts with `ast` (never
   importing or executing `amf`), extracts the document's claims, and reports every
@@ -33,27 +58,38 @@ this file. Versions correspond to framework releases.
 - Time and locale, and automated maintenance, are now documented as first-class sections
   of `CLAUDE.md`, including the honest accuracy ceilings for each class of time source.
 
-### Fixed
-- `docs/discussions/README.md` linked eleven research modules that were never committed;
-  the directory contains only the index itself. Those dead relative links failed the
-  `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
-  `main`. The index now names the unwritten modules as plain text rather than links.
-- Ten factual errors in `CLAUDE.md`, found by the new detector: a stale test total, a
-  miscounted number of `yamllint disable-line` directives in `codeql.yml`, `__all__`
-  described as `sorted()` when it is in ruff `RUF022` natural order, `tests/unit/`
-  described as one file per module, an undocumented `amf ensemble --magnitude`, a missing
-  `AttributeError` in the `Market.from_dict` wrap list, `graph.py` described as
-  "dependency-free", and two `docs/` files named nowhere in the guide.
-- `src/amf/cli.py`'s module docstring omitted the `ensemble` subcommand it defines. Here
-  the guide was correct and the source was stale, which is why the detector checks both
-  directions.
-
 - `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
   program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
   with the phase calendar, the metric ledger, the guardrails every issue inherits, and
   the three points where the source analysis was reconciled against the repository as it
   actually stands. Documentation only — the issues remain the source of truth and no
   package behaviour changes.
+- `projects/` — a project section holding 73 charters that decompose the open
+  backlog and the research discussions into bounded, individually executable
+  units of work. Each charter states the dispute it settles, its purpose, ordered
+  instructions, a task board, the autonomous agents that execute it (mandate,
+  inputs, output artifact and stop condition each), the skills those agents
+  invoke, objectively checkable acceptance criteria, a required-reading list of
+  primary literature, and the exact commit subjects it produces. Charters are
+  grouped into twelve tracks from governance and CI through numerical
+  correctness, graph theory, diagnostics, simulation, policy architecture, market
+  taxonomy, case studies, advanced methods, communication and IP protection.
+  Supporting pages: `projects/AGENT_PROTOCOL.md`, `projects/SKILL_CATALOG.md`,
+  `projects/COMMIT_PROTOCOL.md` and `projects/REFERENCES.md` (a 248-entry vetted
+  bibliography of peer-reviewed articles, scholarly monographs, official
+  instrument texts and standards specifications). Documentation only — no package
+  behaviour changes.
+- `.claude/agents/` — 22 autonomous agent definitions used by the project
+  charters, each with a single mandate and a hard stop condition, and each bound
+  by the repository's hard rules (non-trading naming, illustrative-not-validated
+  output, protected-artifact integrity, zero runtime dependencies, determinism).
+- `.claude/skills/` — 25 repeatable procedures the agents invoke, covering source
+  vetting, determinism and floating-point auditing, invariant and property
+  authoring, mutation and coverage gates, the non-trading boundary and module
+  layering checks, config validation and schema round-tripping, graph, centrality,
+  cascade, ensemble and sensitivity analysis, taxonomy, regime and case-study
+  construction, figure rendering, documentation and changelog conventions,
+  integrity verification, and adversarial red-teaming.
 - `DiagnosticConfig.scale_concentration_by_reliance` (default `False`), which
   multiplies the concentration index by `min(1, total outgoing weight)`. The
   index is share-based, so it measures how unevenly a system's reliance is spread
@@ -124,6 +160,36 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `docs/discussions/README.md` linked eleven research modules that were never committed;
+  the directory contains only the index itself. Those dead relative links failed the
+  `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
+  `main`. The index now names the unwritten modules as plain text rather than links.
+- Ten factual errors in `CLAUDE.md`, found by the new detector: a stale test total, a
+  miscounted number of `yamllint disable-line` directives in `codeql.yml`, `__all__`
+  described as `sorted()` when it is in ruff `RUF022` natural order, `tests/unit/`
+  described as one file per module, an undocumented `amf ensemble --magnitude`, a missing
+  `AttributeError` in the `Market.from_dict` wrap list, `graph.py` described as
+  "dependency-free", and two `docs/` files named nowhere in the guide.
+- `src/amf/cli.py`'s module docstring omitted the `ensemble` subcommand it defines. Here
+  the guide was correct and the source was stale, which is why the detector checks both
+  directions.
+- `DependencyGraph.centrality()` no longer depends on the order the dependencies were
+  added in. The influence propagation accumulated into each target while iterating the
+  pair-weight dict, which is keyed in insertion order; because floating-point addition is
+  not associative, listing the same couplings in a different order shifted the published
+  centralities by an ulp. Measured on `examples/sample_market.json`: **265 of 400** random
+  permutations of its eight dependencies produced a different vector before the fix, and
+  **0 of 1,000** after. This was a live breach of the project's rule that nothing
+  user-visible may depend on assembly order.
+- The resilience composite no longer drives its settling term negative on a multi-wave
+  run. `propagate` extends the horizon to `max(max_steps, last injection step)`, but the
+  score divided the settling time by `max_steps` regardless, so a shock scheduled past the
+  budget produced a settling penalty above `1`. Measured: `max_steps=5` with a shock at
+  `at_step=40` gave a settling time of 14, a penalty of 2.8, and a settling term of −1.8
+  against a documented range of `[0, 1]`. The penalty is now measured against the horizon
+  actually run and clipped. Single-shock runs are provably unaffected, since their horizon
+  equals `max_steps`.
+
 - `DependencyGraph` no longer lets the order dependencies were listed in change a
   market's scores. A pair coupled by several kinds had its aggregate weight summed
   in dict-insertion order, and floating-point addition is not associative, so the
@@ -190,6 +256,12 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- The diagnostic overall index is now reduced with `stable_sum` rather than a running
+  `+=`. The result is the correctly rounded value rather than an accumulation-order
+  artefact, which moves it by one unit in the last place — on `examples/sample_market.json`
+  from `0.27963855632147405` to `0.279638556321474`. Every per-system concentration score
+  is unchanged, and no severity band moves.
+
 - `DependencyGraph.centrality()` treats a diverging series as valid rather than as
   an error. Above `alpha = 1/spectral radius` the max-normalised result settles on
   the dominant-eigenvector direction, which is still a meaningful "most depended

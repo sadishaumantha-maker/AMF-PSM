@@ -14,7 +14,9 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from amf.errors import InvalidConfigError, InvalidDependencyError
+from amf.invariants import check_centrality
 from amf.models import Dependency, DependencyKind, SystemKind
+from amf.numeric import clip_unit, stable_sum
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -111,9 +113,10 @@ class DependencyGraph:
         # order the edges were added. Floating-point addition is not associative,
         # so summing insertion-first made a pair's weight -- and every score
         # derived from it -- depend on the order the dependencies were listed in.
-        self._pair_weights[source, target] = min(
-            1.0,
-            sum(self._edges[source, target, kind] for kind in _KIND_ORDER if (source, target, kind) in self._edges),
+        self._pair_weights[source, target] = clip_unit(
+            stable_sum(
+                self._edges[source, target, kind] for kind in _KIND_ORDER if (source, target, kind) in self._edges
+            )
         )
 
     def dependencies(self) -> list[Dependency]:
@@ -175,6 +178,21 @@ class DependencyGraph:
         for targets in adj.values():
             targets.sort(key=lambda k: _INDEX[k])
         return adj
+
+    def _incoming_influence(self) -> dict[SystemKind, tuple[tuple[SystemKind, float], ...]]:
+        """Return, per target, the ``(dependent source, weight)`` pairs in canonical order.
+
+        ``_pair_weights`` is keyed in insertion order, so iterating it directly
+        makes any accumulation depend on the order the dependencies were added.
+        Sorting by system declaration order removes that, which is what keeps
+        :meth:`centrality` identical for two markets that compare equal.
+        """
+        incoming: dict[SystemKind, list[tuple[SystemKind, float]]] = {k: [] for k in _ORDER}
+        for (source, target), weight in self._pair_weights.items():
+            incoming[target].append((source, weight))
+        return {
+            target: tuple(sorted(sources, key=lambda item: _INDEX[item[0]])) for target, sources in incoming.items()
+        }
 
     def feedback_loops(self) -> list[tuple[SystemKind, ...]]:
         """Return all simple directed cycles (circular dependencies).
@@ -271,11 +289,16 @@ class DependencyGraph:
         normalised: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
         history: list[dict[SystemKind, float]] = []
 
+        incoming = self._incoming_influence()
+
         for _ in range(iterations):
-            nxt: dict[SystemKind, float] = dict.fromkeys(_ORDER, 0.0)
-            for (source, target), weight in self._pair_weights.items():
-                # Influence flows from a dependent ``source`` to its ``target``.
-                nxt[target] += alpha * weight * frontier[source]
+            # Influence flows from a dependent ``source`` to its ``target``. The
+            # per-target reduction is exactly rounded and taken in declaration
+            # order, so the ranking cannot depend on assembly order.
+            nxt: dict[SystemKind, float] = {
+                target: alpha * stable_sum(weight * frontier[source] for source, weight in sources)
+                for target, sources in incoming.items()
+            }
             for k in _ORDER:
                 influence[k] += nxt[k]
             frontier = nxt
@@ -291,7 +314,7 @@ class DependencyGraph:
                 # Settled: the ranking stopped moving, whether the underlying
                 # series converged or merely stabilised in direction.
                 if _within(normalised, history[-1], tolerance):
-                    return normalised
+                    return check_centrality(normalised)
                 # Returned to a state older than the previous one: the ranking is
                 # cycling and will never settle, so no answer exists to report.
                 if any(_within(normalised, earlier, tolerance) for earlier in history[:-1]):
@@ -307,7 +330,7 @@ class DependencyGraph:
 
         # Budget spent on a trajectory that is still settling: a truncated run is
         # what was asked for, so return what it reached.
-        return normalised
+        return check_centrality(normalised)
 
     def articulation_points(self) -> set[SystemKind]:
         """Return systems whose removal disconnects the (undirected) dependency graph.

@@ -56,3 +56,32 @@ class InvalidConfigError(AMFError):
 
 class MarketParseError(AMFError):
     """Raised when a market description (e.g. JSON) cannot be parsed into a model."""
+
+
+class InvariantError(AMFError):
+    """Raised when a computed result breaks a property the type documents.
+
+    Every engine validates its own output before returning it (see
+    :mod:`amf.invariants`), so a score outside ``[0, 1]``, a ``NaN`` that escaped
+    a clip, or a severity band inconsistent with the score it was derived from
+    surfaces here as a typed failure rather than flowing onward into a report.
+
+    This is deliberately an exception and not an ``assert``: assertions are
+    stripped under ``python -O``, which would silently disable the guard exactly
+    where a deployment is most likely to want it.
+
+    Attributes:
+        property_name: Dotted name of the property that failed, e.g.
+            ``"findings[skeleton].concentration"``.
+        value: The offending value.
+        lower: Inclusive lower bound of the expected interval.
+        upper: Inclusive upper bound of the expected interval.
+    """
+
+    def __init__(self, property_name: str, value: float, lower: float = 0.0, upper: float = 1.0) -> None:
+        """Record the failing property and the interval it escaped."""
+        self.property_name = property_name
+        self.value = value
+        self.lower = lower
+        self.upper = upper
+        super().__init__(f"{property_name} = {value!r} is not in [{lower}, {upper}]")

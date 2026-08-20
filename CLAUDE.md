@@ -77,15 +77,23 @@ tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
 examples/           sample_market.json + four runnable scripts
-tools/              repository operations tooling: docsync (CLAUDE.md drift
-                    detection) and chronos (verified-time attestation). Not part
-                    of the shipped wheel and not measured by the coverage gate
+tools/              repository operations tooling, none of it shipped in the wheel
+                    and none of it measured by the coverage gate: docsync
+                    (CLAUDE.md drift detection), chronos (verified-time
+                    attestation), and sync_milestones.py, which reconciles the
+                    repository's Milestones section with .github/milestones.json
+                    (stdlib only, idempotent, never deletes) and is validated
+                    offline by test_milestones_manifest.py
 .claude/            agents, hooks and slash commands for the maintenance run
+projects/           73 charters decomposing the open work, plus AGENT_PROTOCOL.md
+                    and COMMIT_PROTOCOL.md — prose only, no authority over the package
 docs/               prose only — planning and research notes, no code and no
                     authority over the package (see *Prose docs* below)
+.github/milestones.json   the 20-working-day delivery schedule as code
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
-                    codeql.yml, claude-md-drift.yml, claude-md-sync.yml
+                    codeql.yml, milestones.yml, claude-md-drift.yml,
+                    claude-md-sync.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
 .github/pull_request_template.md   PR checklist rendered on every new PR
 .github/RULESET-POLICY.md          branch-protection rules and rationale
@@ -103,7 +111,9 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 
 | Module | Responsibility |
 |--------|----------------|
-| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `MarketParseError`). Has no internal dependencies. |
+| `errors.py` | Typed exception hierarchy. Every public-API failure derives from `AMFError` (`InvalidSystemError`, `InvalidDependencyError`, `IncompleteMarketError`, `InvalidShockError`, `InvalidConfigError`, `InvariantError`, `MarketParseError`). Has no internal dependencies. |
+| `numeric.py` | Deterministic floating-point primitives: `stable_sum` (`math.fsum`; exactly rounded, so a reduction cannot depend on the order its terms arrive in), `square` (a multiplication -- IEEE 754 requires that to be correctly rounded, whereas `x ** 2` routes to the platform's `libm` `pow` and does not have to be), and `clip_unit`. Every scoring path reduces through these. No internal dependencies. |
+| `invariants.py` | The guard each engine runs over its own result before returning it: `require_unit` / `require_non_negative` / `require_finite`, plus `check_diagnostic_report`, `check_simulation_trace`, `check_resilience_score`, `check_sensitivity_report`, `check_centrality`. Each `check_*` returns its argument unchanged, so an engine adopts it by wrapping its return value. Always on -- there is no flag to forget. Raises `InvariantError`, never `assert` (assertions vanish under `python -O`). Depends only on `errors`/`models`. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
 | `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Depends only on `errors` and `models` — nothing above it in the layering. |
@@ -118,9 +128,10 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 The public API is re-exported from `amf/__init__.py` (`__all__`); import types and
 engines from `amf`, not submodules. The renderers are the exception — they live
 in `amf.report` and `amf.viz` and are imported from there (as `cli.py` and
-`examples/` do). Dependencies flow one way: `errors`/`models` ←
-`systems`/`graph` ← `market` ← `diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`.
-Keep it acyclic.
+`examples/` do). `amf.numeric` and `amf.invariants` follow the same rule as the renderers: import
+them from their own modules. Dependencies flow one way:
+`errors`/`models`/`numeric` ← `invariants` ← `systems`/`graph` ← `market` ←
+`diagnostics`/`simulation` ← `sensitivity` ← `report`/`viz`/`cli`. Keep it acyclic.
 
 ## Determinism and parameter validation
 
@@ -160,6 +171,29 @@ are easy to break by accident:
   rely on it.
 - **Renderers are pure.** Nothing in `report.py` or `viz.py` performs I/O, reads
   the clock, or uses randomness; `viz` tests assert byte-identical repeat renders.
+- **Reductions go through `stable_sum`, squaring through `square`.** Canonical
+  traversal order alone is a workaround, not a guarantee: it removes the
+  *observable* variation only where the engine controls the order. Two operations
+  broke that in practice. `DependencyGraph.centrality` accumulated influence while
+  iterating a dict keyed in *insertion* order, so 265 of 400 random permutations of
+  `examples/sample_market.json`'s eight dependencies produced a different
+  centrality vector; and `diagnostics.concentration` squared with `** 2`, which
+  dispatches to the platform's `libm` `pow` and disagrees with `x * x` for about 1
+  double in 1,200. Both are fixed, and the rule now is: reduce with
+  `amf.numeric.stable_sum` (exactly rounded, so order cannot matter), square with
+  `amf.numeric.square` (correctly rounded on every conforming platform), and clamp
+  with `amf.numeric.clip_unit`. Do not write a bare `sum(...)` or `** 2` on a path
+  that feeds a published score.
+- **Every engine checks its own result.** `DiagnosticEngine.diagnose`,
+  `ShockSimulator.propagate`, `SensitivityAnalyzer.analyse`, and
+  `DependencyGraph.centrality` each wrap their return value in the matching
+  `amf.invariants.check_*`, which raises `InvariantError` if a score has escaped
+  `[0, 1]`, gone non-finite, or lost its normalisation. Note 100% coverage does not
+  substitute for this: the settling-penalty defect — `_score` dividing by
+  `max_steps` while `propagate` had extended the horizon past it, so a multi-wave
+  run scored its settling term at `-1.8` against a documented `[0, 1]` — executed
+  every line involved and was invisible to the gate. A new engine method that
+  returns a result type adds the corresponding check.
 
 ## Market JSON schema (CLI input)
 
@@ -367,7 +401,7 @@ pre-commit install                      # optional: run hooks on commit
 This block is the authoritative dev setup — there is no `requirements.txt`, and
 the project does not use `black`, `flake8`, or `pylint` despite what
 `CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
-the whole suite is currently 744 tests passing with `ruff` and `mypy` both
+the whole suite is currently 824 tests passing with `ruff` and `mypy` both
 silent; that is the bar a change has to clear. Coverage is 100% statement and
 branch *of `src/amf`* — the gate is scoped to the package (`--cov=amf`), so the
 `tools/` tests contribute to the test total but not to that percentage.
@@ -440,6 +474,9 @@ Three workflows gate every push and pull request:
   check). `cffconvert` is installed standalone in that job rather than in the
   `dev` extra, because a transitive dependency fails to build under some patched
   local setuptools.
+- `.github/workflows/milestones.yml` — reconciles the repository's Milestones
+  section against `.github/milestones.json` via `tools/sync_milestones.py`, so the
+  delivery schedule is reproducible rather than hand-maintained.
 - `.github/workflows/integrity.yml` — verifies the `SHA256SUMS` artifacts are
   untouched.
 - `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
@@ -487,8 +524,11 @@ change the way CI does before pushing:
 npx markdown-link-check --config .github/mlc-config.json <file>.md
 ```
 
-`.github/mlc-config.json` holds the ignore patterns (shields.io badges,
-opentimestamps.org) and the accepted status codes.
+`.github/mlc-config.json` holds the ignore patterns and the accepted status codes.
+Three patterns are ignored: shields.io badges, opentimestamps.org, and a
+repository's `/milestones` page — GitHub answers that one `403` to an
+unauthenticated request (verified by `curl`), while `/issues/<n>` answers `200`,
+so the link is good but unverifiable from CI.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
 
@@ -632,6 +672,10 @@ the document is the thing that is out of date.
 - **`docs/roadmap.md`** — Phase 2 planning and issue triage. Explicitly marked a
   *proposal for ratification*, and it restates the hard rules above rather than
   relaxing them.
+- **`docs/ROBUSTNESS_REVIEW.md`** — an assessment of an external "advanced robustness"
+  proposal, recording which of its mechanisms survived review and which did not, with the
+  measurements behind each verdict. It is the reasoning behind `numeric.py` and
+  `invariants.py` existing in the form they do. A dated review, not a live specification.
 - **`docs/ANALYSIS_AND_ROADMAP.md`** — a governance and delivery-pipeline audit
   with a 90-day plan. A snapshot of one moment's issue and PR backlog; its counts
   go stale immediately.
