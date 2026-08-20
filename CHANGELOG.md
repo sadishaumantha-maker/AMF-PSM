@@ -6,6 +6,12 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
+  program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
+  with the phase calendar, the metric ledger, the guardrails every issue inherits, and
+  the three points where the source analysis was reconciled against the repository as it
+  actually stands. Documentation only — the issues remain the source of truth and no
+  package behaviour changes.
 - `DiagnosticConfig.scale_concentration_by_reliance` (default `False`), which
   multiplies the concentration index by `min(1, total outgoing weight)`. The
   index is share-based, so it measures how unevenly a system's reliance is spread
