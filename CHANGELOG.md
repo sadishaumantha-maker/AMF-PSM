@@ -6,6 +6,11 @@ this file. Versions correspond to framework releases.
 ## [Unreleased]
 
 ### Added
+- `docs/roadmap.md` — a Phase 2 roadmap that triages the open issue backlog into
+  charter-compliant, structural work: it proposes an expansion for "PSM", restates the
+  non-trading / illustrative / frozen-anatomy guardrails, gives translation rules that
+  map real-market asks onto structural proxies, and sequences the planned concepts.
+  Documentation only — no package behaviour changes.
 - Private-distribution guard: the `Private :: Do Not Upload` classifier in
   `pyproject.toml` makes PyPI reject any upload of this proprietary package, and
   `tests/unit/test_packaging.py` fails if that classifier is dropped from either
