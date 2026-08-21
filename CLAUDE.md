@@ -465,7 +465,7 @@ and is validated by `cffconvert` in CI.
 
 ## CI
 
-Six workflows are checked in. Four gate every push and pull request:
+Seven workflows are checked in. Four gate every push and pull request:
 
 - `.github/workflows/ci.yml` — the main gate. Four jobs: **lint** (`ruff check` +
   `ruff format --check`), **typecheck** (`mypy`), **test** (`pytest` on the
@@ -483,10 +483,13 @@ Six workflows are checked in. Four gate every push and pull request:
   and `actions` languages, on pushes and PRs to `main` plus a weekly schedule.
   `build-mode: none`, so it needs no project setup.
 
-Two more run on their own triggers rather than gating pushes:
+Three more run on their own triggers rather than gating pushes:
 `claude-md-drift.yml` and `claude-md-sync.yml`, the two halves of CLAUDE.md
-maintenance, described under *Verified time* below. This inventory is
-machine-checked: the drift scanner fails if a workflow file exists that this
+maintenance, described under *Verified time* below, and `manual.yml`, a
+`workflow_dispatch`-only greeting placeholder the owner re-added after the
+starter cleanup (kept, but re-indented to `.yamllint.yml` — yamllint runs first
+in the validate job, and a YAML error there silently disables the metadata
+validation behind it). This inventory is machine-checked: the drift scanner fails if a workflow file exists that this
 guide does not mention, and fails harder if a conda, publish, or release
 workflow appears at all.
 
@@ -525,7 +528,8 @@ Two consequences are baked into the tree, and undoing either re-breaks the job:
   one of them failed on every push, since the repository contains no C/C++, Java,
   Clojure, Terraform, or Node source at all. All fourteen starters were removed —
   the eleven that could never pass and, in a parallel cleanup, the stock
-  `stale.yml`, `summary.yml`, and `manual.yml` as well; the drift scanner's
+  `stale.yml`, `summary.yml`, and `manual.yml` as well (`manual.yml` has since
+  been re-added deliberately, and stays); the drift scanner's
   `ci.forbidden-workflow` check now rejects any workflow whose filename contains
   `conda`, `publish`, or `release` outright.
 
