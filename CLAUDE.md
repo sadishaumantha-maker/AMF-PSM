@@ -719,3 +719,30 @@ the document is the thing that is out of date.
 
 The `docs/` tree is prose only. No code imports from it, no test reads it, and
 adding a document there changes nothing about the package's behaviour.
+
+## Agent operating system
+
+Agents, skills, and durable memory for issue creation and deep research live under `.claude/`.
+Read `.claude/README.md` for the map. The two files below are small and load with this document;
+everything else is read on demand by the agent or skill that names it.
+
+@.claude/memory/repo-facts.md
+@.claude/memory/issue-index.md
+
+**Before creating any GitHub issue**, check `.claude/memory/issue-index.md` — it records which source
+unit already became which issue, and is what stops two sessions from decomposing the same document
+twice (which has already happened once: #45–#92 and #77–#98 overlap).
+
+**Before writing any issue, dossier, doc, or code**, load the `amf-guardrails` skill. It carries the
+non-trading boundary, the illustrative-not-validated rule, determinism, and the IP protections, plus
+the translation table for admitting real-market phrasing as structural measures.
+
+Research dossiers live under `docs/research/_dossiers/` — one file per issue, written by the
+issue-researcher agent, plus `docs/research/_dossiers/_strategy.md`, the strategist's whole-backlog
+review. Currently: `docs/research/_dossiers/discussion-2.2.md` (issue #59). Like everything under
+`docs/`, they are prose only, with no authority over the package — and the drift scanner requires
+each new dossier to be named here, so add a file's path to this list in the same commit that adds
+the file.
+
+Nothing under `.claude/` is part of the `amf` package, so none of it affects the 100% coverage gate.
+The repository is public: never put secrets or verbatim protected-framework text in these files.
