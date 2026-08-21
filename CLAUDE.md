@@ -401,7 +401,7 @@ pre-commit install                      # optional: run hooks on commit
 This block is the authoritative dev setup — there is no `requirements.txt`, and
 the project does not use `black`, `flake8`, or `pylint` despite what
 `CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
-the whole suite is currently 824 tests passing with `ruff` and `mypy` both
+the whole suite is currently 827 tests passing with `ruff` and `mypy` both
 silent; that is the bar a change has to clear. Coverage is 100% statement and
 branch *of `src/amf`* — the gate is scoped to the package (`--cov=amf`), so the
 `tools/` tests contribute to the test total but not to that percentage.
@@ -465,7 +465,7 @@ and is validated by `cffconvert` in CI.
 
 ## CI
 
-Three workflows gate every push and pull request:
+Nine workflows are checked in. Four gate every push and pull request:
 
 - `.github/workflows/ci.yml` — the main gate. Four jobs: **lint** (`ruff check` +
   `ruff format --check`), **typecheck** (`mypy`), **test** (`pytest` on the
@@ -482,6 +482,15 @@ Three workflows gate every push and pull request:
 - `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
   and `actions` languages, on pushes and PRs to `main` plus a weekly schedule.
   `build-mode: none`, so it needs no project setup.
+
+Five more run on their own triggers rather than gating pushes:
+`claude-md-drift.yml` and `claude-md-sync.yml` (the two halves of CLAUDE.md
+maintenance, described under *Verified time* below), `stale.yml` (scheduled
+issue/PR staleness sweep), `summary.yml` (summarises newly opened issues), and
+`manual.yml` (a `workflow_dispatch`-only placeholder). This inventory is
+machine-checked: the drift scanner fails if a workflow file exists that this
+guide does not mention, and fails harder if a conda, publish, or release
+workflow appears at all.
 
 ### The validate job runs in order, and yamllint is first
 
@@ -510,7 +519,15 @@ Two consequences are baked into the tree, and undoing either re-breaks the job:
   (the project lints with `ruff`), and a bare `pytest` with no install step, so
   `amf` was not importable. Do not re-add it, and do not add an `environment.yml`
   or a flake8 config to revive it; `ci.yml` already tests 3.11/3.12/3.13 and
-  CodeQL already scans.
+  CodeQL already scans. This has now happened **twice**: the identical starter was
+  re-added in August 2026 alongside thirteen other stock templates (C/C++, Clojure,
+  Maven, Gradle, Terraform, Hugo, three cloud-deploy starters, and an OSSF SLSA
+  release-publish workflow carrying `upload-assets: true` with `contents: write` —
+  a direct breach of the private-distribution rule on a public repository) and every
+  one of them failed on every push, since the repository contains no C/C++, Java,
+  Clojure, Terraform, or Node source at all. All eleven inapplicable starters were
+  removed; the drift scanner's `ci.forbidden-workflow` check now rejects any
+  workflow whose filename contains `conda`, `publish`, or `release` outright.
 
 ### Links in Markdown are checked, including relative ones
 
@@ -525,10 +542,21 @@ npx markdown-link-check --config .github/mlc-config.json <file>.md
 ```
 
 `.github/mlc-config.json` holds the ignore patterns and the accepted status codes.
-Three patterns are ignored: shields.io badges, opentimestamps.org, and a
-repository's `/milestones` page — GitHub answers that one `403` to an
-unauthenticated request (verified by `curl`), while `/issues/<n>` answers `200`,
-so the link is good but unverifiable from CI.
+Five patterns are ignored: shields.io badges, opentimestamps.org, a repository's
+`/milestones` page, Actions badge SVGs, and the author's bare profile URL — each
+a URL GitHub answers `403` to an unauthenticated non-browser client (verified by
+`curl`), and each decorative rather than documentation, so ignoring it costs no
+coverage. `aliveStatusCodes` is deliberately *not* widened to accept `403`: that
+would silence real failures on every host.
+
+One diagnosis trap is worth recording, because it cost a wrong conclusion once.
+The `push` and `pull_request` runs of `validate` check out **different trees for
+the same head SHA**: push checks out the branch as it stands, while pull_request
+checks out the merge of the branch with the base. A branch carrying a dead link
+that `main` has since fixed therefore fails its push run and passes its PR run on
+the *identical commit* — which looks exactly like a flaky checker and is nothing
+of the kind. Before calling this job flaky, compare the two runs' events; the fix
+for that case is merging the base branch in, not touching the checker.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
 

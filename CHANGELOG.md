@@ -272,6 +272,20 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- The workflow set was reduced to the nine that apply to this repository. Eleven stock
+  GitHub starter templates added in one burst — C/C++, Clojure, Maven, Gradle-publish,
+  Terraform, Hugo, Google/IBM cloud deploys, GitHub Pages static deploy, the conda starter,
+  and an OSSF SLSA release-publish generator — were removed. None could pass (the tree has
+  no C/C++, Java, Clojure, Terraform, or Node source), together they held nine checks red on
+  `main`, and two violated stated hard rules: `python-package-conda.yml` (removed once
+  before; `CLAUDE.md` says "Do not re-add it") and
+  `generator-generic-ossf-slsa3-publish.yml`, whose `upload-assets: true` with
+  `contents: write` is a release-publish channel on a public repository and so breaches the
+  private-distribution rule. The drift scanner's `ci.forbidden-workflow` check rejects any
+  conda/publish/release workflow from now on.
+- The Markdown link check ignores two more decorative URL shapes — Actions badge SVGs and
+  the author's bare profile URL — which GitHub answers `403` to unauthenticated non-browser
+  clients. `aliveStatusCodes` is unchanged, so real failures still fail on every host.
 - The diagnostic overall index is now reduced with `stable_sum` rather than a running
   `+=`. The result is the correctly rounded value rather than an accumulation-order
   artefact, which moves it by one unit in the last place — on `examples/sample_market.json`
