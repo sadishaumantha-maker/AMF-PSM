@@ -1,7 +1,7 @@
 """Command-line interface for the :mod:`amf` toolkit.
 
-Exposes ``diagnose``, ``simulate``, ``stress-test``, ``sensitivity``, ``viz``,
-``describe``, and ``version`` subcommands. ``main`` returns a process exit code so it can be unit
+Exposes ``diagnose``, ``simulate``, ``stress-test``, ``ensemble``, ``sensitivity``,
+``viz``, ``describe``, and ``version`` subcommands. ``main`` returns a process exit code so it can be unit
 tested without spawning a subprocess.
 
 The ``describe`` text is generated from the paraphrased constants below rather

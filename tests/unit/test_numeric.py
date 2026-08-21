@@ -18,24 +18,26 @@ import pytest
 from amf.numeric import clip_unit, square, stable_sum
 
 
-def _exact_sum(values):
-    """The correctly rounded sum, computed in exact rational arithmetic."""
-    return float(sum((Fraction(v) for v in values), Fraction(0)))
-
-
 def _naive_sum(values):
-    """Left-to-right accumulation -- what a hand-written `total += v` loop does.
+    """Accumulate left to right, which is what `stable_sum` is contrasted against.
 
-    Deliberately not the built-in `sum`: CPython 3.12 switched that to Neumaier
-    compensated summation, so `sum` is order-sensitive on 3.11 and very nearly
-    exact on 3.12+. Testing against `sum` would therefore assert one interpreter's
-    behaviour. This helper is naive on every version, which is what these tests
-    need in order to demonstrate something rather than assume it.
+    Deliberately not the built-in `sum`. CPython 3.12 gave `sum` Neumaier
+    compensated summation for floats, so on 3.12+ it is no longer naive: it
+    returns 2.0 for [1.0, 1e100, 1.0, -1e100] and is order-independent for
+    0.1/0.2/0.3. Using it as the foil made these tests assert a property of the
+    interpreter rather than of `stable_sum`, and they failed on 3.12 and 3.13
+    while passing on 3.11. An explicit accumulation states the contrast the
+    tests actually mean, on every version.
     """
     total = 0.0
     for value in values:
         total += value
     return total
+
+
+def _exact_sum(values):
+    """The correctly rounded sum, computed in exact rational arithmetic."""
+    return float(sum((Fraction(v) for v in values), Fraction(0)))
 
 
 def test_stable_sum_is_exactly_rounded():
@@ -47,19 +49,19 @@ def test_stable_sum_is_exactly_rounded():
         assert stable_sum(values) == _exact_sum(values)
 
 
-def test_stable_sum_is_order_independent_where_naive_accumulation_is_not():
-    # 0.1 + 0.2 + 0.3 is the canonical demonstration: accumulated left to right it
-    # yields 0.6000000000000001 or 0.6 depending purely on the order the terms
-    # arrive in. That sensitivity is why a diagnosis used to differ in its last
-    # bits when a market was assembled in a different order.
+def test_stable_sum_is_order_independent_where_plain_sum_is_not():
+    # 0.1 + 0.2 + 0.3 is the canonical demonstration: naive summation returns
+    # 0.6000000000000001 or 0.6 depending purely on the order the terms arrive
+    # in. That sensitivity is why a diagnosis used to differ in its last bits
+    # when a market was assembled in a different order.
     terms = [0.1, 0.2, 0.3]
     orderings = list(itertools.permutations(terms))
-    assert len({_naive_sum(o) for o in orderings}) > 1, "naive accumulation must vary, or this test proves nothing"
+    assert len({_naive_sum(o) for o in orderings}) > 1, "naive summation must vary, or this test proves nothing"
     assert len({stable_sum(o) for o in orderings}) == 1
 
 
 def test_stable_sum_survives_catastrophic_cancellation():
-    # Naive accumulation loses both units entirely to the 1e100 term; the exactly
+    # Naive summation loses both units entirely to the 1e100 term; the exactly
     # rounded sum keeps them.
     values = [1.0, 1e100, 1.0, -1e100]
     assert _naive_sum(values) == 0.0

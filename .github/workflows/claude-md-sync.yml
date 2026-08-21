@@ -1,0 +1,86 @@
+name: CLAUDE.md scheduled sync
+
+# The interval half of CLAUDE.md maintenance: a daily attested scan.
+#
+# Two things about the schedule are worth stating plainly, because the alternative is
+# pretending to a precision that does not exist.
+#
+# GitHub's cron is best-effort. A job can be delayed by minutes to tens of minutes under
+# load, and jobs asked for on the hour or half-hour are the most contended. The target here
+# is 06:00 in Ratnapura (UTC+05:30, no daylight saving), which is 00:30 UTC; the cron is set
+# a few minutes early and off the half-hour to reduce queueing, and the job records its own
+# true fire time and the slip against the target. The inaccuracy is measured rather than
+# hidden. Exact firing needs a self-hosted runner or a systemd timer on the machine itself.
+#
+# This runner is also the timekeeper for the whole system. A Claude session in a sandbox has
+# no reachable time source -- UDP/123 is blocked and egress is filtered -- so it consumes the
+# attestation this job produces rather than attesting for itself.
+
+on:
+  schedule:
+    - cron: "22 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  sync:
+    name: Attested CLAUDE.md scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - run: python -m pip install --upgrade pip
+      - run: pip install -e ".[dev]"
+
+      # Record how far the actual fire time drifted from the 00:30 UTC target.
+      - name: Record schedule slip
+        run: |
+          target_minutes=30
+          actual=$(date -u +%s)
+          midnight=$(date -u -d "$(date -u +%Y-%m-%d) 00:00:00" +%s)
+          actual_minutes=$(( (actual - midnight) / 60 ))
+          slip=$(( actual_minutes - target_minutes ))
+          echo "target 00:30 UTC (06:00 Asia/Colombo); fired $(date -u +%H:%M) UTC; slip ${slip} min"
+          echo "schedule_slip_minutes=${slip}" >> "$GITHUB_ENV"
+
+      # Hard gate: no verified time, no run. Exit 3 is UNVERIFIED, 4 is a locale-gate
+      # failure; both stop the job rather than let it stamp an unprovable timestamp.
+      - name: Attest the clock
+        run: python -m tools.chronos attest --out time-attestation.json
+
+      - name: Scan for drift
+        id: scan
+        continue-on-error: true
+        run: python -m tools.docsync scan --format md --out drift-report.md
+
+      - name: Publish the report
+        if: always()
+        run: |
+          {
+            echo "Schedule slip: ${schedule_slip_minutes:-unknown} min"
+            echo
+            cat drift-report.md 2>/dev/null || echo "No drift report was produced."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the attestation and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: claude-md-sync-${{ github.run_id }}
+          path: |
+            time-attestation.json
+            drift-report.md
+          if-no-files-found: warn
+
+      - name: Fail if drift was found
+        if: steps.scan.outcome == 'failure'
+        run: |
+          echo "CLAUDE.md has drifted from the repository. See the job summary." >&2
+          exit 1

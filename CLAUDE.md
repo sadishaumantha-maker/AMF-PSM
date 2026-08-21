@@ -66,22 +66,34 @@ src/amf/            the Python package (see table below); ships py.typed
 tests/conftest.py   fixtures: boundary, market_factory, healthy_market,
                     stressed_market; plus the importable build_market() helper
                     (hypothesis rejects function-scoped fixtures under @given)
-tests/unit/         one file per module, plus test_non_trading_boundary.py
-                    (the naming guard), test_properties.py (hypothesis), and
-                    test_packaging.py (packaging / metadata invariants)
+tests/unit/         one file per module for the nine modules with direct unit
+                    tests (errors.py is covered via test_packaging.py, and the
+                    CLI is covered by tests/integration/test_cli.py), plus
+                    test_non_trading_boundary.py (the naming guard),
+                    test_properties.py (hypothesis), and test_packaging.py
+                    (packaging / metadata invariants)
+tests/tools/        the docsync + chronos harness, including the mutation corpus
 tests/integration/  test_cli.py (main() in-process), test_console_script.py
                     (the installed `amf` entry point, as a subprocess),
                     test_end_to_end.py, test_examples.py (runs examples/)
 examples/           sample_market.json + four runnable scripts
+tools/              repository operations tooling, none of it shipped in the wheel
+                    and none of it measured by the coverage gate: docsync
+                    (CLAUDE.md drift detection), chronos (verified-time
+                    attestation), and sync_milestones.py, which reconciles the
+                    repository's Milestones section with .github/milestones.json
+                    (stdlib only, idempotent, never deletes) and is validated
+                    offline by test_milestones_manifest.py
+.claude/            agents, hooks and slash commands for the maintenance run
+projects/           73 charters decomposing the open work, plus AGENT_PROTOCOL.md
+                    and COMMIT_PROTOCOL.md — prose only, no authority over the package
 docs/               prose only — planning and research notes, no code and no
                     authority over the package (see *Prose docs* below)
-tools/              sync_milestones.py -- reconciles the repository's Milestones
-                    section with .github/milestones.json (stdlib only, idempotent,
-                    never deletes); validated offline by test_milestones_manifest.py
 .github/milestones.json   the 20-working-day delivery schedule as code
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
-                    codeql.yml
+                    codeql.yml, milestones.yml, claude-md-drift.yml,
+                    claude-md-sync.yml
 .github/mlc-config.json   markdown-link-check config used by the validate job
 .github/pull_request_template.md   PR checklist rendered on every new PR
 .github/RULESET-POLICY.md          branch-protection rules and rationale
@@ -104,7 +116,7 @@ README.md, CHANGELOG.md, CITATION.cff, SECURITY.md   project metadata
 | `invariants.py` | The guard each engine runs over its own result before returning it: `require_unit` / `require_non_negative` / `require_finite`, plus `check_diagnostic_report`, `check_simulation_trace`, `check_resilience_score`, `check_sensitivity_report`, `check_centrality`. Each `check_*` returns its argument unchanged, so an engine adopts it by wrapping its return value. Always on -- there is no flag to forget. Raises `InvariantError`, never `assert` (assertions vanish under `python -O`). Depends only on `errors`/`models`. |
 | `models.py` | Value types: `SystemKind` (the 7 systems), `DependencyKind`, `SystemMetric`, `Dependency`, `MarketBoundary`, `Severity`, and the frozen result types (`WeaknessFinding`, `DiagnosticReport`, `Shock`, `Intervention`, `SimulationTrace`, `ResilienceScore`, `MetricStats`, `ResilienceDistribution`, `Sensitivity`, `LeveragePoint`, `SensitivityReport`). All are `@dataclass(frozen=True, slots=True)` with a `to_dict()`. |
 | `systems.py` | `AnatomicalSystem` (frozen; validated in `__post_init__`), the seven factory functions (`skeleton`, `circulatory`, `nervous`, `musculature`, `organs`, `immune`, `metabolism`), and the `SYSTEM_FACTORIES` registry that keys them by kind. Structural metrics (`integrity`, `redundancy`, `criticality`, `load`) live in `[0, 1]`; derived `health()` and `absorptive_capacity()`; `metric()`/`with_metric()` read and replace one metric. An unrecognised metric keyword raises `InvalidSystemError` rather than being silently dropped. |
-| `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Dependency-free. |
+| `graph.py` | `DependencyGraph`: edges keyed by `(source, target, kind)`, with `dependencies()`, `edge_weight`, `edge_kinds`, `dependencies_of`, `dependents_of`, feedback-loop (simple-cycle) enumeration, articulation points, Katz-style `centrality`, and the stress-transmission `CouplingMatrix`. Depends only on `errors` and `models` — nothing above it in the layering. |
 | `market.py` | `Market` aggregate root; `assemble`, `require_complete`, `system`, `with_system`, and the JSON `from_dict`/`to_dict` schema. `assemble` stores the seven systems in `SystemKind` declaration order and `require_complete` rejects a system filed under a key that is not its own `kind`. The one mutable dataclass in the package (`slots=True`, not frozen) — it is a container, and its parts are immutable. |
 | `diagnostics.py` | `DiagnosticEngine` (+ tunable, validated `DiagnosticConfig`): deterministic structural-weakness scoring (`fragility`, `concentration`, `feedback_amplification`, `single_points_of_failure`) → `DiagnosticReport`. Both the findings ranking and the SPOF ranking break ties by `SystemKind` declaration order. |
 | `sensitivity.py` | `SensitivityAnalyzer` (+ tunable, validated `SensitivityConfig`): perturbs each `SystemMetric` of each system and re-diagnoses → `SensitivityReport` (gradients + ranked `LeveragePoint`s). Builds on `diagnostics`. |
@@ -224,7 +236,7 @@ kinds never changes a score.
 
 Every parse failure — malformed structure, a non-numeric metric, an unknown kind,
 an out-of-range value — surfaces as `MarketParseError`. `Market.from_dict` wraps
-`KeyError`/`TypeError`/`ValueError` and re-raises domain `AMFError`s as parse
+`KeyError`/`TypeError`/`AttributeError`/`ValueError` and re-raises domain `AMFError`s as parse
 errors, and the CLI's `_load_market` additionally maps `OSError`,
 `UnicodeDecodeError` (a `ValueError`, so it does not fall under `OSError`), and
 `json.JSONDecodeError` onto it — so no raw exception escapes the schema
@@ -242,7 +254,8 @@ amf simulate    examples/sample_market.json --target circulatory [--magnitude 0.
                 [--cascade-threshold 0.2] [--cascade-gain 0.5] [--recovery 0.0] \
                 [--seed N] [--jitter 0.0] [--format ...]
 amf stress-test examples/sample_market.json [--magnitude 0.8] [--format ...]  # shocks each system in turn
-amf ensemble    examples/sample_market.json --target circulatory [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
+amf ensemble    examples/sample_market.json --target circulatory [--magnitude 0.8] \
+                [--runs 100] [--seed 0] [--jitter 0.05] [--format text|json]
 amf sensitivity examples/sample_market.json [--step 0.05] [--top N] [--format ...]
 amf viz         examples/sample_market.json [--format svg|dot|mermaid] [--output FILE] \
                 [--timeline SYSTEM [--magnitude 0.8]]
@@ -388,9 +401,10 @@ pre-commit install                      # optional: run hooks on commit
 This block is the authoritative dev setup — there is no `requirements.txt`, and
 the project does not use `black`, `flake8`, or `pylint` despite what
 `CONTRIBUTING.md` says (see *Prose docs* at the end of this file). A clean run of
-the whole suite is currently 600 tests passing at 100% statement and branch
-coverage, with `ruff` and `mypy` both silent; that is the bar a change has to
-clear.
+the whole suite is currently 824 tests passing with `ruff` and `mypy` both
+silent; that is the bar a change has to clear. Coverage is 100% statement and
+branch *of `src/amf`* — the gate is scoped to the package (`--cov=amf`), so the
+`tools/` tests contribute to the test total but not to that percentage.
 
 Conventions: Python 3.11+ (CI tests 3.11/3.12/3.13), full type annotations,
 Google-style docstrings on public API. Ruff selects
@@ -423,8 +437,12 @@ tests exist precisely because full coverage was hiding real gaps.
 
 1. Put new behaviour in the module that owns it; respect the one-way dependency
    order and do not import `report`/`viz`/`cli` from lower layers.
-2. Export new public types from `amf/__init__.py` and add them to `__all__`
-   (kept sorted). Check the name against the non-trading `FORBIDDEN` list.
+2. Export new public types from `amf/__init__.py` and add them to `__all__`, whose
+   order is enforced by ruff's `RUF022` — an isort-style natural sort, *not*
+   `sorted()`. `tests/unit/test_packaging.py` deliberately declines to assert the
+   ordering rather than duplicate the linter and encode the wrong convention, so do
+   not add a `== sorted(__all__)` assertion. Check the name against the non-trading
+   `FORBIDDEN` list.
 3. New result types are frozen, slotted dataclasses with a `to_dict()`; if they
    are serialised, extend `report._to_jsonable` and the text/Markdown renderers.
 4. Raise a typed `AMFError` subclass, never a bare `ValueError`, across the
@@ -456,6 +474,9 @@ Three workflows gate every push and pull request:
   check). `cffconvert` is installed standalone in that job rather than in the
   `dev` extra, because a transitive dependency fails to build under some patched
   local setuptools.
+- `.github/workflows/milestones.yml` — reconciles the repository's Milestones
+  section against `.github/milestones.json` via `tools/sync_milestones.py`, so the
+  delivery schedule is reproducible rather than hand-maintained.
 - `.github/workflows/integrity.yml` — verifies the `SHA256SUMS` artifacts are
   untouched.
 - `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
@@ -475,7 +496,7 @@ behind it to start reporting problems of their own that were never visible befor
 
 Two consequences are baked into the tree, and undoing either re-breaks the job:
 
-- **`codeql.yml` carries two `# yamllint disable-line rule:line-length`
+- **`codeql.yml` carries three `# yamllint disable-line rule:line-length`
   directives.** They sit above comments that are a single GitHub documentation
   URL, too long for the 140-character limit at any indentation and not shortenable
   without breaking the link. Keep the directives if you touch that file, and keep
@@ -511,6 +532,118 @@ so the link is good but unverifiable from CI.
 
 Project metadata lives in `CITATION.cff`, `CHANGELOG.md`, and `SECURITY.md`.
 
+## Time and locale (hard-gated)
+
+This repository is operated from **Ratnapura, Sri Lanka** — `Asia/Colombo`, **UTC+05:30**,
+no daylight saving. Those constants are frozen in `tools/chronos/locale_gate.py` and
+validated against the system time zone database on import. The gate *raises* rather than
+warns: a record stamped with the wrong offset is worse than one that was never written,
+because it looks usable. It also checks Sri Lanka's historical transitions (+05:30 →
++06:30 in 1996 → +06:00 → +05:30 on 2006-04-15) as a fingerprint, which catches a stub
+tzdata that would otherwise report a plausible-looking constant offset.
+
+**Do not edit those constants to make a machine pass.** If the gate fails, the machine's tz
+database is wrong, not the gate.
+
+### What accuracy is actually achievable
+
+This matters because the honest ceiling is set by physics, not by effort:
+
+| Source | Realistic uncertainty |
+|--------|-----------------------|
+| NTP over the public internet | ~1–10 ms, bounded by path asymmetry |
+| NTP on a quiet LAN | ~0.1–1 ms |
+| A disciplined local clock (`chronyc tracking`) | tens of microseconds |
+| PTP with hardware timestamping | sub-microsecond |
+| GNSS with a PPS signal | tens of nanoseconds |
+
+Microsecond accuracy from an internet round trip is **not attainable at any sampling
+rate**: the one-way delays are unmeasurable and unequal, and that asymmetry lands directly
+in the offset. Anything printing microseconds from an HTTP fetch is printing noise, so
+`tools/chronos` never formats more digits than its measured bound supports.
+
+### The attestation contract
+
+`tools/chronos` does not try to be accurate. It measures how accurate it is, and refuses to
+certify a run whose uncertainty it cannot prove.
+
+- Each source returns an offset **and an explicit error bound**. A source that cannot bound
+  its own error raises `SourceUnavailableError` rather than guessing.
+- `consensus.py` uses **Marzullo interval intersection**, not averaging. A mean is dragged
+  by one misconfigured server and says nothing about how wrong it might be; an intersection
+  yields an interval every surviving source vouches for, so its half-width is a bound you
+  can compare against a budget. Sources outside it are *falsetickers* and are discarded.
+  Three agreeing sources is the floor — the smallest number that lets one liar be outvoted
+  rather than merely noticed.
+- An attestation is **always written**, even when nothing could be measured; silence is
+  indistinguishable from success after the fact. Only `VERIFIED` authorises downstream work.
+- Exit codes: `0` VERIFIED, `3` UNVERIFIED, `4` FAILED (usually the locale gate), `2` usage.
+  `3` and `4` are deliberately not `1`, so a caller can tell an untrustworthy clock from a
+  broken tool.
+
+```sh
+python -m tools.chronos attest [--budget-ms 50] [--min-sources 3] [--format text|json] [--out FILE]
+python -m tools.chronos check     # exit code only
+python -m tools.chronos now       # one line: attested local time and bound
+```
+
+`PpsSource` and `PtpSource` define the hardware interface so that adding a GNSS receiver or
+a PTP grandmaster later is configuration rather than redesign. Until hardware exists they
+report themselves unavailable, which is a truthful answer rather than a silent fallback to
+something worse.
+
+**A Claude Code sandbox has no reachable time source** — UDP/123 is blocked, egress is
+filtered to an allowlist, and the proxy strips the `Date` response header. Such a session
+correctly attests `UNVERIFIED`; it is a writer, not a timekeeper, and consumes the
+attestation the scheduled GitHub Actions run produces.
+
+## Automated CLAUDE.md maintenance
+
+This file is checked mechanically against the repository it describes, because it has
+drifted before: a stale test count, a miscounted directive, an undocumented flag, two
+unmentioned docs files, and — in the other direction — `cli.py`'s own docstring omitting a
+subcommand the guide listed correctly.
+
+`tools/docsync` extracts the repository's real facts with `ast` (never importing or
+executing `amf`), extracts this file's claims, and reports every disagreement:
+
+```sh
+python -m tools.docsync scan  [--format text|json|md] [--fail-on low|medium|high] [--baseline FILE]
+python -m tools.docsync facts [--format json]   # the extracted ground truth
+```
+
+Three properties are deliberate and worth preserving:
+
+- **Offline.** No check touches the network, so a scan reproduces anywhere and is fast
+  enough for a pre-commit hook. That includes the dead-relative-link scan, which does not
+  need Node or `npx`.
+- **Deterministic.** Findings are emitted in canonical order as canonical JSON, so the same
+  commit always yields byte-identical output — which is what lets a checked-in baseline act
+  as a regression gate.
+- **Bidirectional.** Most checks also ask "is everything real named here?", not only "is
+  everything named here real?". Roughly half the drift found in this repository consisted of
+  omissions, on which forward-only checking passes silently.
+
+Two workflows drive it. `.github/workflows/claude-md-drift.yml` fires on push and pull
+request, filtered to the paths whose facts this guide states. `.github/workflows/claude-md-sync.yml`
+runs daily against the 06:00 Asia/Colombo target (00:30 UTC), attests the clock first and
+hard-fails if it cannot, and records its own schedule slip — GitHub's cron is best-effort
+and can be minutes to tens of minutes late, so the inaccuracy is measured rather than hidden.
+
+`.claude/agents/` holds the agents that turn findings into prose: `chronos-warden` (gates
+the run on verified time), `claude-md-auditor` (verifies each finding against the source),
+`repo-cartographer` (regenerates the mechanical sections from extracted facts),
+`ci-forensics`, `changelog-scribe`, `doc-guard-verifier` (adversarial — tries to *refute*
+each changed sentence and vetoes what it cannot support), and `hard-rules-sentinel` (blocks
+any diff that erodes a hard rule). `.claude/hooks/` is POSIX shell rather than Python on
+purpose: `ruff check .` covers `.claude/**/*.py` with the full `ANN`+`D` rule set and CodeQL
+scans it too.
+
+**Never fix a finding by loosening a check.** If a check is genuinely wrong, that is a change
+to `tools/docsync/checks.py` with a case added to the mutation corpus in
+`tests/tools/test_docsync_corpus.py`, which asserts that a correct synthetic repository
+produces *zero* findings and that each single-defect mutation is caught by exactly one check.
+
 ## Prose docs, governance, and what is authoritative
 
 Several Markdown files describe intentions rather than the code as it stands.
@@ -539,9 +672,23 @@ the document is the thing that is out of date.
 - **`docs/roadmap.md`** — Phase 2 planning and issue triage. Explicitly marked a
   *proposal for ratification*, and it restates the hard rules above rather than
   relaxing them.
+- **`docs/ROBUSTNESS_REVIEW.md`** — an assessment of an external "advanced robustness"
+  proposal, recording which of its mechanisms survived review and which did not, with the
+  measurements behind each verdict. It is the reasoning behind `numeric.py` and
+  `invariants.py` existing in the form they do. A dated review, not a live specification.
 - **`docs/ANALYSIS_AND_ROADMAP.md`** — a governance and delivery-pipeline audit
   with a 90-day plan. A snapshot of one moment's issue and PR backlog; its counts
   go stale immediately.
+- **`docs/90_DAY_PLAN_INDEX.md`** — an index mapping that 90-day plan onto
+  individual issues. Like the audit it annotates, its counts and issue numbers are
+  a snapshot rather than live state.
+- **`docs/discussions/README.md`** — the index for a set of eleven planned research
+  discussion modules derived from `docs/QUANTUM_NEURAL_RESEARCH.md`. **None of the
+  eleven module files has been written**; the index names their future filenames as
+  plain text rather than links, because a link to a file that does not exist fails
+  the Markdown link check. It was committed with those links live, which failed the
+  `validate` job on every push until it was corrected. If you write a module, add
+  the file and turn its name into a link in the same pull request.
 - **`docs/RESEARCH_DISCUSSIONS.md`** and **`docs/QUANTUM_NEURAL_RESEARCH.md`** —
   open-ended research prompts for a hypothetical v1.1 (regulatory architecture,
   quantum and neural formulations of market state, information-theoretic
