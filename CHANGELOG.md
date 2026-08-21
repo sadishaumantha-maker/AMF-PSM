@@ -178,10 +178,11 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
-- `docs/discussions/README.md` linked eleven research modules that were never committed;
-  the directory contains only the index itself. Those dead relative links failed the
+- `docs/discussions/README.md` linked eleven research modules that had not been committed;
+  at the time the directory held only the index itself. Those dead relative links failed the
   `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
-  `main`. The index now names the unwritten modules as plain text rather than links.
+  `main`. The index named them as plain text rather than links until the modules landed;
+  they are links again now that every file exists.
 - Ten factual errors in `CLAUDE.md`, found by the new detector: a stale test total, a
   miscounted number of `yamllint disable-line` directives in `codeql.yml`, `__all__`
   described as `sorted()` when it is in ruff `RUF022` natural order, `tests/unit/`
