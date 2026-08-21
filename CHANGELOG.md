@@ -82,18 +82,23 @@ this file. Versions correspond to framework releases.
   the three points where the source analysis was reconciled against the repository as it
   actually stands. Documentation only — the issues remain the source of truth and no
   package behaviour changes.
-- `projects/` — a project section holding 73 charters that decompose the open
+- `projects/` — a project section holding 129 charters that decompose the open
   backlog and the research discussions into bounded, individually executable
   units of work. Each charter states the dispute it settles, its purpose, ordered
   instructions, a task board, the autonomous agents that execute it (mandate,
   inputs, output artifact and stop condition each), the skills those agents
   invoke, objectively checkable acceptance criteria, a required-reading list of
   primary literature, and the exact commit subjects it produces. Charters are
-  grouped into twelve tracks from governance and CI through numerical
+  grouped into twenty-one tracks: A–L cover governance and CI, numerical
   correctness, graph theory, diagnostics, simulation, policy architecture, market
-  taxonomy, case studies, advanced methods, communication and IP protection.
+  taxonomy, case studies, advanced methods, communication and IP protection;
+  M–U cover the failures currently red on `main`, policy-market contagion,
+  market abuse, shadow finance and capital flows, technology and AI risk,
+  geopolitics and fragmentation, climate and nature, the eleven research modules
+  `docs/discussions/README.md` links to but does not contain, and the method and
+  external-validation questions the framework has never had to answer.
   Supporting pages: `projects/AGENT_PROTOCOL.md`, `projects/SKILL_CATALOG.md`,
-  `projects/COMMIT_PROTOCOL.md` and `projects/REFERENCES.md` (a 248-entry vetted
+  `projects/COMMIT_PROTOCOL.md` and `projects/REFERENCES.md` (a 344-entry vetted
   bibliography of peer-reviewed articles, scholarly monographs, official
   instrument texts and standards specifications). Documentation only — no package
   behaviour changes.
