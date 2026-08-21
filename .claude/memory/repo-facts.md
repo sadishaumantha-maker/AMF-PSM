@@ -57,19 +57,19 @@ and the `integrity.yml` workflow. Do not add source files to `SHA256SUMS`.
   loaded through ToolSearch.
 - Issue-body HTML comments (`<!-- ... -->`) render invisibly — safe for provenance blocks.
 
-## Known internal contradictions (verified — do not propagate)
+## Resolved internal contradictions (2026-08-21 — kept so they are not re-reported)
 
-These are real defects in the repo. Cite them; do not repeat them.
+Five contradictions were previously recorded here. All are closed:
 
-1. `.github/pull_request_template.md` states "**minimum 80%**" coverage. `CLAUDE.md` mandates **100%**.
-   The 100% figure is authoritative.
-2. That same PR template opens with GitHub *issue-template* YAML frontmatter
-   (`name:`/`description:`/`title:`/`labels:`/`assignees:`), which renders as literal text at the top
-   of every PR body. PR templates take no frontmatter.
-3. The PR template asks about SQL injection and XSS — meaningless for a stdlib-only offline library.
-4. `.github/RULESET-POLICY.md` links `CODE_OF_CONDUCT.md`, which does not exist in the repo.
-5. Issues #45–#92 and #77–#98 are two independently-created decompositions covering overlapping
-   ground (#25, #28, #31, #32) with no cross-links between them.
+1–3. The PR template defects (an "80%" coverage line vs the 100% gate, issue-template YAML
+   frontmatter rendering as literal text, and SQL-injection/XSS items that fit no offline stdlib
+   library) were **fixed in the template** under Q-003. It now states the 100% gate and carries
+   repo-specific security items (protected artifacts, no new dependencies, no publish surface).
+4. The "dead `CODE_OF_CONDUCT.md` link" claim was **stale**: `.github/RULESET-POLICY.md` actually
+   links `../CONTRIBUTING.md#code-of-conduct`, and that section exists (CONTRIBUTING.md line 169).
+5. The #45–#92 / #77–#138 overlap is reconciled by **ADR-008**: the research set is canonical for
+   content and acceptance criteria, the 90-day set for scheduling and ownership; the five collision
+   pairs (#58↔#124, #59↔#125, #60↔#126, #64↔#132, #46↔#120–#123) carry cross-link comments.
 
 ## Related memory
 

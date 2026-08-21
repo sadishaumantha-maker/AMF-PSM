@@ -7,7 +7,8 @@ question, why it cannot be settled autonomously, and what the options are.
 
 ## Q-001: How should `docs/QUANTUM_NEURAL_RESEARCH.md` be decomposed?
 
-**Raised by**: Phase 6 planning · **Status**: open
+**Raised by**: Phase 6 planning · **Status**: resolved 2026-08-21 — **Option C** (ADR-009).
+Issue #169 proposes the rewrite; decomposition stays blocked until it lands.
 
 The document (799 lines, discussions Q1–Q3, D1–D3, H1–H2+) is framed around "Deep Neural Networks for
 Market **Prediction**" and "Multi-Asset **Forecasting**". Both collide with the non-trading boundary
@@ -45,7 +46,9 @@ document's real size.
 
 ## Q-002: Should the two overlapping issue sets be merged?
 
-**Raised by**: session audit · **Status**: open
+**Raised by**: session audit · **Status**: resolved 2026-08-21 — role split (ADR-008): research set
+canonical for content and acceptance criteria, 90-day set for scheduling and ownership; cross-link
+comments posted on both sides of #58↔#124, #59↔#125, #60↔#126, #64↔#132, #46↔#120–#123.
 
 Issues #45–#92 (research-track decomposition) and #77–#98 (90-day implementation plan) were created
 independently and cover overlapping ground — both claim #25, #28, #31, #32. Neither references the
@@ -60,7 +63,10 @@ Blocked on: which structure the maintainer actually intends to work from.
 
 ## Q-003: Which coverage figure is authoritative in contributor-facing docs?
 
-**Raised by**: repo-facts verification · **Status**: open, low stakes
+**Raised by**: repo-facts verification · **Status**: resolved 2026-08-21 — the template now states
+the 100% gate, its issue-template frontmatter is removed, its security checklist is repo-specific,
+and its stale `develop` reference is dropped. The `CODE_OF_CONDUCT.md` claim below proved stale:
+the link is `../CONTRIBUTING.md#code-of-conduct`, and that section exists.
 
 `.github/pull_request_template.md` says "minimum 80%". `CLAUDE.md` mandates 100% and CI enforces
 `--cov-fail-under=100`. The template is simply wrong, but fixing it is a `.github` change that was
