@@ -93,7 +93,8 @@ docs/               prose only — planning and research notes, no code and no
 pyproject.toml      packaging + ruff / mypy / pytest / coverage config
 .github/workflows/  ci.yml (lint/typecheck/test/validate), integrity.yml,
                     codeql.yml, milestones.yml, claude-md-drift.yml,
-                    claude-md-sync.yml
+                    claude-md-sync.yml, manual.yml (a manually triggered
+                    workflow_dispatch demo; not a gate)
 .github/mlc-config.json   markdown-link-check config used by the validate job
 .github/pull_request_template.md   PR checklist rendered on every new PR
 .github/RULESET-POLICY.md          branch-protection rules and rationale
@@ -482,6 +483,10 @@ Three workflows gate every push and pull request:
 - `.github/workflows/codeql.yml` — GitHub's CodeQL Advanced scan of the `python`
   and `actions` languages, on pushes and PRs to `main` plus a weekly schedule.
   `build-mode: none`, so it needs no project setup.
+- `.github/workflows/manual.yml` — a manually triggered `workflow_dispatch`
+  demonstration (it echoes a greeting) with an empty `permissions: {}` block. It
+  runs only when dispatched by hand and gates nothing; it is listed here because
+  the drift check requires every workflow in the tree to be named in this guide.
 
 ### The validate job runs in order, and yamllint is first
 
