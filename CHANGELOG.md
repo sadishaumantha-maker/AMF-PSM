@@ -183,6 +183,22 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
+- `ResilienceScore.amplification_factor` could be infinite. Amplification is peak aggregate
+  stress divided by injected aggregate stress -- both criticality-weighted and both in
+  `[0, 1]` -- but the ratio still overflows when the shocked system carries almost no
+  criticality and its stress loads systems that carry a great deal: at a target criticality of
+  `1e-310` the division reaches infinity. The infinity escaped into the result, and
+  `render_json` then emitted `Infinity`, which is not valid JSON. The factor now saturates at
+  the largest finite double. No non-degenerate market's score moves, because the amplification
+  penalty already saturates at any factor of two or more. Found by the hypothesis suite via the
+  new invariant guard -- the guard's first catch.
+- Two assertions in `tests/unit/test_numeric.py` encoded CPython 3.11's summation behaviour and
+  failed on 3.12 and 3.13, which replaced the built-in `sum`'s float accumulation with Neumaier
+  compensated summation (`sum([1.0, 1e100, 1.0, -1e100])` is `0.0` on 3.11 and `2.0` on 3.12+).
+  They now assert against an explicit left-to-right accumulator, which is naive on every version.
+  A new test pins `stable_sum` to exact rational arithmetic so the reduction cannot drift between
+  interpreters — the seam mattered: sampled over 400,000 random weight sets, 102,822 produced a
+  concentration index that differed between the two summation algorithms.
 - `docs/discussions/README.md` linked eleven research modules that had not been committed;
   at the time the directory held only the index itself. Those dead relative links failed the
   `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
@@ -280,6 +296,20 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
+- The workflow set was reduced to the six that belong to this repository. Fourteen stock
+  GitHub starter templates added in one burst — C/C++, Clojure, Maven, Gradle-publish,
+  Terraform, Hugo, Google/IBM cloud deploys, GitHub Pages static deploy, the conda starter,
+  an OSSF SLSA release-publish generator, and the stock stale/summary/manual trio — were
+  removed. Eleven could never pass (the tree has no C/C++, Java, Clojure, Terraform, or Node
+  source), together they held nine checks red on `main`, and two violated stated hard rules: `python-package-conda.yml` (removed once
+  before; `CLAUDE.md` says "Do not re-add it") and
+  `generator-generic-ossf-slsa3-publish.yml`, whose `upload-assets: true` with
+  `contents: write` is a release-publish channel on a public repository and so breaches the
+  private-distribution rule. The drift scanner's `ci.forbidden-workflow` check rejects any
+  conda/publish/release workflow from now on.
+- The Markdown link check ignores two more decorative URL shapes — Actions badge SVGs and
+  the author's bare profile URL — which GitHub answers `403` to unauthenticated non-browser
+  clients. `aliveStatusCodes` is unchanged, so real failures still fail on every host.
 - The diagnostic overall index is now reduced with `stable_sum` rather than a running
   `+=`. The result is the correctly rounded value rather than an accumulation-order
   artefact, which moves it by one unit in the last place — on `examples/sample_market.json`

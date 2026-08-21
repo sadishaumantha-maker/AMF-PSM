@@ -2,7 +2,9 @@
   "ignorePatterns": [
     { "pattern": "^https://img.shields.io/" },
     { "pattern": "^https://opentimestamps.org" },
-    { "pattern": "^https://github\\.com/[^/]+/[^/]+/milestones" }
+    { "pattern": "^https://github\\.com/[^/]+/[^/]+/milestones" },
+    { "pattern": "^https://github\\.com/[^/]+/[^/]+/actions/workflows/.+/badge\\.svg$" },
+    { "pattern": "^https://github\\.com/sadishaumantha-maker/?$" }
   ],
   "httpHeaders": [
     {

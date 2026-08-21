@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
+import json
+import math
+import sys
+
 import pytest
 
 from amf.errors import InvalidConfigError, InvalidShockError
 from amf.market import Market
 from amf.models import Dependency, DependencyKind, Intervention, Severity, Shock, SystemKind
+from amf.report import render_json
 from amf.simulation import ShockSimulator, SimulationConfig
 
 
@@ -625,3 +630,36 @@ def test_single_shock_settling_penalty_is_unchanged_by_the_horizon_fix(stressed_
     score = ShockSimulator(stressed_market, config).resilience(Shock(target=SystemKind.CIRCULATORY))
     assert 0 <= score.settling_time <= config.max_steps
     assert 0.0 <= score.value <= 1.0
+
+
+def test_amplification_stays_finite_when_the_shocked_system_carries_no_criticality(market_factory):
+    # Regression, found by hypothesis. Amplification is peak aggregate stress
+    # divided by injected aggregate stress -- both criticality-weighted and both
+    # in [0, 1] -- yet the ratio can overflow. Shock a system whose criticality is
+    # subnormal and whose stress then loads systems carrying ordinary criticality,
+    # and the denominator is subnormal while the numerator is not: the division
+    # reaches infinity. That infinity would escape into ResilienceScore, and
+    # `render_json` would then emit `Infinity`, which is not valid JSON.
+    market = market_factory(
+        [Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, DependencyKind.STRUCTURAL, 1.0)],
+        circulatory={"criticality": 1e-310, "redundancy": 0.0},
+    )
+    score = ShockSimulator(market).resilience(Shock(target=SystemKind.CIRCULATORY, magnitude=0.8))
+    assert math.isfinite(score.amplification_factor)
+    assert score.amplification_factor == sys.float_info.max
+    # The composite is unaffected: the amplification penalty already saturates at
+    # any factor of 2 or more, so no non-degenerate market's score moves.
+    assert 0.0 <= score.value <= 1.0
+    # And the score still serialises to standard JSON.
+    assert math.isfinite(json.loads(render_json(score))["amplification_factor"])
+
+
+def test_ordinary_amplification_is_reported_unsaturated(market_factory):
+    # The saturation must not swallow a large-but-representable factor.
+    market = market_factory(
+        [Dependency(SystemKind.SKELETON, SystemKind.CIRCULATORY, DependencyKind.STRUCTURAL, 1.0)],
+        circulatory={"criticality": 1e-300, "redundancy": 0.0},
+    )
+    score = ShockSimulator(market).resilience(Shock(target=SystemKind.CIRCULATORY, magnitude=0.8))
+    assert math.isfinite(score.amplification_factor)
+    assert 1.0 < score.amplification_factor < sys.float_info.max
