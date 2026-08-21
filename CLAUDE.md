@@ -719,5 +719,12 @@ twice (which has already happened once: #45–#92 and #77–#98 overlap).
 non-trading boundary, the illustrative-not-validated rule, determinism, and the IP protections, plus
 the translation table for admitting real-market phrasing as structural measures.
 
+Research dossiers live under `docs/research/_dossiers/` — one file per issue, written by the
+issue-researcher agent, plus `docs/research/_dossiers/_strategy.md`, the strategist's whole-backlog
+review. Currently: `docs/research/_dossiers/discussion-2.2.md` (issue #59). Like everything under
+`docs/`, they are prose only, with no authority over the package — and the drift scanner requires
+each new dossier to be named here, so add a file's path to this list in the same commit that adds
+the file.
+
 Nothing under `.claude/` is part of the `amf` package, so none of it affects the 100% coverage gate.
 The repository is public: never put secrets or verbatim protected-framework text in these files.
