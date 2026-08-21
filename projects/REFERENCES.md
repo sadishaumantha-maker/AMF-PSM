@@ -9,61 +9,105 @@ skill: peer-reviewed articles, scholarly monographs, official instrument texts, 
 specifications and official-sector reports. Vendor white papers, consultancy reports and blog posts are
 not admissible.
 
-**248 entries; 198 currently cited by a charter.**
+**344 entries; 322 currently cited by a charter.**
 
 ## Cited by a charter
 
 - **`ACEMOGLU2015`** - Acemoglu, D., Ozdaglar, A., & Tahbaz-Salehi, A. (2015). "Systemic Risk and Stability in Financial Networks." *American Economic Review* 105(2), 564-608.
 - **`ACEMOGLUROBINSON2012`** - Acemoglu, D., & Robinson, J. A. (2012). *Why Nations Fail: The Origins of Power, Prosperity, and Poverty*. Crown.
+- **`ACHARYA2014`** - Acharya, V., Drechsler, I., & Schnabl, P. (2014). "A Pyrrhic Victory? Bank Bailouts and Sovereign Credit Risk." *Journal of Finance* 69(6), 2689-2739.
 - **`ACHARYA2017`** - Acharya, V. V., Pedersen, L. H., Philippon, T., & Richardson, M. (2017). "Measuring Systemic Risk." *Review of Financial Studies* 30(1), 2-47.
 - **`ADRIANBRUNNERMEIER2016`** - Adrian, T., & Brunnermeier, M. K. (2016). "CoVaR." *American Economic Review* 106(7), 1705-1741.
 - **`AKOGLU2015`** - Akoglu, L., Tong, H., & Koutra, D. (2015). "Graph based anomaly detection and description: a survey." *Data Mining and Knowledge Discovery* 29(3), 626-688.
 - **`ALBERT2000`** - Albert, R., Jeong, H., & Barabasi, A.-L. (2000). "Error and attack tolerance of complex networks." *Nature* 406, 378-382.
 - **`ALESINASUMMERS1993`** - Alesina, A., & Summers, L. H. (1993). "Central Bank Independence and Macroeconomic Performance." *Journal of Money, Credit and Banking* 25(2), 151-162.
+- **`ALLENGALE2000`** - Allen, F., & Gale, D. (2000). "Financial Contagion." *Journal of Political Economy* 108(1), 1-33.
 - **`ALON2019`** - Alon, U. (2019). *An Introduction to Systems Biology: Design Principles of Biological Circuits* (2nd ed.). CRC Press.
 - **`AMIHUD2002`** - Amihud, Y. (2002). "Illiquidity and stock returns: cross-section and time-series effects." *Journal of Financial Markets* 5(1), 31-56.
 - **`ANDERSON2020`** - Anderson, R. (2020). *Security Engineering: A Guide to Building Dependable Distributed Systems* (3rd ed.). Wiley.
+- **`ARJOVSKY2019`** - Arjovsky, M., Bottou, L., Gulrajani, I., & Lopez-Paz, D. (2019). "Invariant Risk Minimization." arXiv:1907.02893.
+- **`ARLOTCELISSE2010`** - Arlot, S., & Celisse, A. (2010). "A survey of cross-validation procedures for model selection." *Statistics Surveys* 4, 40-79.
+- **`ARNER2017`** - Arner, D. W., Barberis, J., & Buckley, R. P. (2017). "FinTech, RegTech, and the Reconceptualization of Financial Regulation." *Northwestern Journal of International Law & Business* 37(3), 371-413.
+- **`ARNOLD1989`** - Arnold, V. I. (1989). *Mathematical Methods of Classical Mechanics* (2nd ed.). Springer. (symplectic geometry)
 - **`ARTHUR2015`** - Arthur, W. B. (2015). *Complexity and the Economy*. Oxford University Press.
 - **`ASHBY1956`** - Ashby, W. R. (1956). *An Introduction to Cybernetics*. Chapman & Hall. (Law of Requisite Variety)
+- **`BAGEHOT1873`** - Bagehot, W. (1873). *Lombard Street: A Description of the Money Market*. Henry S. King. (lender of last resort)
+- **`BAILER2009`** - Bailer-Jones, D. M. (2009). *Scientific Models in Philosophy of Science*. University of Pittsburgh Press.
+- **`BALDWIN2016`** - Baldwin, R. (2016). *The Great Convergence: Information Technology and the New Globalization*. Harvard University Press.
 - **`BARABASI2016`** - Barabasi, A.-L. (2016). *Network Science*. Cambridge University Press.
+- **`BARROGORDON1983`** - Barro, R. J., & Gordon, D. B. (1983). "Rules, discretion and reputation in a model of monetary policy." *Journal of Monetary Economics* 12(1), 101-121.
 - **`BASELIII2011`** - Basel Committee on Banking Supervision (2011). *Basel III: A global regulatory framework for more resilient banks and banking systems* (rev. June 2011). Bank for International Settlements.
 - **`BATTAGLIA2018`** - Battaglia, P. W., et al. (2018). "Relational inductive biases, deep learning, and graph networks." arXiv:1806.01261.
 - **`BATTISTON2012`** - Battiston, S., Puliga, M., Kaushik, R., Tasca, P., & Caldarelli, G. (2012). "DebtRank: Too Central to Fail? Financial Networks, the FED and Systemic Risk." *Scientific Reports* 2, 541.
+- **`BATTISTON2017`** - Battiston, S., Mandel, A., Monasterolo, I., Schutze, F., & Visentin, G. (2017). "A climate stress-test of the financial system." *Nature Climate Change* 7, 283-288.
+- **`BCBS2021OPRES`** - Basel Committee on Banking Supervision (2021). *Principles for Operational Resilience*. Bank for International Settlements.
+- **`BCBSGSIB2013`** - Basel Committee on Banking Supervision (2013). *Global systemically important banks: updated assessment methodology and the higher loss absorbency requirement*. Bank for International Settlements.
 - **`BECK2002`** - Beck, K. (2002). *Test-Driven Development: By Example*. Addison-Wesley.
 - **`BEER1972`** - Beer, S. (1972). *Brain of the Firm: The Managerial Cybernetics of Organization*. Allen Lane.
 - **`BENEISH1999`** - Beneish, M. D. (1999). "The Detection of Earnings Manipulation." *Financial Analysts Journal* 55(5), 24-36.
+- **`BENGIO2013`** - Bengio, Y., Courville, A., & Vincent, P. (2013). "Representation Learning: A Review and New Perspectives." *IEEE Transactions on Pattern Analysis and Machine Intelligence* 35(8), 1798-1828.
+- **`BENJAMINIHOCHBERG1995`** - Benjamini, Y., & Hochberg, Y. (1995). "Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing." *Journal of the Royal Statistical Society: Series B* 57(1), 289-300.
+- **`BERG2022`** - Berg, F., Koelbel, J. F., & Rigobon, R. (2022). "Aggregate Confusion: The Divergence of ESG Ratings." *Review of Finance* 26(6), 1315-1344.
 - **`BERMANPLEMMONS1994`** - Berman, A., & Plemmons, R. J. (1994). *Nonnegative Matrices in the Mathematical Sciences*. SIAM (Classics in Applied Mathematics 9).
 - **`BERTALANFFY1968`** - Bertalanffy, L. von (1968). *General System Theory: Foundations, Development, Applications*. George Braziller.
 - **`BERTIN1983`** - Bertin, J. (1983). *Semiology of Graphics: Diagrams, Networks, Maps*. University of Wisconsin Press.
+- **`BIAMONTE2017`** - Biamonte, J., Wittek, P., Pancotti, N., Rebentrost, P., Wiebe, N., & Lloyd, S. (2017). "Quantum machine learning." *Nature* 549, 195-202.
+- **`BIKHCHANDANI2000`** - Bikhchandani, S., & Sharma, S. (2000). "Herd Behavior in Financial Markets." *IMF Staff Papers* 47(3), 279-310.
+- **`BILLIO2012`** - Billio, M., Getmansky, M., Lo, A. W., & Pelizzon, L. (2012). "Econometric measures of connectedness and systemic risk in the finance and insurance sectors." *Journal of Financial Economics* 104(3), 535-559.
+- **`BINGLER2022`** - Bingler, J. A., Kraus, M., Leippold, M., & Webersinke, N. (2022). "Cheap talk and cherry-picking: What ClimateBert has to say on corporate climate risk disclosures." *Finance Research Letters* 47, 102776.
+- **`BIS2003PAYMENT`** - Committee on Payment and Settlement Systems (2003). *The Role of Central Bank Money in Payment Systems*. Bank for International Settlements.
+- **`BLINDER1998`** - Blinder, A. S. (1998). *Central Banking in Theory and Practice*. MIT Press.
+- **`BOLTON2020`** - Bolton, P., Despres, M., Pereira da Silva, L. A., Samama, F., & Svartzman, R. (2020). *The Green Swan: Central Banking and Financial Stability in the Age of Climate Change*. Bank for International Settlements.
 - **`BONACICH1987`** - Bonacich, P. (1987). "Power and Centrality: A Family of Measures." *American Journal of Sociology* 92(5), 1170-1182.
 - **`BOUCHAUD2018`** - Bouchaud, J.-P., Bonart, J., Donier, J., & Gould, M. (2018). *Trades, Quotes and Prices: Financial Markets Under the Microscope*. Cambridge University Press.
 - **`BOWKERSTAR1999`** - Bowker, G. C., & Star, S. L. (1999). *Sorting Things Out: Classification and Its Consequences*. MIT Press.
 - **`BOX1976`** - Box, G. E. P. (1976). "Science and Statistics." *Journal of the American Statistical Association* 71(356), 791-799.
 - **`BRENNANBUCHANAN1985`** - Brennan, G., & Buchanan, J. M. (1985). *The Reason of Rules: Constitutional Political Economy*. Cambridge University Press.
+- **`BREUERPETRUCCIONE2002`** - Breuer, H.-P., & Petruccione, F. (2002). *The Theory of Open Quantum Systems*. Oxford University Press.
 - **`BRONSTEIN2021`** - Bronstein, M. M., Bruna, J., Cohen, T., & Velickovic, P. (2021). "Geometric Deep Learning: Grids, Groups, Graphs, Geodesics, and Gauges." arXiv:2104.13478.
 - **`BROOKS1995`** - Brooks, F. P. (1995). *The Mythical Man-Month: Essays on Software Engineering* (Anniversary ed.). Addison-Wesley.
 - **`BRUNNERMEIER2009`** - Brunnermeier, M. K., & Pedersen, L. H. (2009). "Market Liquidity and Funding Liquidity." *Review of Financial Studies* 22(6), 2201-2238.
 - **`BRUNNERMEIER2009CRISIS`** - Brunnermeier, M. K. (2009). "Deciphering the Liquidity and Credit Crunch 2007-2008." *Journal of Economic Perspectives* 23(1), 77-100.
+- **`BRUNNERMEIER2016ESBIES`** - Brunnermeier, M. K., Garicano, L., Lane, P. R., Pagano, M., Reis, R., Santos, T., Thesmar, D., Van Nieuwerburgh, S., & Vayanos, D. (2016). "The Sovereign-Bank Diabolic Loop and ESBies." *American Economic Review* 106(5), 508-512.
+- **`BUCHAK2018`** - Buchak, G., Matvos, G., Piskorski, T., & Seru, A. (2018). "Fintech, regulatory arbitrage, and the rise of shadow banks." *Journal of Financial Economics* 130(3), 453-483.
 - **`BUDISH2015`** - Budish, E., Cramton, P., & Shim, J. (2015). "The High-Frequency Trading Arms Race: Frequent Batch Auctions as a Market Design Response." *Quarterly Journal of Economics* 130(4), 1547-1621.
 - **`CALLAWAY2000`** - Callaway, D. S., Newman, M. E. J., Strogatz, S. H., & Watts, D. J. (2000). "Network Robustness and Fragility: Percolation on Random Graphs." *Physical Review Letters* 85(25), 5468-5471.
+- **`CALVANO2020`** - Calvano, E., Calzolari, G., Denicolo, V., & Pastorello, S. (2020). "Artificial Intelligence, Algorithmic Pricing, and Collusion." *American Economic Review* 110(10), 3267-3297.
 - **`CALVO1998`** - Calvo, G. A. (1998). "Capital Flows and Capital-Market Crises: The Simple Economics of Sudden Stops." *Journal of Applied Economics* 1(1), 35-54.
+- **`CALVOMENDOZA2000`** - Calvo, G. A., & Mendoza, E. G. (2000). "Rational contagion and the globalization of securities markets." *Journal of International Economics* 51(1), 79-113.
+- **`CAMPIGLIO2018`** - Campiglio, E., Dafermos, Y., Monnin, P., Ryan-Collins, J., Schotten, G., & Tanaka, M. (2018). "Climate change challenges for central banks and financial regulators." *Nature Climate Change* 8, 462-468.
+- **`CANNON1932`** - Cannon, W. B. (1932). *The Wisdom of the Body*. W. W. Norton. (homeostasis)
 - **`CARLSONDOYLE2002`** - Carlson, J. M., & Doyle, J. (2002). "Complexity and robustness." *PNAS* 99(suppl 1), 2538-2545.
 - **`CARLSSON2009`** - Carlsson, G. (2009). "Topology and Data." *Bulletin of the American Mathematical Society* 46(2), 255-308.
+- **`CARNEY2015`** - Carney, M. (2015). *Breaking the Tragedy of the Horizon - climate change and financial stability*. Speech at Lloyd's of London, Bank of England.
 - **`CARPENTERMOSS2014`** - Carpenter, D., & Moss, D. A. (eds.) (2014). *Preventing Regulatory Capture: Special Interest Influence and How to Limit It*. Cambridge University Press.
+- **`CEREZO2021`** - Cerezo, M., et al. (2021). "Variational quantum algorithms." *Nature Reviews Physics* 3, 625-644.
 - **`CHANDOLA2009`** - Chandola, V., Banerjee, A., & Kumar, V. (2009). "Anomaly detection: A survey." *ACM Computing Surveys* 41(3), 15.
+- **`CHARIPACHTER2023`** - Chari, T., & Pachter, L. (2023). "The specious art of single-cell genomics." *PLOS Computational Biology* 19(8), e1011288. (on the distortions of two-dimensional embeddings)
 - **`CLAESSENHUGHES2000`** - Claessen, K., & Hughes, J. (2000). "QuickCheck: a lightweight tool for random testing of Haskell programs." *ICFP '00*, 268-279.
 - **`CLEVELANDMCGILL1984`** - Cleveland, W. S., & McGill, R. (1984). "Graphical Perception: Theory, Experimentation, and Application to the Development of Graphical Methods." *JASA* 79(387), 531-554.
+- **`COHENSTEINER2007`** - Cohen-Steiner, D., Edelsbrunner, H., & Harer, J. (2007). "Stability of Persistence Diagrams." *Discrete & Computational Geometry* 37(1), 103-120.
 - **`CONT2013`** - Cont, R., Moussa, A., & Santos, E. B. (2013). "Network structure and systemic risk in banking systems." In Fouque, J.-P. & Langsam, J. (eds.), *Handbook on Systemic Risk*. Cambridge University Press.
 - **`CONWAY1968`** - Conway, M. E. (1968). "How Do Committees Invent?" *Datamation* 14(5), 28-31.
 - **`CORMEN2022`** - Cormen, T. H., Leiserson, C. E., Rivest, R. L., & Stein, C. (2022). *Introduction to Algorithms* (4th ed.). MIT Press.
 - **`COVERTHOMAS2006`** - Cover, T. M., & Thomas, J. A. (2006). *Elements of Information Theory* (2nd ed.). Wiley.
 - **`CPMIIOSCO2012`** - CPMI-IOSCO (2012). *Principles for Financial Market Infrastructures*. Bank for International Settlements & IOSCO.
+- **`CPYTHON100425`** - CPython issue gh-100425 / bpo tracker. "Improve accuracy of builtin sum() for float inputs" - the Neumaier compensated-summation change shipped in CPython 3.12.
 - **`CSETEDOYLE2002`** - Csete, M. E., & Doyle, J. C. (2002). "Reverse Engineering of Biological Complexity." *Science* 295(5560), 1664-1669.
+- **`CUKIERMAN1992`** - Cukierman, A. (1992). *Central Bank Strategy, Credibility, and Independence: Theory and Evidence*. MIT Press.
+- **`DANIELSSON2012`** - Danielsson, J., Shin, H. S., & Zigrand, J.-P. (2012). "Endogenous and Systemic Risk." In Haubrich, J. G. & Lo, A. W. (eds.), *Quantifying Systemic Risk*. University of Chicago Press.
 - **`DANIELSSON2022`** - Danielsson, J., Macrae, R., & Uthemann, A. (2022). "Artificial intelligence and systemic risk." *Journal of Banking & Finance* 140, 106290.
+- **`DASGUPTA2021`** - Dasgupta, P. (2021). *The Economics of Biodiversity: The Dasgupta Review*. HM Treasury.
 - **`DECHOW2011`** - Dechow, P. M., Ge, W., Larson, C. R., & Sloan, R. G. (2011). "Predicting Material Accounting Misstatements." *Contemporary Accounting Research* 28(1), 17-82.
 - **`DEMIRGUC2018`** - Demirguc-Kunt, A., Klapper, L., Singer, D., Ansar, S., & Hess, J. (2018). *The Global Findex Database 2017*. World Bank.
+- **`DERMAN1996`** - Derman, E. (1996). "Model Risk." Goldman Sachs Quantitative Strategies Research Notes.
+- **`DIAMONDDYBVIG1983`** - Diamond, D. W., & Dybvig, P. H. (1983). "Bank Runs, Deposit Insurance, and Liquidity." *Journal of Political Economy* 91(3), 401-419.
+- **`DIEBOLDYILMAZ2014`** - Diebold, F. X., & Yilmaz, K. (2014). "On the network topology of variance decompositions: Measuring the connectedness of financial firms." *Journal of Econometrics* 182(1), 119-134.
+- **`DIRAC1958`** - Dirac, P. A. M. (1958). *The Principles of Quantum Mechanics* (4th ed.). Oxford University Press.
 - **`DJANKOV2008`** - Djankov, S., La Porta, R., Lopez-de-Silanes, F., & Shleifer, A. (2008). "The law and economics of self-dealing." *Journal of Financial Economics* 88(3), 430-465.
 - **`DODDFRANK2010`** - United States Congress (2010). *Dodd-Frank Wall Street Reform and Consumer Protection Act*, Pub. L. 111-203.
+- **`DREZNER1999`** - Drezner, D. W. (1999). *The Sanctions Paradox: Economic Statecraft and International Relations*. Cambridge University Press.
+- **`DUFFIE2011`** - Duffie, D. (2011). *How Big Banks Fail and What to Do about It*. Princeton University Press.
 - **`DYCK2010`** - Dyck, A., Morse, A., & Zingales, L. (2010). "Who Blows the Whistle on Corporate Fraud?" *Journal of Finance* 65(6), 2213-2253.
 - **`EDELSBRUNNERHARER2010`** - Edelsbrunner, H., & Harer, J. L. (2010). *Computational Topology: An Introduction*. American Mathematical Society.
 - **`EFRONTIBSHIRANI1993`** - Efron, B., & Tibshirani, R. J. (1993). *An Introduction to the Bootstrap*. Chapman & Hall/CRC.
@@ -74,90 +118,142 @@ not admissible.
 - **`EVANS2003`** - Evans, E. (2003). *Domain-Driven Design: Tackling Complexity in the Heart of Software*. Addison-Wesley.
 - **`FAIR2016`** - Wilkinson, M. D., et al. (2016). "The FAIR Guiding Principles for scientific data management and stewardship." *Scientific Data* 3, 160018.
 - **`FARHIMAGGIORI2018`** - Farhi, E., & Maggiori, M. (2018). "A Model of the International Monetary System." *Quarterly Journal of Economics* 133(1), 295-355.
+- **`FARRELLNEWMAN2019`** - Farrell, H., & Newman, A. L. (2019). "Weaponized Interdependence: How Global Economic Networks Shape State Coercion." *International Security* 44(1), 42-79.
 - **`FEATHERS2004`** - Feathers, M. C. (2004). *Working Effectively with Legacy Code*. Prentice Hall.
 - **`FIBO`** - EDM Council / Object Management Group. *Financial Industry Business Ontology (FIBO)*.
 - **`FIPS1804`** - NIST (2015). *FIPS PUB 180-4: Secure Hash Standard (SHS)*.
 - **`FORSGREN2018`** - Forsgren, N., Humble, J., & Kim, G. (2018). *Accelerate: The Science of Lean Software and DevOps*. IT Revolution.
 - **`FOUCAULT2013`** - Foucault, T., Pagano, M., & Roell, A. (2013). *Market Liquidity: Theory, Evidence, and Policy*. Oxford University Press.
 - **`FREEMAN1977`** - Freeman, L. C. (1977). "A Set of Measures of Centrality Based on Betweenness." *Sociometry* 40(1), 35-41.
+- **`FSB2020THIRDPARTY`** - Financial Stability Board (2020). *Regulatory and Supervisory Issues Relating to Outsourcing and Third-Party Relationships*.
+- **`FSBAI2017`** - Financial Stability Board (2017). *Artificial intelligence and machine learning in financial services: Market developments and financial stability implications*.
 - **`FSBSHADOW2011`** - Financial Stability Board (2011). *Shadow Banking: Scoping the Issues*. FSB Background Note.
+- **`FSBSIFI2010`** - Financial Stability Board (2010). *Reducing the moral hazard posed by systemically important financial institutions: FSB Recommendations and Time Lines*.
+- **`FUSTER2019`** - Fuster, A., Plosser, M., Schnabl, P., & Vickery, J. (2019). "The Role of Technology in Mortgage Lending." *Review of Financial Studies* 32(5), 1854-1899.
 - **`GAIKAPADIA2010`** - Gai, P., & Kapadia, S. (2010). "Contagion in financial networks." *Proceedings of the Royal Society A* 466(2120), 2401-2423.
+- **`GELLMANN1994`** - Gell-Mann, M. (1994). *The Quark and the Jaguar: Adventures in the Simple and the Complex*. W. H. Freeman.
+- **`GELMANLOKEN2014`** - Gelman, A., & Loken, E. (2014). "The Statistical Crisis in Science." *American Scientist* 102(6), 460-465.
 - **`GHRIST2008`** - Ghrist, R. (2008). "Barcodes: The persistent topology of data." *Bulletin of the American Mathematical Society* 45(1), 61-75.
 - **`GICS`** - MSCI & S&P Dow Jones Indices. *Global Industry Classification Standard (GICS) Methodology*.
 - **`GIDEAKATZ2018`** - Gidea, M., & Katz, Y. (2018). "Topological data analysis of financial time series: Landscapes of crashes." *Physica A* 491, 820-834.
 - **`GIGERENZER2011`** - Gigerenzer, G., Gaissmaier, W., Kurz-Milcke, E., Schwartz, L. M., & Woloshin, S. (2007). "Helping Doctors and Patients Make Sense of Health Statistics." *Psychological Science in the Public Interest* 8(2), 53-96.
+- **`GKS1976`** - Gorini, V., Kossakowski, A., & Sudarshan, E. C. G. (1976). "Completely positive dynamical semigroups of N-level systems." *Journal of Mathematical Physics* 17(5), 821-825.
 - **`GLASSERMANYOUNG2016`** - Glasserman, P., & Young, H. P. (2016). "Contagion in Financial Networks." *Journal of Economic Literature* 54(3), 779-831.
 - **`GOLDBERG1991`** - Goldberg, D. (1991). "What Every Computer Scientist Should Know About Floating-Point Arithmetic." *ACM Computing Surveys* 23(1), 5-48.
+- **`GOLDSTEIN2002`** - Goldstein, H., Poole, C., & Safko, J. (2002). *Classical Mechanics* (3rd ed.). Addison Wesley.
 - **`GOLUBVANLOAN2013`** - Golub, G. H., & Van Loan, C. F. (2013). *Matrix Computations* (4th ed.). Johns Hopkins University Press.
 - **`GOODFELLOW2016`** - Goodfellow, I., Bengio, Y., & Courville, A. (2016). *Deep Learning*. MIT Press.
 - **`GOODHART1984`** - Goodhart, C. A. E. (1984). "Problems of Monetary Management: The U.K. Experience." In *Monetary Theory and Practice*. Macmillan. (Goodhart's Law)
+- **`GOODHART1988`** - Goodhart, C. A. E. (1988). *The Evolution of Central Banks*. MIT Press.
 - **`GORTONMETRICK2012`** - Gorton, G., & Metrick, A. (2012). "Securitized banking and the run on repo." *Journal of Financial Economics* 104(3), 425-451.
 - **`GRANGER1969`** - Granger, C. W. J. (1969). "Investigating Causal Relations by Econometric Models and Cross-spectral Methods." *Econometrica* 37(3), 424-438.
 - **`GRIMM2020`** - Grimm, V., et al. (2020). "The ODD Protocol for Describing Agent-Based and Other Simulation Models: A Second Update." *Journal of Artificial Societies and Social Simulation* 23(2), 7.
 - **`GRUBER1993`** - Gruber, T. R. (1993). "A translation approach to portable ontology specifications." *Knowledge Acquisition* 5(2), 199-220.
 - **`HABERSTORNETTA1991`** - Haber, S., & Stornetta, W. S. (1991). "How to time-stamp a digital document." *Journal of Cryptology* 3(2), 99-111.
+- **`HAIRER2006`** - Hairer, E., Lubich, C., & Wanner, G. (2006). *Geometric Numerical Integration: Structure-Preserving Algorithms for Ordinary Differential Equations* (2nd ed.). Springer.
 - **`HAMILTON1994`** - Hamilton, J. D. (1994). *Time Series Analysis*. Princeton University Press.
 - **`HASBROUCK2007`** - Hasbrouck, J. (2007). *Empirical Market Microstructure*. Oxford University Press.
+- **`HASTIE2009`** - Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The Elements of Statistical Learning* (2nd ed.). Springer.
+- **`HERNANROBINS2020`** - Hernan, M. A., & Robins, J. M. (2020). *Causal Inference: What If*. Chapman & Hall/CRC.
+- **`HESSE1966`** - Hesse, M. B. (1966). *Models and Analogies in Science*. University of Notre Dame Press.
 - **`HIGHAM2002`** - Higham, N. J. (2002). *Accuracy and Stability of Numerical Algorithms* (2nd ed.). SIAM.
+- **`HILL1973`** - Hill, M. O. (1973). "Diversity and Evenness: A Unifying Notation and Its Consequences." *Ecology* 54(2), 427-432.
+- **`HIRSCHMAN1945`** - Hirschman, A. O. (1945). *National Power and the Structure of Foreign Trade*. University of California Press.
 - **`HOARE1969`** - Hoare, C. A. R. (1969). "An Axiomatic Basis for Computer Programming." *Communications of the ACM* 12(10), 576-580.
+- **`HOGAN2021`** - Hogan, A., et al. (2021). "Knowledge Graphs." *ACM Computing Surveys* 54(4), 71.
 - **`HOLLING1973`** - Holling, C. S. (1973). "Resilience and Stability of Ecological Systems." *Annual Review of Ecology and Systematics* 4, 1-23.
 - **`HOPCROFTTARJAN1973`** - Hopcroft, J., & Tarjan, R. (1973). "Algorithm 447: efficient algorithms for graph manipulation." *Communications of the ACM* 16(6), 372-378.
 - **`HORNJOHNSON2012`** - Horn, R. A., & Johnson, C. R. (2012). *Matrix Analysis* (2nd ed.). Cambridge University Press.
+- **`HUFBAUER2007`** - Hufbauer, G. C., Schott, J. J., Elliott, K. A., & Oegg, B. (2007). *Economic Sanctions Reconsidered* (3rd ed.). Peterson Institute for International Economics.
 - **`HUMBLEFARLEY2010`** - Humble, J., & Farley, D. (2010). *Continuous Delivery: Reliable Software Releases through Build, Test, and Deployment Automation*. Addison-Wesley.
 - **`HUNTTHOMAS2019`** - Hunt, A., & Thomas, D. (2019). *The Pragmatic Programmer* (20th Anniversary ed.). Addison-Wesley.
 - **`HYNDMANFAN1996`** - Hyndman, R. J., & Fan, Y. (1996). "Sample Quantiles in Statistical Packages." *The American Statistician* 50(4), 361-365.
 - **`IEEE754`** - IEEE (2019). *IEEE Standard for Floating-Point Arithmetic* (IEEE Std 754-2019).
+- **`IMBENSRUBIN2015`** - Imbens, G. W., & Rubin, D. B. (2015). *Causal Inference for Statistics, Social, and Biomedical Sciences*. Cambridge University Press.
+- **`IMF2023FRAGMENTATION`** - International Monetary Fund (2023). "Geoeconomic Fragmentation and the Future of Multilateralism." IMF Staff Discussion Note SDN/2023/001.
 - **`IMFFSAP`** - International Monetary Fund & World Bank. *Financial Sector Assessment Program (FSAP)* methodology and Financial System Stability Assessments.
 - **`INTOTO2019`** - Torres-Arias, S., Afzali, H., Kuppusamy, T. K., Curtmola, R., & Cappos, J. (2019). "in-toto: Providing farm-to-table guarantees for bits and bytes." *USENIX Security Symposium*.
+- **`IOANNIDIS2005`** - Ioannidis, J. P. A. (2005). "Why Most Published Research Findings Are False." *PLoS Medicine* 2(8), e124.
+- **`IPBES2019`** - IPBES (2019). *Global Assessment Report on Biodiversity and Ecosystem Services*. Intergovernmental Science-Policy Platform on Biodiversity and Ecosystem Services.
 - **`ISO10962`** - ISO (2019). *ISO 10962: Securities and related financial instruments - Classification of financial instruments (CFI) code*.
 - **`ISO17442`** - ISO (2020). *ISO 17442: Financial services - Legal entity identifier (LEI)*.
 - **`ISO20022`** - ISO (2022). *ISO 20022: Financial services - Universal financial industry message scheme*.
 - **`JACKSON2008`** - Jackson, M. O. (2008). *Social and Economic Networks*. Princeton University Press.
+- **`JAYNES1957`** - Jaynes, E. T. (1957). "Information Theory and Statistical Mechanics." *Physical Review* 106(4), 620-630.
 - **`JIAHARMAN2011`** - Jia, Y., & Harman, M. (2011). "An Analysis and Survey of the Development of Mutation Testing." *IEEE Transactions on Software Engineering* 37(5), 649-678.
 - **`JOHNSON1975`** - Johnson, D. B. (1975). "Finding all the elementary circuits of a directed graph." *SIAM Journal on Computing* 4(1), 77-84.
 - **`KAHAN1965`** - Kahan, W. (1965). "Further remarks on reducing truncation errors." *Communications of the ACM* 8(1), 40.
+- **`KAPOORNARAYANAN2023`** - Kapoor, S., & Narayanan, A. (2023). "Leakage and the reproducibility crisis in machine-learning-based science." *Patterns* 4(9), 100804.
 - **`KARPOFF2008`** - Karpoff, J. M., Lee, D. S., & Martin, G. S. (2008). "The Cost to Firms of Cooking the Books." *Journal of Financial and Quantitative Analysis* 43(3), 581-611.
 - **`KATZ1953`** - Katz, L. (1953). "A new status index derived from sociometric analysis." *Psychometrika* 18(1), 39-43.
 - **`KAUFMANN2010`** - Kaufmann, D., Kraay, A., & Mastruzzi, M. (2010). "The Worldwide Governance Indicators: Methodology and Analytical Issues." World Bank Policy Research Working Paper 5430.
+- **`KEMENYSNELL1976`** - Kemeny, J. G., & Snell, J. L. (1976). *Finite Markov Chains*. Springer.
 - **`KHALIL2002`** - Khalil, H. K. (2002). *Nonlinear Systems* (3rd ed.). Prentice Hall.
 - **`KIPFWELLING2017`** - Kipf, T. N., & Welling, M. (2017). "Semi-Supervised Classification with Graph Convolutional Networks." *ICLR 2017*.
 - **`KIRILENKO2017`** - Kirilenko, A., Kyle, A. S., Samadi, M., & Tuzun, T. (2017). "The Flash Crash: High-Frequency Trading in an Electronic Market." *Journal of Finance* 72(3), 967-998.
 - **`KITANO2004`** - Kitano, H. (2004). "Biological robustness." *Nature Reviews Genetics* 5, 826-837.
+- **`KRUEGER2020`** - Krueger, P., Sautner, Z., & Starks, L. T. (2020). "The Importance of Climate Risks for Institutional Investors." *Review of Financial Studies* 33(3), 1067-1111.
+- **`KULLBACKLEIBLER1951`** - Kullback, S., & Leibler, R. A. (1951). "On Information and Sufficiency." *Annals of Mathematical Statistics* 22(1), 79-86.
 - **`KYDLANDPRESCOTT1977`** - Kydland, F. E., & Prescott, E. C. (1977). "Rules Rather than Discretion: The Inconsistency of Optimal Plans." *Journal of Political Economy* 85(3), 473-491.
 - **`KYLE1985`** - Kyle, A. S. (1985). "Continuous Auctions and Insider Trading." *Econometrica* 53(6), 1315-1335.
+- **`LAKATOS1970`** - Lakatos, I. (1970). "Falsification and the Methodology of Scientific Research Programmes." In Lakatos, I. & Musgrave, A. (eds.), *Criticism and the Growth of Knowledge*. Cambridge University Press.
+- **`LAKOFFJOHNSON1980`** - Lakoff, G., & Johnson, M. (1980). *Metaphors We Live By*. University of Chicago Press.
 - **`LAMFALUSSY2001`** - Committee of Wise Men (2001). *Final Report of the Committee of Wise Men on the Regulation of European Securities Markets* (the Lamfalussy Report). European Commission.
 - **`LAPORTA1998`** - La Porta, R., Lopez-de-Silanes, F., Shleifer, A., & Vishny, R. W. (1998). "Law and Finance." *Journal of Political Economy* 106(6), 1113-1155.
+- **`LEBARON2006`** - LeBaron, B. (2006). "Agent-based Computational Finance." In Tesfatsion, L. & Judd, K. L. (eds.), *Handbook of Computational Economics, Vol. 2*. North-Holland.
+- **`LECUN2015`** - LeCun, Y., Bengio, Y., & Hinton, G. (2015). "Deep learning." *Nature* 521, 436-444.
 - **`LECUYER2007`** - L'Ecuyer, P., & Simard, R. (2007). "TestU01: A C library for empirical testing of random number generators." *ACM Transactions on Mathematical Software* 33(4), 22.
 - **`LEVIN1998`** - Levin, S. A. (1998). "Ecosystems and the Biosphere as Complex Adaptive Systems." *Ecosystems* 1, 431-436.
+- **`LEVINPERES2017`** - Levin, D. A., & Peres, Y. (2017). *Markov Chains and Mixing Times* (2nd ed.). American Mathematical Society.
+- **`LINDBLAD1976`** - Lindblad, G. (1976). "On the generators of quantum dynamical semigroups." *Communications in Mathematical Physics* 48(2), 119-130.
 - **`LUCAS1976`** - Lucas, R. E. (1976). "Econometric policy evaluation: A critique." *Carnegie-Rochester Conference Series on Public Policy* 1, 19-46.
 - **`LUNDBERGLEE2017`** - Lundberg, S. M., & Lee, S.-I. (2017). "A Unified Approach to Interpreting Model Predictions." *NeurIPS 2017*.
+- **`MACKAY2003`** - MacKay, D. J. C. (2003). *Information Theory, Inference, and Learning Algorithms*. Cambridge University Press.
 - **`MAHONEYTHELEN2010`** - Mahoney, J., & Thelen, K. (eds.) (2010). *Explaining Institutional Change: Ambiguity, Agency, and Power*. Cambridge University Press.
 - **`MANSKI2013`** - Manski, C. F. (2013). *Public Policy in an Uncertain World: Analysis and Decisions*. Harvard University Press.
 - **`MAR2014`** - European Union (2014). *Regulation (EU) No 596/2014 on market abuse (Market Abuse Regulation)*. Official Journal of the European Union.
+- **`MARSDENRATIU1999`** - Marsden, J. E., & Ratiu, T. S. (1999). *Introduction to Mechanics and Symmetry* (2nd ed.). Springer.
 - **`MARTIN2017`** - Martin, R. C. (2017). *Clean Architecture: A Craftsman's Guide to Software Structure and Design*. Prentice Hall.
 - **`MATSUMOTO1998`** - Matsumoto, M., & Nishimura, T. (1998). "Mersenne Twister: a 623-dimensionally equidistributed uniform pseudo-random number generator." *ACM TOMACS* 8(1), 3-30.
 - **`MAY1972`** - May, R. M. (1972). "Will a Large Complex System be Stable?" *Nature* 238, 413-414.
 - **`MAY2008`** - May, R. M., Levin, S. A., & Sugihara, G. (2008). "Ecology for bankers." *Nature* 451, 893-895.
+- **`MCCLEAN2018`** - McClean, J. R., Boixo, S., Smelyanskiy, V. N., Babbush, R., & Neven, H. (2018). "Barren plateaus in quantum neural network training landscapes." *Nature Communications* 9, 4812.
+- **`MCDOWELL2023`** - McDowell, D. (2023). *Bucking the Buck: US Financial Sanctions and the International Backlash against the Dollar*. Oxford University Press.
+- **`MCINNES2018`** - McInnes, L., Healy, J., & Melville, J. (2018). "UMAP: Uniform Manifold Approximation and Projection for Dimension Reduction." arXiv:1802.03426.
 - **`MEADOWS1999`** - Meadows, D. H. (1999). *Leverage Points: Places to Intervene in a System*. The Sustainability Institute.
 - **`MEADOWS2008`** - Meadows, D. H. (2008). *Thinking in Systems: A Primer*. Chelsea Green.
+- **`MEEHL1990`** - Meehl, P. E. (1990). "Appraising and Amending Theories: The Strategy of Lakatosian Defense and Two Principles That Warrant It." *Psychological Inquiry* 1(2), 108-141.
 - **`MENKVELD2013`** - Menkveld, A. J. (2013). "High frequency trading and the new market makers." *Journal of Financial Markets* 16(4), 712-740.
 - **`MERKLE1980`** - Merkle, R. C. (1980). "Protocols for Public Key Cryptosystems." *IEEE Symposium on Security and Privacy*, 122-134.
+- **`MERTON1948`** - Merton, R. K. (1948). "The Self-Fulfilling Prophecy." *The Antioch Review* 8(2), 193-210.
 - **`MEYER1988`** - Meyer, B. (1988). *Object-Oriented Software Construction*. Prentice Hall. (design by contract)
 - **`MIFID2`** - European Union (2014). *Directive 2014/65/EU on markets in financial instruments (MiFID II)*. Official Journal of the European Union.
+- **`MIKOLOV2013`** - Mikolov, T., Sutskever, I., Chen, K., Corrado, G., & Dean, J. (2013). "Distributed Representations of Words and Phrases and their Compositionality." *Advances in Neural Information Processing Systems 26*.
 - **`MINSKY1986`** - Minsky, H. P. (1986). *Stabilizing an Unstable Economy*. Yale University Press.
+- **`MITCHELL2019`** - Mitchell, M., et al. (2019). "Model Cards for Model Reporting." *Proceedings of the Conference on Fairness, Accountability, and Transparency*, 220-229.
 - **`MORGANHENRION1990`** - Morgan, M. G., & Henrion, M. (1990). *Uncertainty: A Guide to Dealing with Uncertainty in Quantitative Risk and Policy Analysis*. Cambridge University Press.
 - **`MORRIS1991`** - Morris, M. D. (1991). "Factorial Sampling Plans for Preliminary Computational Experiments." *Technometrics* 33(2), 161-174.
+- **`MORRISSHIN1998`** - Morris, S., & Shin, H. S. (1998). "Unique Equilibrium in a Model of Self-Fulfilling Currency Attacks." *American Economic Review* 88(3), 587-597.
 - **`MOTTERLAI2002`** - Motter, A. E., & Lai, Y.-C. (2002). "Cascade-based attacks on complex networks." *Physical Review E* 66, 065102(R).
 - **`MUNZNER2014`** - Munzner, T. (2014). *Visualization Analysis and Design*. CRC Press.
+- **`MURPHY2022`** - Murphy, K. P. (2022). *Probabilistic Machine Learning: An Introduction*. MIT Press.
+- **`NEUMAIER1974`** - Neumaier, A. (1974). "Rundungsfehleranalyse einiger Verfahren zur Summation endlicher Summen." *Zeitschrift fur Angewandte Mathematik und Mechanik* 54(1), 39-51.
+- **`NEWCOMB1881`** - Newcomb, S. (1881). "Note on the Frequency of Use of the Different Digits in Natural Numbers." *American Journal of Mathematics* 4(1), 39-40. (with Benford, F. (1938), *Proc. Amer. Phil. Soc.* 78, 551-572)
 - **`NEWMAN2018`** - Newman, M. E. J. (2018). *Networks* (2nd ed.). Oxford University Press.
+- **`NGFS2019`** - Network for Greening the Financial System (2019). *A call for action: Climate change as a source of financial risk*. NGFS First Comprehensive Report.
+- **`NGFS2020SCENARIOS`** - Network for Greening the Financial System (2020). *NGFS Climate Scenarios for Central Banks and Supervisors*.
 - **`NIELSENCHUANG2010`** - Nielsen, M. A., & Chuang, I. L. (2010). *Quantum Computation and Quantum Information* (10th Anniversary ed.). Cambridge University Press.
 - **`NIGRINI2012`** - Nigrini, M. J. (2012). *Benford's Law: Applications for Forensic Accounting, Auditing, and Fraud Detection*. Wiley.
 - **`NISTSSDF`** - NIST (2022). *SP 800-218: Secure Software Development Framework (SSDF) Version 1.1*.
+- **`NORDHAUS2013`** - Nordhaus, W. D. (2013). *The Climate Casino: Risk, Uncertainty, and Economics for a Warming World*. Yale University Press.
 - **`NORRIS1997`** - Norris, J. R. (1997). *Markov Chains*. Cambridge University Press.
 - **`NORTH1990`** - North, D. C. (1990). *Institutions, Institutional Change and Economic Performance*. Cambridge University Press.
+- **`NOSEK2018`** - Nosek, B. A., Ebersole, C. R., DeHaven, A. C., & Mellor, D. T. (2018). "The preregistration revolution." *PNAS* 115(11), 2600-2606.
 - **`NYGARD2018`** - Nygard, M. T. (2018). *Release It! Design and Deploy Production-Ready Software* (2nd ed.). Pragmatic Bookshelf.
+- **`OBSTFELD1996`** - Obstfeld, M. (1996). "Models of currency crises with self-fulfilling features." *European Economic Review* 40(3-5), 1037-1047.
 - **`OBSTFELD2005`** - Obstfeld, M., Shambaugh, J. C., & Taylor, A. M. (2005). "The Trilemma in History: Tradeoffs Among Exchange Rates, Monetary Policies, and Capital Mobility." *Review of Economics and Statistics* 87(3), 423-438.
 - **`OECDJRC2008`** - OECD & European Commission JRC (2008). *Handbook on Constructing Composite Indicators: Methodology and User Guide*. OECD Publishing.
+- **`OGITA2005`** - Ogita, T., Rump, S. M., & Oishi, S. (2005). "Accurate Sum and Dot Product." *SIAM Journal on Scientific Computing* 26(6), 1955-1988.
 - **`OHARA1995`** - O'Hara, M. (1995). *Market Microstructure Theory*. Blackwell. [Oxford / LSE / Chicago reading lists]
 - **`OHARA2015`** - O'Hara, M. (2015). "High frequency market microstructure." *Journal of Financial Economics* 116(2), 257-270.
 - **`ONEILL2014`** - O'Neill, M. E. (2014). "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for Random Number Generation." Harvey Mudd College Technical Report HMC-CS-2014-0905.
@@ -165,24 +261,33 @@ not admissible.
 - **`ORUS2019`** - Orus, R., Mugel, S., & Lizaso, E. (2019). "Quantum computing for finance: Overview and prospects." *Reviews in Physics* 4, 100028.
 - **`OSTROM1990`** - Ostrom, E. (1990). *Governing the Commons: The Evolution of Institutions for Collective Action*. Cambridge University Press.
 - **`OSTROM2005`** - Ostrom, E. (2005). *Understanding Institutional Diversity*. Princeton University Press.
+- **`OTTER2017`** - Otter, N., Porter, M. A., Tillmann, U., Grindrod, P., & Harrington, H. A. (2017). "A roadmap for the computation of persistent homology." *EPJ Data Science* 6, 17.
 - **`PAPADAKIS2019`** - Papadakis, M., Kintis, M., Zhang, J., Jia, Y., Le Traon, Y., & Harman, M. (2019). "Mutation Testing Advances: An Analysis and Survey." *Advances in Computers* 112, 275-378.
 - **`PARNAS1972`** - Parnas, D. L. (1972). "On the Criteria To Be Used in Decomposing Systems into Modules." *Communications of the ACM* 15(12), 1053-1058.
 - **`PEARL2009`** - Pearl, J. (2009). *Causality: Models, Reasoning, and Inference* (2nd ed.). Cambridge University Press.
 - **`PELTZMAN1976`** - Peltzman, S. (1976). "Toward a More General Theory of Regulation." *Journal of Law and Economics* 19(2), 211-240.
 - **`PENG2011`** - Peng, R. D. (2011). "Reproducible Research in Computational Science." *Science* 334(6060), 1226-1227.
+- **`PEP0387`** - Python Software Foundation. *PEP 387: Backwards Compatibility Policy*.
+- **`PEREAHARER2015`** - Perea, J. A., & Harer, J. (2015). "Sliding Windows and Persistence: An Application of Topological Methods to Signal Analysis." *Foundations of Computational Mathematics* 15(3), 799-838.
 - **`PERROW1984`** - Perrow, C. (1984). *Normal Accidents: Living with High-Risk Technologies*. Princeton University Press.
 - **`PETERS2017`** - Peters, J., Janzing, D., & Scholkopf, B. (2017). *Elements of Causal Inference: Foundations and Learning Algorithms*. MIT Press.
+- **`PHILIPPON2016`** - Philippon, T. (2016). "The FinTech Opportunity." NBER Working Paper 22476.
 - **`PIERSON2000`** - Pierson, P. (2000). "Increasing Returns, Path Dependence, and the Study of Politics." *American Political Science Review* 94(2), 251-267.
+- **`PLATT1964`** - Platt, J. R. (1964). "Strong Inference." *Science* 146(3642), 347-353.
+- **`POPPER1959`** - Popper, K. R. (1959). *The Logic of Scientific Discovery*. Hutchinson.
 - **`POZSAR2013`** - Pozsar, Z., Adrian, T., Ashcraft, A., & Boesky, H. (2013). "Shadow Banking." *FRBNY Economic Policy Review* 19(2), 1-16.
 - **`PRESKILL2018`** - Preskill, J. (2018). "Quantum Computing in the NISQ era and beyond." *Quantum* 2, 79.
+- **`QUINONERO2009`** - Quinonero-Candela, J., Sugiyama, M., Schwaighofer, A., & Lawrence, N. D. (eds.) (2009). *Dataset Shift in Machine Learning*. MIT Press.
 - **`REGNMS2005`** - U.S. Securities and Exchange Commission (2005). *Regulation NMS*, Release No. 34-51808.
 - **`REINHARTROGOFF2009`** - Reinhart, C. M., & Rogoff, K. S. (2009). *This Time Is Different: Eight Centuries of Financial Folly*. Princeton University Press.
 - **`REY2015`** - Rey, H. (2015). "Dilemma not Trilemma: The Global Financial Cycle and Monetary Policy Independence." NBER Working Paper 21162.
 - **`RIBEIRO2016`** - Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). "Why Should I Trust You?: Explaining the Predictions of Any Classifier." *KDD 2016*.
 - **`ROBERTCASELLA2004`** - Robert, C. P., & Casella, G. (2004). *Monte Carlo Statistical Methods* (2nd ed.). Springer.
+- **`ROCKSTROM2009`** - Rockstrom, J., et al. (2009). "A safe operating space for humanity." *Nature* 461, 472-475.
 - **`ROSCH1978`** - Rosch, E. (1978). "Principles of Categorization." In Rosch, E. & Lloyd, B. B. (eds.), *Cognition and Categorization*. Lawrence Erlbaum.
 - **`RUDIN2019`** - Rudin, C. (2019). "Stop explaining black box machine learning models for high stakes decisions and use interpretable models instead." *Nature Machine Intelligence* 1, 206-215.
 - **`SABATIERWEIBLE2014`** - Sabatier, P. A., & Weible, C. M. (eds.) (2014). *Theories of the Policy Process* (3rd ed.). Westview Press.
+- **`SAKURAI2020`** - Sakurai, J. J., & Napolitano, J. (2020). *Modern Quantum Mechanics* (3rd ed.). Cambridge University Press.
 - **`SALTELLI2008`** - Saltelli, A., Ratto, M., Andres, T., Campolongo, F., Cariboni, J., Gatelli, D., Saisana, M., & Tarantola, S. (2008). *Global Sensitivity Analysis: The Primer*. Wiley.
 - **`SALTELLI2020`** - Saltelli, A., et al. (2020). "Five ways to ensure that models serve society: a manifesto." *Nature* 582, 482-484.
 - **`SANDVE2013`** - Sandve, G. K., Nekrutenko, A., Taylor, J., & Hovig, E. (2013). "Ten Simple Rules for Reproducible Computational Research." *PLoS Computational Biology* 9(10), e1003285.
@@ -191,77 +296,68 @@ not admissible.
 - **`SCHEFFER2009NATURE`** - Scheffer, M., et al. (2009). "Early-warning signals for critical transitions." *Nature* 461, 53-59.
 - **`SCHNEIER2015`** - Schneier, B. (2015). *Applied Cryptography* (20th Anniversary ed.). Wiley.
 - **`SCHREIBER2000`** - Schreiber, T. (2000). "Measuring Information Transfer." *Physical Review Letters* 85(2), 461-464.
+- **`SCHULD2021`** - Schuld, M., & Petruccione, F. (2021). *Machine Learning with Quantum Computers* (2nd ed.). Springer.
+- **`SCULLEY2015`** - Sculley, D., et al. (2015). "Hidden Technical Debt in Machine Learning Systems." *Advances in Neural Information Processing Systems 28*.
 - **`SECURITIESACT1933`** - United States Congress (1933). *Securities Act of 1933*, Pub. L. 73-22.
 - **`SHANNON1948`** - Shannon, C. E. (1948). "A Mathematical Theory of Communication." *Bell System Technical Journal* 27(3), 379-423.
+- **`SHEWCHUK1997`** - Shewchuk, J. R. (1997). "Adaptive Precision Floating-Point Arithmetic and Fast Robust Geometric Predicates." *Discrete & Computational Geometry* 18(3), 305-363.
 - **`SIMON1962`** - Simon, H. A. (1962). "The Architecture of Complexity." *Proceedings of the American Philosophical Society* 106(6), 467-482.
 - **`SOBOL2001`** - Sobol', I. M. (2001). "Global sensitivity indices for nonlinear mathematical models and their Monte Carlo estimates." *Mathematics and Computers in Simulation* 55(1-3), 271-280.
+- **`SOROS2013`** - Soros, G. (2013). "Fallibility, reflexivity, and the human uncertainty principle." *Journal of Economic Methodology* 20(4), 309-329.
 - **`SPIEGELHALTER2011`** - Spiegelhalter, D., Pearson, M., & Short, I. (2011). "Visualizing Uncertainty About the Future." *Science* 333(6048), 1393-1400.
+- **`SPIRTES2000`** - Spirtes, P., Glymour, C., & Scheines, R. (2000). *Causation, Prediction, and Search* (2nd ed.). MIT Press.
 - **`SR117`** - Board of Governors of the Federal Reserve System & OCC (2011). *Supervisory Guidance on Model Risk Management* (SR 11-7 / OCC Bulletin 2011-12).
+- **`STEFFEN2015`** - Steffen, W., et al. (2015). "Planetary boundaries: Guiding human development on a changing planet." *Science* 347(6223), 1259855.
+- **`STERN2007`** - Stern, N. (2007). *The Economics of Climate Change: The Stern Review*. Cambridge University Press.
 - **`STIGLER1971`** - Stigler, G. J. (1971). "The Theory of Economic Regulation." *Bell Journal of Economics and Management Science* 2(1), 3-21.
 - **`STODDEN2016`** - Stodden, V., McNutt, M., Bailey, D. H., et al. (2016). "Enhancing reproducibility for computational methods." *Science* 354(6317), 1240-1241.
 - **`STREECKTHELEN2005`** - Streeck, W., & Thelen, K. (eds.) (2005). *Beyond Continuity: Institutional Change in Advanced Political Economies*. Oxford University Press.
 - **`STROGATZ2015`** - Strogatz, S. H. (2015). *Nonlinear Dynamics and Chaos* (2nd ed.). Westview Press.
 - **`SUGIHARA2012`** - Sugihara, G., et al. (2012). "Detecting Causality in Complex Ecosystems." *Science* 338(6106), 496-500.
+- **`TAKENS1981`** - Takens, F. (1981). "Detecting strange attractors in turbulence." In *Dynamical Systems and Turbulence, Warwick 1980*, Lecture Notes in Mathematics 898, 366-381. Springer.
 - **`TARJAN1972`** - Tarjan, R. (1972). "Depth-First Search and Linear Graph Algorithms." *SIAM Journal on Computing* 1(2), 146-160.
+- **`TCFD2017`** - Task Force on Climate-related Financial Disclosures (2017). *Recommendations of the Task Force on Climate-related Financial Disclosures*. Financial Stability Board.
 - **`TIROLE1988`** - Tirole, J. (1988). *The Theory of Industrial Organization*. MIT Press.
 - **`TUFTE2001`** - Tufte, E. R. (2001). *The Visual Display of Quantitative Information* (2nd ed.). Graphics Press.
+- **`VANDERMAATEN2008`** - van der Maaten, L., & Hinton, G. (2008). "Visualizing Data using t-SNE." *Journal of Machine Learning Research* 9, 2579-2605.
+- **`VAPNIK1998`** - Vapnik, V. N. (1998). *Statistical Learning Theory*. Wiley.
+- **`VASWANI2017`** - Vaswani, A., et al. (2017). "Attention Is All You Need." *Advances in Neural Information Processing Systems 30*.
 - **`VELICKOVIC2018`** - Velickovic, P., Cucurull, G., Casanova, A., Romero, A., Lio, P., & Bengio, Y. (2018). "Graph Attention Networks." *ICLR 2018*.
+- **`VONNEUMANN1955`** - von Neumann, J. (1955). *Mathematical Foundations of Quantum Mechanics* (R. T. Beyer, trans.). Princeton University Press.
+- **`WAGNER2011`** - Wagner, W. (2011). "Systemic Liquidation Risk and the Diversity-Diversification Trade-Off." *Journal of Finance* 66(4), 1141-1175.
 - **`WARE2020`** - Ware, C. (2020). *Information Visualization: Perception for Design* (4th ed.). Morgan Kaufmann.
 - **`WATTS2002`** - Watts, D. J. (2002). "A simple model of global cascades on random networks." *PNAS* 99(9), 5766-5771.
+- **`WEISBERG2013`** - Weisberg, M. (2013). *Simulation and Similarity: Using Models to Understand the World*. Oxford University Press.
+- **`WEITZMAN2009`** - Weitzman, M. L. (2009). "On Modeling and Interpreting the Economics of Catastrophic Climate Change." *Review of Economics and Statistics* 91(1), 1-19.
 - **`WILKINSON1963`** - Wilkinson, J. H. (1963). *Rounding Errors in Algebraic Processes*. Prentice Hall.
 - **`WILSON2014`** - Wilson, G., et al. (2014). "Best Practices for Scientific Computing." *PLoS Biology* 12(1), e1001745.
 - **`WILSON2017`** - Wilson, G., Bryan, J., Cranston, K., Kitzes, J., Nederbragt, L., & Teal, T. K. (2017). "Good enough practices in scientific computing." *PLoS Computational Biology* 13(6), e1005510.
+- **`WOLPERTMACREADY1997`** - Wolpert, D. H., & Macready, W. G. (1997). "No Free Lunch Theorems for Optimization." *IEEE Transactions on Evolutionary Computation* 1(1), 67-82.
+- **`ZOMORODIANCARLSSON2005`** - Zomorodian, A., & Carlsson, G. (2005). "Computing Persistent Homology." *Discrete & Computational Geometry* 33(2), 249-274.
+- **`ZUREK2003`** - Zurek, W. H. (2003). "Decoherence, einselection, and the quantum origins of the classical." *Reviews of Modern Physics* 75(3), 715-775.
 
 ## Held in the library, not yet cited
 
 Vetted and admissible, kept here so a new charter starts from a checked source rather than a search.
 
-- **`ALLENGALE2000`** - Allen, F., & Gale, D. (2000). "Financial Contagion." *Journal of Political Economy* 108(1), 1-33.
-- **`ARNER2017`** - Arner, D. W., Barberis, J., & Buckley, R. P. (2017). "FinTech, RegTech, and the Reconceptualization of Financial Regulation." *Northwestern Journal of International Law & Business* 37(3), 371-413.
-- **`ARNOLD1989`** - Arnold, V. I. (1989). *Mathematical Methods of Classical Mechanics* (2nd ed.). Springer. (symplectic geometry)
-- **`BALDWIN2016`** - Baldwin, R. (2016). *The Great Convergence: Information Technology and the New Globalization*. Harvard University Press.
-- **`BATTISTON2017`** - Battiston, S., Mandel, A., Monasterolo, I., Schutze, F., & Visentin, G. (2017). "A climate stress-test of the financial system." *Nature Climate Change* 7, 283-288.
-- **`BCBSGSIB2013`** - Basel Committee on Banking Supervision (2013). *Global systemically important banks: updated assessment methodology and the higher loss absorbency requirement*. Bank for International Settlements.
-- **`BERG2022`** - Berg, F., Koelbel, J. F., & Rigobon, R. (2022). "Aggregate Confusion: The Divergence of ESG Ratings." *Review of Finance* 26(6), 1315-1344.
-- **`BILLIO2012`** - Billio, M., Getmansky, M., Lo, A. W., & Pelizzon, L. (2012). "Econometric measures of connectedness and systemic risk in the finance and insurance sectors." *Journal of Financial Economics* 104(3), 535-559.
 - **`BOOKSTABER2017`** - Bookstaber, R. (2017). *The End of Theory: Financial Crises, the Failure of Economics, and the Sweep of Human Interaction*. Princeton University Press.
-- **`BUCHAK2018`** - Buchak, G., Matvos, G., Piskorski, T., & Seru, A. (2018). "Fintech, regulatory arbitrage, and the rise of shadow banks." *Journal of Financial Economics* 130(3), 453-483.
-- **`CANNON1932`** - Cannon, W. B. (1932). *The Wisdom of the Body*. W. W. Norton. (homeostasis)
-- **`CARNEY2015`** - Carney, M. (2015). *Breaking the Tragedy of the Horizon - climate change and financial stability*. Speech at Lloyd's of London, Bank of England.
 - **`CONT2001`** - Cont, R. (2001). "Empirical properties of asset returns: stylized facts and statistical issues." *Quantitative Finance* 1(2), 223-236.
-- **`DASGUPTA2021`** - Dasgupta, P. (2021). *The Economics of Biodiversity: The Dasgupta Review*. HM Treasury.
-- **`DERMAN1996`** - Derman, E. (1996). "Model Risk." Goldman Sachs Quantitative Strategies Research Notes.
-- **`DIAMONDDYBVIG1983`** - Diamond, D. W., & Dybvig, P. H. (1983). "Bank Runs, Deposit Insurance, and Liquidity." *Journal of Political Economy* 91(3), 401-419.
-- **`DIEBOLDYILMAZ2014`** - Diebold, F. X., & Yilmaz, K. (2014). "On the network topology of variance decompositions: Measuring the connectedness of financial firms." *Journal of Econometrics* 182(1), 119-134.
 - **`FARMERFOLEY2009`** - Farmer, J. D., & Foley, D. (2009). "The economy needs agent-based modelling." *Nature* 460, 685-686.
-- **`FARRELLNEWMAN2019`** - Farrell, H., & Newman, A. L. (2019). "Weaponized Interdependence: How Global Economic Networks Shape State Coercion." *International Security* 44(1), 42-79.
 - **`FOWLER2018`** - Fowler, M. (2018). *Refactoring: Improving the Design of Existing Code* (2nd ed.). Addison-Wesley.
-- **`FSBAI2017`** - Financial Stability Board (2017). *Artificial intelligence and machine learning in financial services: Market developments and financial stability implications*.
-- **`FSBSIFI2010`** - Financial Stability Board (2010). *Reducing the moral hazard posed by systemically important financial institutions: FSB Recommendations and Time Lines*.
-- **`FUSTER2019`** - Fuster, A., Plosser, M., Schnabl, P., & Vickery, J. (2019). "The Role of Technology in Mortgage Lending." *Review of Financial Studies* 32(5), 1854-1899.
 - **`GRIMM2006`** - Grimm, V., et al. (2006). "A standard protocol for describing individual-based and agent-based models." *Ecological Modelling* 198(1-2), 115-126.
 - **`GUYTONHALL2020`** - Hall, J. E., & Hall, M. E. (2020). *Guyton and Hall Textbook of Medical Physiology* (14th ed.). Elsevier.
 - **`HALDANEMAY2011`** - Haldane, A. G., & May, R. M. (2011). "Systemic risk in banking ecosystems." *Nature* 469, 351-355.
-- **`HASTIE2009`** - Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The Elements of Statistical Learning* (2nd ed.). Springer.
-- **`HUFBAUER2007`** - Hufbauer, G. C., Schott, J. J., Elliott, K. A., & Oegg, B. (2007). *Economic Sanctions Reconsidered* (3rd ed.). Peterson Institute for International Economics.
+- **`HAMILTON1989`** - Hamilton, J. D. (1989). "A New Approach to the Economic Analysis of Nonstationary Time Series and the Business Cycle." *Econometrica* 57(2), 357-384.
+- **`HEMPEL1965`** - Hempel, C. G. (1965). *Aspects of Scientific Explanation and Other Essays in the Philosophy of Science*. Free Press.
+- **`HOLLAND1992`** - Holland, J. H. (1992). *Adaptation in Natural and Artificial Systems*. MIT Press.
 - **`JENNINGS2000`** - Jennings, N. R. (2000). "On agent-based software engineering." *Artificial Intelligence* 117(2), 277-296.
 - **`KINDLEBERGER2015`** - Kindleberger, C. P., & Aliber, R. Z. (2015). *Manias, Panics, and Crashes: A History of Financial Crises* (7th ed.). Palgrave Macmillan.
 - **`KLEPPMANN2017`** - Kleppmann, M. (2017). *Designing Data-Intensive Applications*. O'Reilly.
-- **`LEBARON2006`** - LeBaron, B. (2006). "Agent-based Computational Finance." In Tesfatsion, L. & Judd, K. L. (eds.), *Handbook of Computational Economics, Vol. 2*. North-Holland.
 - **`MILLERPAGE2007`** - Miller, J. H., & Page, S. E. (2007). *Complex Adaptive Systems: An Introduction to Computational Models of Social Life*. Princeton University Press.
-- **`MURPHY2022`** - Murphy, K. P. (2022). *Probabilistic Machine Learning: An Introduction*. MIT Press.
-- **`NEWCOMB1881`** - Newcomb, S. (1881). "Note on the Frequency of Use of the Different Digits in Natural Numbers." *American Journal of Mathematics* 4(1), 39-40. (with Benford, F. (1938), *Proc. Amer. Phil. Soc.* 78, 551-572)
-- **`NGFS2019`** - Network for Greening the Financial System (2019). *A call for action: Climate change as a source of financial risk*. NGFS First Comprehensive Report.
-- **`NORDHAUS2013`** - Nordhaus, W. D. (2013). *The Climate Casino: Risk, Uncertainty, and Economics for a Warming World*. Yale University Press.
 - **`NORVIG2021`** - Russell, S., & Norvig, P. (2021). *Artificial Intelligence: A Modern Approach* (4th ed.). Pearson.
-- **`PHILIPPON2016`** - Philippon, T. (2016). "The FinTech Opportunity." NBER Working Paper 22476.
-- **`ROCKSTROM2009`** - Rockstrom, J., et al. (2009). "A safe operating space for humanity." *Nature* 461, 472-475.
 - **`SABATIER1993`** - Sabatier, P. A., & Jenkins-Smith, H. C. (eds.) (1993). *Policy Change and Learning: An Advocacy Coalition Approach*. Westview Press.
 - **`SHOHAM2008`** - Shoham, Y., & Leyton-Brown, K. (2008). *Multiagent Systems: Algorithmic, Game-Theoretic, and Logical Foundations*. Cambridge University Press.
 - **`SORNETTE2003`** - Sornette, D. (2003). *Why Stock Markets Crash: Critical Events in Complex Financial Systems*. Princeton University Press.
-- **`STERN2007`** - Stern, N. (2007). *The Economics of Climate Change: The Stern Review*. Cambridge University Press.
-- **`TCFD2017`** - Task Force on Climate-related Financial Disclosures (2017). *Recommendations of the Task Force on Climate-related Financial Disclosures*. Financial Stability Board.
-- **`WEITZMAN2009`** - Weitzman, M. L. (2009). "On Modeling and Interpreting the Economics of Catastrophic Climate Change." *Review of Economics and Statistics* 91(1), 1-19.
 - **`WIENER1948`** - Wiener, N. (1948). *Cybernetics: or Control and Communication in the Animal and the Machine*. MIT Press.
 - **`WILLIAMSON1985`** - Williamson, O. E. (1985). *The Economic Institutions of Capitalism*. Free Press.
 - **`WINDRUM2007`** - Windrum, P., Fagiolo, G., & Moneta, A. (2007). "Empirical Validation of Agent-Based Models: Alternatives and Prospects." *Journal of Artificial Societies and Social Simulation* 10(2), 8.

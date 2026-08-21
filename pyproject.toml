@@ -61,6 +61,9 @@ ignore = ["D203", "D213"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN", "D", "S101", "TC"]
 "examples/**" = ["D", "T201", "INP001", "TC"]
+# Agent tooling under .claude/ is helper scripting, not the shipped package: same
+# rationale as examples/. mypy does not see it either (files = ["src"]).
+".claude/**" = ["D", "T201", "INP001", "TC"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

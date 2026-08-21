@@ -710,13 +710,31 @@ the document is the thing that is out of date.
 - **`docs/90_DAY_PLAN_INDEX.md`** — an index mapping that 90-day plan onto
   individual issues. Like the audit it annotates, its counts and issue numbers are
   a snapshot rather than live state.
-- **`docs/discussions/README.md`** — the index for a set of eleven planned research
-  discussion modules derived from `docs/QUANTUM_NEURAL_RESEARCH.md`. **None of the
-  eleven module files has been written**; the index names their future filenames as
-  plain text rather than links, because a link to a file that does not exist fails
-  the Markdown link check. It was committed with those links live, which failed the
-  `validate` job on every push until it was corrected. If you write a module, add
-  the file and turn its name into a link in the same pull request.
+- **`docs/discussions/`** — eleven self-contained theoretical modules derived from
+  `docs/QUANTUM_NEURAL_RESEARCH.md`, one per discussion in that note, indexed by
+  `docs/discussions/README.md`. Each module reproduces its source specification
+  verbatim, then adds formal foundations with attributed theorem statements, the
+  graduate curriculum around the topic, an annotated bibliography, a derivation for
+  the AMF setting, a governance section reconciling the note's proposed deliverables
+  with the hard rules, and falsifiable propositions. They carry the same standing as
+  the rest of `docs/`: prose only, and nothing in them is implemented, agreed or
+  scheduled. Three argue *against* their own source proposal, which is the point of
+  reading them — `docs/discussions/H3-symplectic-hamiltonian-dynamics.md` shows the
+  seven-dimensional stress space admits no symplectic form and that the step map
+  contracts phase-space volume every step, so the note's Liouville alarm cannot
+  discriminate; `docs/discussions/I1-unified-framework-architecture.md` corrects the
+  note's inverse-RMSE weighting and its union-of-intervals rule; and
+  `docs/discussions/I2-validation-backtesting-generalization.md` places several
+  proposed artefacts outside the non-trading boundary. The remaining eight are
+  `docs/discussions/Q1-quantum-market-superposition.md`,
+  `docs/discussions/Q2-quantum-markov-lindblad.md`,
+  `docs/discussions/Q3-shannon-information-market-entropy.md`,
+  `docs/discussions/D1-deep-learning-architectures.md`,
+  `docs/discussions/D2-embedding-spaces-regimes.md`,
+  `docs/discussions/D3-knowledge-graphs-causal-pathways.md`,
+  `docs/discussions/H1-quantum-neural-hybrid-circuits.md` and
+  `docs/discussions/H2-topological-data-analysis.md`. The index links every module; if
+  you add one, add the file and its link in the same pull request.
 - **`docs/RESEARCH_DISCUSSIONS.md`** and **`docs/QUANTUM_NEURAL_RESEARCH.md`** —
   open-ended research prompts for a hypothetical v1.1 (regulatory architecture,
   quantum and neural formulations of market state, information-theoretic
@@ -729,3 +747,30 @@ the document is the thing that is out of date.
 
 The `docs/` tree is prose only. No code imports from it, no test reads it, and
 adding a document there changes nothing about the package's behaviour.
+
+## Agent operating system
+
+Agents, skills, and durable memory for issue creation and deep research live under `.claude/`.
+Read `.claude/README.md` for the map. The two files below are small and load with this document;
+everything else is read on demand by the agent or skill that names it.
+
+@.claude/memory/repo-facts.md
+@.claude/memory/issue-index.md
+
+**Before creating any GitHub issue**, check `.claude/memory/issue-index.md` — it records which source
+unit already became which issue, and is what stops two sessions from decomposing the same document
+twice (which has already happened once: #45–#92 and #77–#98 overlap).
+
+**Before writing any issue, dossier, doc, or code**, load the `amf-guardrails` skill. It carries the
+non-trading boundary, the illustrative-not-validated rule, determinism, and the IP protections, plus
+the translation table for admitting real-market phrasing as structural measures.
+
+Research dossiers live under `docs/research/_dossiers/` — one file per issue, written by the
+issue-researcher agent, plus `docs/research/_dossiers/_strategy.md`, the strategist's whole-backlog
+review. Currently: `docs/research/_dossiers/discussion-2.2.md` (issue #59). Like everything under
+`docs/`, they are prose only, with no authority over the package — and the drift scanner requires
+each new dossier to be named here, so add a file's path to this list in the same commit that adds
+the file.
+
+Nothing under `.claude/` is part of the `amf` package, so none of it affects the 100% coverage gate.
+The repository is public: never put secrets or verbatim protected-framework text in these files.

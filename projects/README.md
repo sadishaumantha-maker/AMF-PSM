@@ -44,6 +44,13 @@ to block, no analytical result produced here can be trusted or reproduced. Track
 instrument itself. Tracks G to I supply the domain content. Tracks J to L cover advanced methods,
 communication and the protection of the intellectual property.
 
+Track M is the exception to that order and runs first regardless: it holds the failures that are red on
+`main` right now, and a red build makes every other result unreproducible. Tracks N to S extend the
+domain coverage into the disputes the first pass left uncharted - policy contagion, market abuse,
+shadow finance, technology, geopolitics and climate. Track T writes the eleven research modules the
+discussion index promises and does not contain. Track U is last and gating in the same sense Track B
+is first: it asks what would falsify any of this, and answers to someone other than the authors.
+
 ## Tracks
 
 | Track | Name | Projects | Aim |
@@ -60,8 +67,17 @@ communication and the protection of the intellectual property.
 | **J** | Advanced Methods: Topology, Learning, Information & Quantum | 7 | Decide, on evidence, which advanced method earns a place in AMF and which is decoration. |
 | **K** | Communication, Visualisation & Documentation | 5 | Make the output honest, readable and impossible to over-read. |
 | **L** | Intellectual Property, Provenance & Security | 4 | Keep the protected artifacts provably untouched and the distribution private. |
+| **M** | Live Defects and the Green-Main Obligation | 4 | Close the failures actually red on `main` today, and stop the same class recurring. |
+| **N** | Policy-Market Contagion and Systemic Indicators | 6 | Model the channel that runs through the rulebook rather than through the coupling graph. |
+| **O** | Market Abuse and Forensic Network Structure | 5 | Say what a structural model can and cannot detect, before anyone claims it detects abuse. |
+| **P** | Shadow Finance, Capital Flows and Currency | 6 | Represent the parts of the system that sit outside the perimeter the framework can see. |
+| **Q** | Technology, Fintech and AI Risk | 6 | Treat the toolchain of finance as market structure, because it now is. |
+| **R** | Geopolitics, Sanctions and Fragmentation | 6 | Model chokepoints and fragmentation structurally, without taking a political position. |
+| **S** | Climate, Nature and Long-Horizon Risk | 6 | Handle risks whose horizon exceeds every feedback loop the framework represents. |
+| **T** | The Promised Research Modules | 11 | Write the eleven modules the discussion index links to and that do not exist. |
+| **U** | Method, Epistemics and External Validation | 6 | State what would falsify the framework, and submit it to something other than its authors. |
 
-**73 charters in total.**
+**129 charters in total.**
 
 ---
 
@@ -221,6 +237,125 @@ communication and the protection of the intellectual property.
 | [P71](P71-private-distribution-enforcement-audit/README.md) | Private distribution enforcement audit | 4 days | `RELEASING.md`, `pyproject.toml` classifier, `tests/unit/test_packaging.py` |
 | [P72](P72-secure-development-framework-alignment-for-the-toolchain/README.md) | Secure development framework alignment for the toolchain | 1.5 weeks | `.pre-commit-config.yaml`, CI workflows, `SECURITY.md` |
 | [P73](P73-vulnerability-disclosure-process-maturity/README.md) | Vulnerability disclosure process maturity | 4 days | `SECURITY.md` |
+
+## Track M - Live Defects and the Green-Main Obligation
+
+*Close the failures actually red on `main` today, and stop the same class recurring.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P74](P74-the-expired-control-premise-in-the-stable-sum-tests/README.md) | The expired control premise in the stable_sum tests | 2 days | `tests/unit/test_numeric.py`; CI red on py3.12 and py3.13 |
+| [P75](P75-eleven-promised-research-modules-that-do-not-exist/README.md) | Eleven promised research modules that do not exist | 3 days | `docs/discussions/README.md`; the eleven dead links failing `Validate metadata` |
+| [P76](P76-restoring-a-green-main-and-making-red-on-main-a-blocking/README.md) | Restoring a green main and making red-on-main a blocking condition | 4 days | CI red on `main` continuously since run #115 |
+| [P77](P77-behavioural-drift-in-the-platform-beneath-a-determinism/README.md) | Behavioural drift in the platform beneath a determinism guarantee | 1 week | P74; `CLAUDE.md` -> Determinism |
+
+## Track N - Policy-Market Contagion and Systemic Indicators
+
+*Model the channel that runs through the rulebook rather than through the coupling graph.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P78](P78-contagion-through-the-policy-tier-rather-than-the-coupli/README.md) | Contagion through the policy tier rather than the coupling graph | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 3.1 |
+| [P79](P79-the-markets-to-policy-feedback-loop-and-reflexivity/README.md) | The markets-to-policy feedback loop and reflexivity | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 3.2 |
+| [P80](P80-systemic-risk-indicators-and-which-ones-amf-can-honestly/README.md) | Systemic risk indicators and which ones AMF can honestly compute | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 3.3 |
+| [P81](P81-regulatory-uncertainty-as-a-structural-stress-input/README.md) | Regulatory uncertainty as a structural stress input | 1.5 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 1.3; P43 |
+| [P82](P82-cross-border-policy-spillover-and-the-boundary-of-a-mode/README.md) | Cross-border policy spillover and the boundary of a modelled market | 1.5 weeks | Discussion 3.1; P44; `MarketBoundary` |
+| [P83](P83-backstops-and-the-lender-of-last-resort-as-immune-struct/README.md) | Backstops and the lender of last resort as immune structure | 1.5 weeks | PR #42 (immune system as a layered policy stack); Discussion 3.1 |
+
+## Track O - Market Abuse and Forensic Network Structure
+
+*Say what a structural model can and cannot detect, before anyone claims it detects abuse.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P84](P84-market-abuse-detection-via-network-analysis-what-is-actu/README.md) | Market abuse detection via network analysis: what is actually claimable | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 4.2 |
+| [P85](P85-graph-anomaly-detection-and-the-legitimacy-of-structural/README.md) | Graph anomaly detection and the legitimacy of structural outlier claims | 1.5 weeks | Discussion 4.2; P26 null models |
+| [P86](P86-digit-distribution-screening-scope-assumptions-and-misus/README.md) | Digit-distribution screening: scope, assumptions and misuse | 1 week | Discussion 4.2; P54 |
+| [P87](P87-coordination-structures-and-what-a-dependency-graph-cann/README.md) | Coordination structures and what a dependency graph cannot distinguish | 1.5 weeks | Discussion 4.2; P24 |
+| [P88](P88-detection-base-rates-and-the-arithmetic-of-a-rare-event/README.md) | Detection base rates and the arithmetic of a rare-event screen | 1 week | P84; P85 |
+
+## Track P - Shadow Finance, Capital Flows and Currency
+
+*Represent the parts of the system that sit outside the perimeter the framework can see.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P89](P89-informal-finance-and-shadow-banking-as-a-system-the-peri/README.md) | Informal finance and shadow banking as a system the perimeter excludes | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 5.2 |
+| [P90](P90-sudden-stops-and-capital-flight-as-structural-withdrawal/README.md) | Sudden stops and capital flight as structural withdrawal | 1.5 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 5.3; P57 |
+| [P91](P91-currency-mismatch-as-a-structural-rather-than-a-market-q/README.md) | Currency mismatch as a structural rather than a market quantity | 1.5 weeks | Discussion 5.3 |
+| [P92](P92-the-global-financial-cycle-and-the-limits-of-policy-auto/README.md) | The global financial cycle and the limits of policy autonomy | 1.5 weeks | Discussion 5.3; Discussion 7.2 |
+| [P93](P93-payment-and-settlement-infrastructure-as-skeletal-depend/README.md) | Payment and settlement infrastructure as skeletal dependence | 1.5 weeks | `SystemKind.skeleton`; CPMI-IOSCO principles |
+| [P94](P94-reserve-currency-asymmetry-and-the-non-equivalence-of-ma/README.md) | Reserve currency asymmetry and the non-equivalence of markets | 1.5 weeks | Discussion 5.3; Discussion 7.1 |
+
+## Track Q - Technology, Fintech and AI Risk
+
+*Treat the toolchain of finance as market structure, because it now is.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P95](P95-fintech-disruption-and-the-regulatory-arbitrage-mechanis/README.md) | Fintech disruption and the regulatory-arbitrage mechanism | 1.5 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 6.2 |
+| [P96](P96-machine-learning-in-finance-as-a-systemic-risk-channel/README.md) | Machine learning in finance as a systemic risk channel | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 6.3 |
+| [P97](P97-monoculture-when-redundancy-stops-providing-substitutabi/README.md) | Monoculture: when redundancy stops providing substitutability | 1.5 weeks | P27; P34; P96 |
+| [P98](P98-supervisory-technology-as-measurable-immune-capacity/README.md) | Supervisory technology as measurable immune capacity | 1 week | Discussion 6.2; PR #42 |
+| [P99](P99-third-party-and-cloud-concentration-as-an-unmodelled-dep/README.md) | Third-party and cloud concentration as an unmodelled dependency | 1.5 weeks | Discussion 6.2; `SystemKind.skeleton` |
+| [P100](P100-herding-and-the-behavioural-boundary-of-a-structural-mod/README.md) | Herding and the behavioural boundary of a structural model | 1 week | Discussion 6.3; P96 |
+
+## Track R - Geopolitics, Sanctions and Fragmentation
+
+*Model chokepoints and fragmentation structurally, without taking a political position.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P101](P101-sanctions-as-a-structural-chokepoint-rather-than-a-polit/README.md) | Sanctions as a structural chokepoint rather than a political act | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 7.1 |
+| [P102](P102-central-bank-independence-as-an-amendment-procedure-prop/README.md) | Central bank independence as an amendment-procedure property | 1.5 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 7.2 |
+| [P103](P103-fragmentation-and-whether-a-split-market-is-one-market-o/README.md) | Fragmentation and whether a split market is one market or two | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 7.3; P48; P82 |
+| [P104](P104-network-asymmetry-and-the-leverage-a-topology-confers/README.md) | Network asymmetry and the leverage a topology confers | 1.5 weeks | Discussion 7.1; P23; P101 |
+| [P105](P105-conflicting-jurisdictional-requirements-as-an-unsatisfia/README.md) | Conflicting jurisdictional requirements as an unsatisfiable constraint set | 1 week | Discussion 1.1; Discussion 7.3 |
+| [P106](P106-the-sovereign-financial-loop-as-a-cycle-the-framework-sh/README.md) | The sovereign-financial loop as a cycle the framework should be able to see | 1.5 weeks | Discussion 7.2; `graph.py` feedback loops |
+
+## Track S - Climate, Nature and Long-Horizon Risk
+
+*Handle risks whose horizon exceeds every feedback loop the framework represents.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P107](P107-climate-risk-and-the-horizon-problem-for-a-step-based-mo/README.md) | Climate risk and the horizon problem for a step-based model | 2 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 8.1 |
+| [P108](P108-rating-divergence-and-what-a-composite-built-on-disputed/README.md) | Rating divergence and what a composite built on disputed inputs inherits | 1.5 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 8.2 |
+| [P109](P109-nature-related-dependence-and-the-limits-of-a-financial/README.md) | Nature-related dependence and the limits of a financial-system boundary | 1.5 weeks | `docs/RESEARCH_DISCUSSIONS.md` Discussion 8.3 |
+| [P110](P110-transition-risk-as-policy-change-and-the-one-climate-cha/README.md) | Transition risk as policy change and the one climate channel that fits | 1 week | Discussion 8.1; P43 |
+| [P111](P111-long-horizons-discounting-and-why-the-framework-has-no-t/README.md) | Long horizons, discounting and why the framework has no time preference | 1 week | Discussion 8.1; P107 |
+| [P112](P112-climate-stress-testing-methodology-and-what-transfers-to/README.md) | Climate stress-testing methodology and what transfers to a structural model | 1.5 weeks | Discussion 8.1; `ShockSimulator.stress_test` |
+
+## Track T - The Promised Research Modules
+
+*Write the eleven modules the discussion index links to and that do not exist.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P113](P113-q1-the-quantum-superposition-module-written-or-retired/README.md) | Q1 - the quantum-superposition module, written or retired | 2 weeks | `docs/discussions/README.md` module Q1; P75's write-or-retire ruling |
+| [P114](P114-q2-markov-transitions-cptp-maps-and-what-the-framework-a/README.md) | Q2 - Markov transitions, CPTP maps and what the framework already is | 2 weeks | `docs/discussions/README.md` module Q2 |
+| [P115](P115-q3-shannon-entropy-and-the-diagnostic-index-that-is-alre/README.md) | Q3 - Shannon entropy and the diagnostic index that is already an HHI | 1.5 weeks | `docs/discussions/README.md` module Q3 |
+| [P116](P116-d1-deep-architectures-and-the-boundary-that-keeps-them-o/README.md) | D1 - deep architectures, and the boundary that keeps them out of the package | 2 weeks | `docs/discussions/README.md` module D1 |
+| [P117](P117-d2-embedding-spaces-regimes-and-the-two-dimensional-pict/README.md) | D2 - embedding spaces, regimes, and the two-dimensional picture that lies | 2 weeks | `docs/discussions/README.md` module D2 |
+| [P118](P118-d3-knowledge-graphs-causal-pathways-and-the-graph-the-fr/README.md) | D3 - knowledge graphs, causal pathways, and the graph the framework already has | 2.5 weeks | `docs/discussions/README.md` module D3 |
+| [P119](P119-h1-variational-circuits-and-the-trainability-result-that/README.md) | H1 - variational circuits, and the trainability result that decides the module | 2 weeks | `docs/discussions/README.md` module H1 |
+| [P120](P120-h2-persistent-homology-and-the-one-stability-theorem-tha/README.md) | H2 - persistent homology, and the one stability theorem that makes it usable | 2 weeks | `docs/discussions/README.md` module H2 |
+| [P121](P121-h3-symplectic-structure-and-the-conservation-the-framewo/README.md) | H3 - symplectic structure, and the conservation the framework does not have | 2 weeks | `docs/discussions/README.md` module H3 |
+| [P122](P122-i1-combination-calibration-and-what-an-index-without-a-t/README.md) | I1 - combination, calibration, and what an index without a target can be scored against | 2.5 weeks | `docs/discussions/README.md` module I1 |
+| [P123](P123-i2-the-gating-validation-module-written-as-structural-re/README.md) | I2 - the gating validation module, written as structural retrodiction | 3 weeks | `docs/discussions/README.md` module I2; the governance annotations in its section 3.1 |
+
+## Track U - Method, Epistemics and External Validation
+
+*State what would falsify the framework, and submit it to something other than its authors.*
+
+| ID | Project | Effort | Upstream |
+|----|---------|--------|----------|
+| [P124](P124-what-would-falsify-the-framework/README.md) | What would falsify the framework | 2 weeks | `CLAUDE.md` -> Illustrative, not validated |
+| [P125](P125-model-risk-management-alignment-for-an-unvalidated-instr/README.md) | Model risk management alignment for an unvalidated instrument | 1.5 weeks | SR 11-7 / OCC 2011-12; `CLAUDE.md` |
+| [P126](P126-a-route-to-external-review-that-the-licence-currently-fo/README.md) | A route to external review that the licence currently forecloses | 2 weeks | `LICENSE.txt`; `RELEASING.md`; P125 |
+| [P127](P127-the-anatomical-analogy-where-it-does-work-and-where-it-s/README.md) | The anatomical analogy: where it does work and where it smuggles conclusions | 1.5 weeks | The framework's central metaphor; `SystemKind` |
+| [P128](P128-scale-and-resolution-limits-of-the-seven-system-model/README.md) | Scale and resolution limits of the seven-system model | 1.5 weeks | P56; P91; P104; P106; P107; P109 |
+| [P129](P129-benchmarking-the-framework-against-an-established-struct/README.md) | Benchmarking the framework against an established structural measure | 2 weeks | P23; P80; P125 |
 
 ---
 

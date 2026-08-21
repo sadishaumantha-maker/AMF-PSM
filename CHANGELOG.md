@@ -57,25 +57,48 @@ this file. Versions correspond to framework releases.
   documentation edit and a sentinel that blocks any diff eroding a hard rule.
 - Time and locale, and automated maintenance, are now documented as first-class sections
   of `CLAUDE.md`, including the honest accuracy ceilings for each class of time source.
-
+- `docs/discussions/` — eleven standalone theoretical modules, one per research
+  discussion in `docs/QUANTUM_NEURAL_RESEARCH.md` (Q1–Q3 quantum and information
+  theory, D1–D3 neural architectures and knowledge graphs, H1–H3 quantum-neural
+  hybrids, topology and symplectic dynamics, I1–I2 integration and validation),
+  plus a `README.md` index. Each module reproduces its source specification
+  verbatim, then adds formal foundations with attributed theorem statements, the
+  standard graduate curriculum around the topic, an annotated bibliography of
+  exact primary and canonical source material, a derivation for the AMF setting,
+  falsifiable propositions, and a governance section reconciling the source
+  note's proposed deliverables with this repository's hard rules. Three modules
+  reach negative results worth recording: H3 shows AMF's seven-dimensional stress
+  space admits no symplectic form and that the step map contracts phase-space
+  volume by `damping⁷` per step, so the proposed Liouville-violation alarm cannot
+  discriminate; I1 shows the proposed inverse-RMSE ensemble weighting is optimal
+  under no standard assumption and that a union of confidence intervals is not a
+  confidence interval; I2 shows several proposed artefacts sit outside the
+  non-trading boundary — `backtest` and the Sharpe-ratio metric among them — and
+  sets out what can legitimately be checked inside it instead. Documentation
+  only — no package behaviour changes.
 - `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
   program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
   with the phase calendar, the metric ledger, the guardrails every issue inherits, and
   the three points where the source analysis was reconciled against the repository as it
   actually stands. Documentation only — the issues remain the source of truth and no
   package behaviour changes.
-- `projects/` — a project section holding 73 charters that decompose the open
+- `projects/` — a project section holding 129 charters that decompose the open
   backlog and the research discussions into bounded, individually executable
   units of work. Each charter states the dispute it settles, its purpose, ordered
   instructions, a task board, the autonomous agents that execute it (mandate,
   inputs, output artifact and stop condition each), the skills those agents
   invoke, objectively checkable acceptance criteria, a required-reading list of
   primary literature, and the exact commit subjects it produces. Charters are
-  grouped into twelve tracks from governance and CI through numerical
+  grouped into twenty-one tracks: A–L cover governance and CI, numerical
   correctness, graph theory, diagnostics, simulation, policy architecture, market
-  taxonomy, case studies, advanced methods, communication and IP protection.
+  taxonomy, case studies, advanced methods, communication and IP protection;
+  M–U cover the failures currently red on `main`, policy-market contagion,
+  market abuse, shadow finance and capital flows, technology and AI risk,
+  geopolitics and fragmentation, climate and nature, the eleven research modules
+  `docs/discussions/README.md` links to but does not contain, and the method and
+  external-validation questions the framework has never had to answer.
   Supporting pages: `projects/AGENT_PROTOCOL.md`, `projects/SKILL_CATALOG.md`,
-  `projects/COMMIT_PROTOCOL.md` and `projects/REFERENCES.md` (a 248-entry vetted
+  `projects/COMMIT_PROTOCOL.md` and `projects/REFERENCES.md` (a 344-entry vetted
   bibliography of peer-reviewed articles, scholarly monographs, official
   instrument texts and standards specifications). Documentation only — no package
   behaviour changes.
@@ -176,10 +199,11 @@ this file. Versions correspond to framework releases.
   A new test pins `stable_sum` to exact rational arithmetic so the reduction cannot drift between
   interpreters — the seam mattered: sampled over 400,000 random weight sets, 102,822 produced a
   concentration index that differed between the two summation algorithms.
-- `docs/discussions/README.md` linked eleven research modules that were never committed;
-  the directory contains only the index itself. Those dead relative links failed the
+- `docs/discussions/README.md` linked eleven research modules that had not been committed;
+  at the time the directory held only the index itself. Those dead relative links failed the
   `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
-  `main`. The index now names the unwritten modules as plain text rather than links.
+  `main`. The index named them as plain text rather than links until the modules landed;
+  they are links again now that every file exists.
 - Ten factual errors in `CLAUDE.md`, found by the new detector: a stale test total, a
   miscounted number of `yamllint disable-line` directives in `codeql.yml`, `__all__`
   described as `sorted()` when it is in ruff `RUF022` natural order, `tests/unit/`
