@@ -833,7 +833,7 @@ zero, not small. Absent a postulated coherent coupling the correct mechanism is 
 and any implementation reporting a nonzero "tunnelling probability" where `W[i][j] = 0` is producing an
 artefact.
 
-**P5 (sub-stochasticity).** *Claim:* whenever `Σ_j W[i][j](1 − a_j) <= 1/damping − retention` for all `i`, the
+**P5 (sub-stochasticity).** *Claim:* whenever `Σ_j W[i][j]·(1 − a_j) <= 1/damping − retention` for all `i`, the
 step matrix is sub-stochastic and the `[0,1]` clip never activates after `t = 0`. *Falsifier:* a market
 satisfying the inequality whose trajectory still hits the clip — which would indicate a bug, and is therefore
 worth testing.

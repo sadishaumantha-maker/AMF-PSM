@@ -1253,7 +1253,7 @@ With the default `d = 0.85`, `ρ = 0.5`, `τ = 1`, the right-hand side is
 `0.575 / 0.85 = 0.6764706`.
 
 *Proof.* `‖xA‖_1 = Σ_j |Σ_i x_i A_ij| ≤ Σ_i |x_i| Σ_j A_ij ≤ (max_i Σ_j A_ij) ‖x‖_1`. Expand
-`Σ_j A[i][j] = dρ + dτ Σ_j W[i][j](1 − a_j)` and require it below 1. ∎
+`Σ_j A[i][j] = dρ + dτ Σ_j W[i][j]·(1 − a_j)` and require it below 1. ∎
 
 On the sample market the binding transmitter is `skeleton`, with
 `0.8 × 0.46 + 0.5 × 0.33 + 0.3 × 0.25 = 0.608 < 0.676`, a margin of `0.0685`; its row sum is
@@ -1510,7 +1510,7 @@ of gain `G`, `ρ(A) = dρ + G^{1/L}` (Prop. 5.23).
 *Refuted by*: any such market where power iteration converges to a different value beyond
 `1e−9`. Verified: `0.5826132` predicted, `0.5826132096` observed.
 
-**P6 (contraction criterion).** If `Σ_j W[i][j](1 − a_j) < (1 − dρ)/(dτ)` for every `i`, the
+**P6 (contraction criterion).** If `Σ_j W[i][j]·(1 − a_j) < (1 − dρ)/(dτ)` for every `i`, the
 unclipped stress map is a 1-norm contraction (Thm. 5.24).
 *Refuted by*: a market satisfying the inequality whose unclipped trajectory has
 `‖x_{t+1}‖_1 > ‖x_t‖_1` at any step. Note the converse is deliberately not claimed — the
