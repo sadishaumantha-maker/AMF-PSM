@@ -272,12 +272,12 @@ this file. Versions correspond to framework releases.
   Exit codes and error messages are unchanged.
 
 ### Changed
-- The workflow set was reduced to the nine that apply to this repository. Eleven stock
+- The workflow set was reduced to the six that belong to this repository. Fourteen stock
   GitHub starter templates added in one burst — C/C++, Clojure, Maven, Gradle-publish,
   Terraform, Hugo, Google/IBM cloud deploys, GitHub Pages static deploy, the conda starter,
-  and an OSSF SLSA release-publish generator — were removed. None could pass (the tree has
-  no C/C++, Java, Clojure, Terraform, or Node source), together they held nine checks red on
-  `main`, and two violated stated hard rules: `python-package-conda.yml` (removed once
+  an OSSF SLSA release-publish generator, and the stock stale/summary/manual trio — were
+  removed. Eleven could never pass (the tree has no C/C++, Java, Clojure, Terraform, or Node
+  source), together they held nine checks red on `main`, and two violated stated hard rules: `python-package-conda.yml` (removed once
   before; `CLAUDE.md` says "Do not re-add it") and
   `generator-generic-ossf-slsa3-publish.yml`, whose `upload-assets: true` with
   `contents: write` is a release-publish channel on a public repository and so breaches the
