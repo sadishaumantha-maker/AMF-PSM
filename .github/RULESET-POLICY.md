@@ -169,10 +169,10 @@ This document defines the GitHub repository ruleset configuration for **AMF-PSM*
 
 ## 📚 Related Documents
 
-- [CONTRIBUTING.md](./CONTRIBUTING.md) — Workflow and guidelines
-- [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md) — Community standards
-- [SECURITY.md](./SECURITY.md) — Security reporting
-- [pull_request_template.md](./.github/pull_request_template.md) — PR requirements
+- [CONTRIBUTING.md](../CONTRIBUTING.md) — Workflow and guidelines
+- [Code of Conduct](../CONTRIBUTING.md#code-of-conduct) — Community standards
+- [SECURITY.md](../SECURITY.md) — Security reporting
+- [pull_request_template.md](./pull_request_template.md) — PR requirements
 
 ---
 

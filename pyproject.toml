@@ -52,7 +52,7 @@ packages = ["src/amf"]
 [tool.ruff]
 line-length = 120
 target-version = "py311"
-src = ["src", "tests", "examples"]
+src = ["src", "tests", "examples", "tools"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "TC", "PTH", "RUF", "ANN", "D"]
@@ -71,17 +71,27 @@ convention = "google"
 [tool.mypy]
 python_version = "3.11"
 strict = true
-# The shipped, typed package is the type-checking deliverable. Tests omit
-# annotations by design (ruff ignores ANN there) and examples use sibling-script
-# imports; both are covered by ruff and exercised by pytest instead.
-files = ["src"]
+# The shipped, typed package is the type-checking deliverable, and the repository
+# tooling under `tools/` is held to the same bar -- it gates CLAUDE.md and the time
+# attestation, so it must not rot. Tests omit annotations by design (ruff ignores ANN
+# there) and examples use sibling-script imports; both are covered by ruff and
+# exercised by pytest instead.
+files = ["src", "tools"]
 warn_unreachable = true
 disallow_any_generics = true
+
+# PyYAML arrives transitively via yamllint in the `dev` extra and ships no type stubs.
+# `tools/docsync` reads workflow YAML with it; this override keeps strict mode happy
+# without adding a dependency (the tooling only ever runs where `.[dev]` is installed).
+[[tool.mypy.overrides]]
+module = ["yaml", "yaml.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 minversion = "8.0"
 addopts = "-ra --strict-markers --strict-config --cov=amf --cov-report=term-missing --cov-report=xml --cov-fail-under=100"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = ["integration: end-to-end tests across multiple modules"]
 
 [tool.coverage.run]

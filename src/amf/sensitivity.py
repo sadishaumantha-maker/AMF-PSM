@@ -29,6 +29,7 @@ from typing import TYPE_CHECKING
 
 from amf.diagnostics import DiagnosticEngine
 from amf.errors import InvalidConfigError
+from amf.invariants import check_sensitivity_report
 from amf.models import (
     LeveragePoint,
     Sensitivity,
@@ -191,11 +192,13 @@ class SensitivityAnalyzer:
 
         sensitivities.sort(key=lambda s: (-abs(s.gradient), _ORDER.index(s.system), _METRICS.index(s.metric)))
         leverage.sort(key=lambda p: (-p.improvement, _ORDER.index(p.system), _METRICS.index(p.metric)))
-        return SensitivityReport(
-            boundary=market.boundary,
-            baseline_index=baseline_index,
-            baseline_severity=Severity.from_score(baseline_index),
-            step=self.config.step,
-            sensitivities=tuple(sensitivities),
-            leverage_points=tuple(leverage),
+        return check_sensitivity_report(
+            SensitivityReport(
+                boundary=market.boundary,
+                baseline_index=baseline_index,
+                baseline_severity=Severity.from_score(baseline_index),
+                step=self.config.step,
+                sensitivities=tuple(sensitivities),
+                leverage_points=tuple(leverage),
+            )
         )

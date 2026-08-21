@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import itertools
+import math
+
 import pytest
 
 from amf.errors import InvalidConfigError, InvalidDependencyError
@@ -396,3 +399,110 @@ def test_centrality_rejects_an_invalid_tolerance(tolerance: float):
     graph = DependencyGraph([_dep(SystemKind.NERVOUS, SystemKind.SKELETON)])
     with pytest.raises(InvalidConfigError, match="tolerance must be"):
         graph.centrality(tolerance=tolerance)
+
+
+def _complete_bipartite(left: list[SystemKind], right: list[SystemKind]) -> DependencyGraph:
+    """Every system on one side coupled to every system on the other, both ways."""
+    return DependencyGraph([dep for a in left for b in right for dep in (_dep(a, b, 1.0), _dep(b, a, 1.0))])
+
+
+_UNEQUAL_SIDES = (
+    [SystemKind.SKELETON, SystemKind.CIRCULATORY, SystemKind.NERVOUS, SystemKind.MUSCULATURE],
+    [SystemKind.ORGANS, SystemKind.IMMUNE],
+)
+
+
+def test_centrality_rejects_a_graph_whose_ranking_never_settles():
+    # A complete bipartite market with unequal sides has two modes of equal
+    # magnitude, so the normalised ranking cycles between two states forever and
+    # the reported answer is decided by whichever step the budget stopped on.
+    # Previously this returned one of the two silently.
+    with pytest.raises(InvalidDependencyError, match="no single dominant mode"):
+        _complete_bipartite(*_UNEQUAL_SIDES).centrality()
+
+
+@pytest.mark.parametrize("iterations", [199, 200, 201])
+def test_the_oscillating_case_is_rejected_whatever_the_budget(iterations: int):
+    # The bug this guards was precisely a parity dependence: at 200 iterations the
+    # four left-hand systems scored 0.7222 and at 199 or 201 they scored 0.6923.
+    # Rejecting must not itself depend on where the budget lands.
+    with pytest.raises(InvalidDependencyError, match="no single dominant mode"):
+        _complete_bipartite(*_UNEQUAL_SIDES).centrality(iterations=iterations)
+
+
+def test_centrality_still_answers_when_the_series_diverges_but_the_ranking_holds():
+    # Divergence alone is not a defect: above the Katz bound the max-normalised
+    # result settles on the dominant-eigenvector direction, which is still a
+    # meaningful "most depended upon" ranking. A guard keyed on divergence rather
+    # than on stability would wrongly reject both of these.
+    every_pair = DependencyGraph([_dep(s, t, 1.0) for s in SystemKind for t in SystemKind if s is not t])
+    symmetric = every_pair.centrality()
+    assert symmetric == {kind: pytest.approx(1.0) for kind in SystemKind}
+
+    order = list(SystemKind)
+    acyclic = DependencyGraph(
+        [_dep(order[i], order[j], 1.0) for i in range(len(order)) for j in range(i + 1, len(order))]
+    )
+    ranked = acyclic.centrality()
+    assert ranked[order[-1]] == pytest.approx(1.0)
+    assert all(0.0 <= v <= 1.0 for v in ranked.values())
+
+
+def test_centrality_stays_bounded_over_a_long_diverging_run():
+    # Two dense clusters joined by one weak coupling: the two dominant modes are
+    # near-degenerate, so the ranking drifts for a long time while the underlying
+    # series grows. The accumulator is rescaled as it grows, so the result stays
+    # finite and normalised however long the caller iterates.
+    order = list(SystemKind)
+    pairs = [(0, 1), (1, 0), (0, 2), (2, 0), (1, 2), (2, 1), (3, 4), (4, 3), (3, 5), (5, 3), (4, 5), (5, 4)]
+    graph = DependencyGraph([_dep(order[a], order[b], 1.0) for a, b in pairs] + [_dep(order[2], order[3], 0.001)])
+    result = graph.centrality(alpha=0.99, iterations=60)
+    assert all(math.isfinite(v) for v in result.values())
+    assert all(0.0 <= v <= 1.0 for v in result.values())
+    assert max(result.values()) == pytest.approx(1.0)
+
+
+def test_pair_weight_does_not_depend_on_the_order_kinds_were_added():
+    # Floating-point addition is not associative, so summing a pair's kinds in
+    # insertion order made `edge_weight` -- and every score derived from it --
+    # depend on the order the dependencies happened to be listed in. These weights
+    # are chosen so the two orders genuinely differ in the last bits.
+    kinds = (DependencyKind.STRUCTURAL, DependencyKind.INFORMATIONAL, DependencyKind.CAPITAL)
+    weights = (0.1, 0.2, 0.30000000000000004)
+    edges = [
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, kind, weight)
+        for kind, weight in zip(kinds, weights, strict=True)
+    ]
+    forwards = DependencyGraph(edges).edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON)
+    backwards = DependencyGraph(reversed(edges)).edge_weight(SystemKind.NERVOUS, SystemKind.SKELETON)
+    # Exact equality, not approx: approx is what let this through.
+    assert forwards == backwards
+
+
+def test_centrality_is_identical_under_every_ordering_of_the_same_edges():
+    # Regression, exhaustive rather than sampled: the influence propagation used
+    # to accumulate into the target while iterating the pair-weight dict, which
+    # is keyed in insertion order. Because float addition is not associative,
+    # feeding the identical edges in a different order shifted the published
+    # centralities by an ulp. All 720 orderings of these six edges must now agree
+    # exactly -- not approximately.
+    edges = [
+        Dependency(SystemKind.CIRCULATORY, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.8),
+        Dependency(SystemKind.NERVOUS, SystemKind.SKELETON, DependencyKind.STRUCTURAL, 0.5),
+        Dependency(SystemKind.IMMUNE, SystemKind.SKELETON, DependencyKind.REGULATORY, 0.3),
+        Dependency(SystemKind.ORGANS, SystemKind.CIRCULATORY, DependencyKind.CAPITAL, 0.6),
+        Dependency(SystemKind.MUSCULATURE, SystemKind.CIRCULATORY, DependencyKind.CAPITAL, 0.7),
+        Dependency(SystemKind.METABOLISM, SystemKind.ORGANS, DependencyKind.STRUCTURAL, 0.4),
+    ]
+    results = {
+        tuple(sorted(DependencyGraph(ordering).centrality().items(), key=lambda kv: kv[0].value))
+        for ordering in itertools.permutations(edges)
+    }
+    assert len(results) == 1
+
+
+def test_centrality_is_max_normalised():
+    # The guard in amf.invariants relies on this: a non-empty influence vector is
+    # divided through by its own maximum, so the peak is exactly 1.
+    graph = DependencyGraph([_dep(SystemKind.CIRCULATORY, SystemKind.SKELETON, 0.8)])
+    assert max(graph.centrality().values()) == 1.0

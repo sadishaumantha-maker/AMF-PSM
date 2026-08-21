@@ -15,7 +15,7 @@ from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 from amf.diagnostics import DiagnosticConfig, DiagnosticEngine
-from amf.errors import InvalidConfigError
+from amf.errors import InvalidConfigError, InvalidDependencyError
 from amf.graph import DependencyGraph
 from amf.market import Market
 from amf.models import Dependency, DependencyKind, MarketBoundary, Shock, SystemKind
@@ -206,3 +206,30 @@ def test_negative_blend_weights_are_rejected(fragility: float, concentration: fl
     # weight pushes scores outside [0, 1] rather than raising.
     with pytest.raises(InvalidConfigError):
         DiagnosticConfig(fragility, concentration, feedback)
+
+
+@given(market=_markets(), data=st.data())
+@_SETTINGS
+def test_centrality_is_independent_of_dependency_order(market: Market, data: st.DataObject):
+    # Regression: the influence propagation accumulated into `nxt[target]` while
+    # iterating the pair-weight dict, which is keyed in *insertion* order. Float
+    # addition is not associative, so listing the same dependencies in a
+    # different order moved the published centralities by an ulp -- a
+    # user-visible result depending on assembly order, which the project forbids.
+    # Empirically 265 of 400 random permutations of the sample market's eight
+    # dependencies produced a different vector before the fix; 0 of 1000 after.
+    original = market.graph.dependencies()
+    reordered = Market.assemble(
+        market.boundary,
+        list(market.systems.values()),
+        data.draw(st.permutations(original)),
+    )
+    try:
+        expected = market.graph.centrality()
+    except InvalidDependencyError:
+        # A graph with no dominant mode has no answer to be stable about; the
+        # permuted graph must reach the same verdict rather than inventing one.
+        with pytest.raises(InvalidDependencyError):
+            reordered.graph.centrality()
+        return
+    assert reordered.graph.centrality() == expected
