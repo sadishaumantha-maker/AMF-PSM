@@ -36,6 +36,16 @@ repos:
 
   - repo: local
     hooks:
+      # Offline, network-free, and fast enough not to slow a commit. CI checks Markdown
+      # links too, but behind `yamllint` in the `validate` job -- so a YAML error hides it.
+      # That is exactly how eleven dead links sat on `main` failing every build.
+      - id: docsync-links
+        name: no dead relative Markdown links
+        entry: python3 -m tools.docsync scan --fail-on high --no-test-count
+        language: system
+        pass_filenames: false
+        files: '\.md$'
+
       - id: protect-ip-artifacts
         name: protect checksum-locked IP artifacts
         entry: >-
