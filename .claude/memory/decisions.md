@@ -112,3 +112,38 @@ of the second.
 document shape, and always re-run the known-good fixture (`docs/RESEARCH_DISCUSSIONS.md` → 43 units,
 258 atoms) to prove the extension broke nothing. An atom count that looks small relative to the
 source's line count is the signal to stop and extend rather than publish.
+
+---
+
+## ADR-008: The two issue sets are split by role, not merged
+
+**Status**: enacted 2026-08-21 (Q-002)
+
+**Cause**: issues #45–#92 (research decomposition) and #77–#138 (90-day implementation plan) were
+created by independent sessions and collide on five artifacts — the equity market taxonomy
+(#58↔#124), the liquidity mapping (#59↔#125), the regulatory-regime taxonomy (#60↔#126), the
+Hindenburg case study (#64↔#132), and the policy-tier architecture (#46↔#120–#123) — with no
+cross-links, so the sets were diverging on shared ground.
+
+**Decision**: neither set is retired and they are not merged, because they answer different
+questions. The research set is canonical for **content and acceptance criteria**; the 90-day set is
+canonical for **scheduling and ownership**. Both sides of every collision pair carry a cross-link
+comment stating that split. A future task that would touch a shared artifact starts from the
+research issue's content and the 90-day issue's schedule.
+
+---
+
+## ADR-009: QUANTUM_NEURAL_RESEARCH.md is not decomposed until it is rewritten
+
+**Status**: enacted 2026-08-21 (Q-001, Option C) — tracked by issue #169
+
+**Cause**: the acceptance run measured two independent blockers. All 11 units are
+guardrail-flagged — the predictive framing is uniform, so Option B (decompose the compliant
+subset) selects the empty set. And the intake parser captures 22 atoms from 799 lines (ADR-007),
+so Option A (reframe everything now) would first require a parser extension and would then inject
+`Structural reframing required` sections into ~11 issues at once.
+
+**Decision**: one proposal issue (#169) asks for the document to be restructured with structural
+framing per the guardrails translation table, in a parser-compatible shape or alongside a
+deliberate parser extension. The go signal for decomposition is a re-run of
+`extract_atoms.py --stats-only` reporting an atom count consistent with the document's real size.

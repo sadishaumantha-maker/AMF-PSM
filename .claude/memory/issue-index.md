@@ -67,8 +67,10 @@ one of them has regressed.
 
 ## docs/QUANTUM_NEURAL_RESEARCH.md
 
-Not decomposed. Blocked on Q-001 in `open-questions.md` — the document is forecasting-framed and
-needs a guardrail decision before any issue is created from it.
+Not decomposed, by decision: Q-001 was resolved 2026-08-21 as **Option C** (ADR-009). Issue **#169**
+(id 5216948752) proposes the document be restructured with structural framing first; decomposition
+stays blocked until that rewrite lands and `extract_atoms.py --stats-only` reports an atom count
+consistent with the document's size.
 
 ## Not managed by this system
 
@@ -79,6 +81,11 @@ duplicate work this set already tracks: e.g. #124–#129 decompose global equity
 overlaps `discussion-2.1` (#58); #126 maps regulatory regimes per segment, overlapping
 `discussion-2.3` (#60); #132 creates a Hindenburg case study, overlapping `discussion-4.1` (#64).
 Do not treat their numbers as free, and check for an overlapping task there before publishing here.
+
+Resolved 2026-08-21 (Q-002 → ADR-008): the two sets are deliberately kept, split by role — this
+research set is canonical for **content and acceptance criteria**, the 90-day set for **scheduling
+and ownership** — and the five collision pairs (#58↔#124, #59↔#125, #60↔#126, #64↔#132,
+#46↔#120–#123) carry cross-link comments on both sides.
 
 Pre-existing issues **#11, #21, #23, #25, #26, #27, #28, #31, #32, #43** are human-authored and
 outside this system's scope. Never edit them; reference them instead.

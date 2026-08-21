@@ -9,7 +9,7 @@ Read on demand — not auto-loaded.
 | Document | sha256 (prefix) | Atoms | Issues | Manifest | Decomposed |
 |---|---|---|---|---|---|
 | `docs/RESEARCH_DISCUSSIONS.md` | `844ba4b4645d0307` | 253 | 43 (#45–#92) | `manifests/RESEARCH_DISCUSSIONS.manifest.yaml` | 2026-08-20 |
-| `docs/QUANTUM_NEURAL_RESEARCH.md` | `534eea72432523af` | 22 of ~700 | 0 | none — deliberately | **blocked** (see Q-001) |
+| `docs/QUANTUM_NEURAL_RESEARCH.md` | `534eea72432523af` | 22 of ~700 | 0 | none — deliberately | **rewrite proposed** — issue #169 (Q-001 → C, ADR-009) |
 | `docs/ANALYSIS_AND_ROADMAP.md` | — | — | — | — | reference only, not a decomposition source |
 | `docs/roadmap.md` | — | — | — | — | reference only; source of the guardrail translation table |
 
@@ -58,3 +58,6 @@ that is known to be lossy invites someone to approve it. Two blockers, both reco
 
 Re-run `extract_atoms.py --stats-only` against it after any parser extension. If the atom count is
 still small relative to the document's size, it is still not ready to publish.
+
+Resolution (2026-08-21): Q-001 was decided as Option C — issue #169 proposes the rewrite (ADR-009).
+The two blockers above remain the acceptance criteria for lifting the block.

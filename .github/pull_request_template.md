@@ -1,10 +1,3 @@
-name: Pull Request Template
-description: Standard PR template for AMF-PSM contributions
-title: "[TYPE] Brief description of change"
-labels: ["needs-review"]
-assignees: []
----
-
 ## 📝 Description
 
 <!-- Provide a clear description of what this PR does. -->
@@ -34,7 +27,7 @@ Related to #
 - [ ] Manual testing completed
 - [ ] No regressions detected
 
-**Test coverage**: ___% (minimum 80%)
+**Test coverage**: ___% (must be 100% — `--cov-fail-under=100` is the CI gate)
 
 **Steps to reproduce/test**:
 ```bash
@@ -58,18 +51,17 @@ Related to #
 - [ ] No breaking changes
 - [ ] All tests pass locally
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/)
-- [ ] Branch is up to date with `main`/`develop`
+- [ ] Branch is up to date with `main`
 - [ ] Code owner review requested (if applicable)
 
 ---
 
 ## 🔐 Security Considerations
 
-- [ ] No hardcoded secrets/credentials
-- [ ] No SQL injection vulnerabilities
-- [ ] No XSS vulnerabilities
-- [ ] No authentication bypass
-- [ ] Dependencies are from trusted sources
+- [ ] No hardcoded secrets/credentials (the repository is public)
+- [ ] No checksum-protected artifact modified (the `SHA256SUMS` set)
+- [ ] No new dependencies (the package is standard-library only)
+- [ ] No publish workflow or public-index surface added (private distribution only)
 
 ---
 
