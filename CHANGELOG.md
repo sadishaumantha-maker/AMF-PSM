@@ -57,7 +57,25 @@ this file. Versions correspond to framework releases.
   documentation edit and a sentinel that blocks any diff eroding a hard rule.
 - Time and locale, and automated maintenance, are now documented as first-class sections
   of `CLAUDE.md`, including the honest accuracy ceilings for each class of time source.
-
+- `docs/discussions/` — eleven standalone theoretical modules, one per research
+  discussion in `docs/QUANTUM_NEURAL_RESEARCH.md` (Q1–Q3 quantum and information
+  theory, D1–D3 neural architectures and knowledge graphs, H1–H3 quantum-neural
+  hybrids, topology and symplectic dynamics, I1–I2 integration and validation),
+  plus a `README.md` index. Each module reproduces its source specification
+  verbatim, then adds formal foundations with attributed theorem statements, the
+  standard graduate curriculum around the topic, an annotated bibliography of
+  exact primary and canonical source material, a derivation for the AMF setting,
+  falsifiable propositions, and a governance section reconciling the source
+  note's proposed deliverables with this repository's hard rules. Three modules
+  reach negative results worth recording: H3 shows AMF's seven-dimensional stress
+  space admits no symplectic form and that the step map contracts phase-space
+  volume by `damping⁷` per step, so the proposed Liouville-violation alarm cannot
+  discriminate; I1 shows the proposed inverse-RMSE ensemble weighting is optimal
+  under no standard assumption and that a union of confidence intervals is not a
+  confidence interval; I2 shows several proposed artefacts sit outside the
+  non-trading boundary — `backtest` and the Sharpe-ratio metric among them — and
+  sets out what can legitimately be checked inside it instead. Documentation
+  only — no package behaviour changes.
 - `docs/90_DAY_PLAN_INDEX.md` — a navigation map of the 90-day implementation
   program's GitHub issue tree (one program issue, ten epics, fifty-four sub-issues),
   with the phase calendar, the metric ledger, the guardrails every issue inherits, and
@@ -160,10 +178,11 @@ this file. Versions correspond to framework releases.
 - `CLAUDE.md` contributor and design guide.
 
 ### Fixed
-- `docs/discussions/README.md` linked eleven research modules that were never committed;
-  the directory contains only the index itself. Those dead relative links failed the
+- `docs/discussions/README.md` linked eleven research modules that had not been committed;
+  at the time the directory held only the index itself. Those dead relative links failed the
   `Check Markdown links` step of CI's `Validate metadata` job on every push, including on
-  `main`. The index now names the unwritten modules as plain text rather than links.
+  `main`. The index named them as plain text rather than links until the modules landed;
+  they are links again now that every file exists.
 - Ten factual errors in `CLAUDE.md`, found by the new detector: a stale test total, a
   miscounted number of `yamllint disable-line` directives in `codeql.yml`, `__all__`
   described as `sorted()` when it is in ruff `RUF022` natural order, `tests/unit/`
